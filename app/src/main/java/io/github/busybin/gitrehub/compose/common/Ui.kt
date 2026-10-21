@@ -42,6 +42,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
@@ -464,14 +465,17 @@ fun CompactButton(
 
 // ----------------------------------------------------------------------------- formatting helpers
 
-private val rtf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+/** Future dates (clock skew in an event's timestamp) use a plain date instead of "in -3 minutes". */
+private fun formatDate(date: Date, locale: Locale): String =
+    SimpleDateFormat("yyyy-MM-dd", locale).format(date)
 
-/** "just now / 12 minutes ago / 3 hours ago / 2 days ago / 2023-05-01" (follows the system language) */
+/** "just now / 12 minutes ago / 3 hours ago / 2 days ago / 2023-05-01" (follows the app language) */
 @Composable
 fun relativeTime(date: Date?): String {
     if (date == null) return ""
+    val appLocale = LocalConfiguration.current.locales[0]
     val diff = System.currentTimeMillis() - date.time
-    if (diff < 0) return rtf.format(date)
+    if (diff < 0) return formatDate(date, appLocale)
     val minutes = diff / 60_000
     val hours = diff / 3_600_000
     val days = diff / 86_400_000

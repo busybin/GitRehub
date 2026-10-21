@@ -3,6 +3,7 @@ package io.github.busybin.gitrehub.compose.notifications
 import android.content.Context
 import androidx.annotation.StringRes
 import io.github.busybin.gitrehub.R
+import io.github.busybin.gitrehub.helper.PrefGetter
 import io.github.busybin.gitrehub.helper.PrefHelper
 import io.github.busybin.gitrehub.provider.tasks.notification.NotificationForegroundService
 import io.github.busybin.gitrehub.provider.tasks.notification.NotificationSchedulerJobTask
@@ -27,7 +28,7 @@ object NotificationPrefs {
     private const val KEY_PROMPTED = "m3_notifications_prompted"
 
     /** Foreground (per-second) service toggle. */
-    private const val KEY_FOREGROUND = "m3_notif_foreground"
+    private const val KEY_FOREGROUND = PrefGetter.NOTIFICATION_FOREGROUND
 
     /** Interval options in minutes. A 1-minute value really means 1: the job reschedules itself
      *  instead of using `setPeriodic`, which the system clamps to 15 minutes. Doze may still delay it. */
@@ -106,7 +107,11 @@ object NotificationPrefs {
 
     /** Called when the app returns to foreground to sync the service with the preference. */
     fun ensureService(context: Context) {
-        if (_foreground.value) NotificationForegroundService.start(context)
+        if (_foreground.value) {
+            NotificationForegroundService.start(context)
+            // The job may have been re-armed by App.onCreate before this ran; only one poller may live.
+            NotificationSchedulerJobTask.cancelAll(context)
+        }
     }
 
     /** Label resource for a settings chip (follows the system language). */

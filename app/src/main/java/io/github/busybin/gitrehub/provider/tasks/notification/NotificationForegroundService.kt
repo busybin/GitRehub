@@ -17,6 +17,7 @@ import io.github.busybin.gitrehub.compose.MainComposeActivity
 import io.github.busybin.gitrehub.core.auth.Session
 import io.github.busybin.gitrehub.core.model.Notification
 import io.github.busybin.gitrehub.core.net.GitHubApi
+import io.github.busybin.gitrehub.core.notify.NotifiedThreads
 import io.github.busybin.gitrehub.helper.InputHelper
 import io.github.busybin.gitrehub.helper.ParseDateFormat
 import kotlinx.coroutines.CoroutineScope
@@ -56,6 +57,20 @@ class NotificationForegroundService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int = START_STICKY
 
+    /**
+     * Android 15+ caps `dataSync` foreground services at six hours per 24, then calls this. Stop
+     * ourselves right away (missing the short grace period means a system ANR) and re-arm the
+     * interval job so notifications still arrive until the next app launch restarts this service.
+     */
+    override fun onTimeout(startId: Int) {
+        NotificationSchedulerJobTask.scheduleNext(this)
+        stopSelf(startId)
+    }
+
+    override fun onTimeout(startId: Int, fgsType: Int) {
+        onTimeout(startId)
+    }
+
     override fun onDestroy() {
         scope.cancel()
         super.onDestroy()
@@ -73,9 +88,16 @@ class NotificationForegroundService : Service() {
         if (firstRound) {
             // First round records the baseline only; never fire for the historical backlog.
             firstRound = false
+            NotifiedThreads.remember(unreadIds)
         } else {
-            val fresh = unread.filter { it.numericId !in previousUnread }
-            if (fresh.isNotEmpty()) notifyNew(fresh)
+            // Skip what the interval job already showed: after an Android 15 timeout the two pollers
+            // hand over to each other, and nothing should pop up twice.
+            val shown = NotifiedThreads.ids()
+            val fresh = unread.filter { it.numericId !in previousUnread && it.numericId !in shown }
+            if (fresh.isNotEmpty()) {
+                notifyNew(fresh)
+                NotifiedThreads.remember(fresh.map { it.numericId })
+            }
         }
         previousUnread = unreadIds
         updatePersistent(unread.size)
