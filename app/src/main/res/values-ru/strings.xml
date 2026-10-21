@@ -1,0 +1,15 @@
+<resources xmlns:tools="http://schemas.android.com/tools"
+           tools:ignore="MissingTranslation">
+
+    <string name="english_please">Пожалуйста, при составлении тикета используйте английский язык.</string>
+
+    <string name="open">Открыть</string>
+    <string name="open_new_window">Открыть в новом окне</string>
+
+    <string name="copy">Копировать</string>
+    <string name="success_copied">Скопировано</string>
+    <string name="marking_as_read">Помечаем уведомление как прочтённое</string>
+
+    <string name="mark_as_read">Прочитано</string>
+
+</resources>

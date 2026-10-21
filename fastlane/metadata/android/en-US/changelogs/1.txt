@@ -1,0 +1,9 @@
+First release of GitRehub.
+
+- Dark Material 3 UI with nine colour themes
+- Merged activity feed with full filters
+- Repository browser: README, code, releases and downloads
+- Issues and pull requests: comments, reactions and write actions
+- Notifications with custom swipe actions and shared read state
+- Search, My Work and multiple accounts
+- Offline cache and opt-in update check

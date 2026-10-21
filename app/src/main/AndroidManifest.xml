@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:installLocation="auto">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- setPersisted() in NotificationSchedulerJobTask needs this to survive a reboot. -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <!-- DownloadManager needs this below API 29 when writing to the public Downloads folder. -->
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28" />
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <!-- persistent foreground service (Android 14+ needs the dataSync type declared) -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+
+    <queries>
+        <!-- external download managers, offered for release assets -->
+        <package android:name="com.dv.adm.pay" />
+        <package android:name="com.dv.adm" />
+        <package android:name="idm.internet.download.manager.plus" />
+        <package android:name="idm.internet.download.manager" />
+        <package android:name="com.vanda_adm.vanda" />
+        <package android:name="org.freedownloadmanager.fdm" />
+        <package android:name="com.dv.get" />
+        <package android:name="com.tachibana.downloader" />
+
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <category android:name="android.intent.category.BROWSABLE" />
+            <data android:scheme="https" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <category android:name="android.intent.category.BROWSABLE" />
+            <data android:scheme="http" />
+        </intent>
+    <!-- a second copy without a category, as androidx.browser declares it: with BROWSABLE some ROMs match no browser at all. -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="https" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="http" />
+        </intent>
+        <intent>
+            <action android:name="android.support.customtabs.action.CustomTabsService" />
+        </intent>
+    </queries>
+
+
+    <application
+        android:name=".App"
+        android:allowBackup="false"
+        android:hardwareAccelerated="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:largeHeap="true"
+        android:resizeableActivity="true"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:usesCleartextTraffic="${usesCleartextTraffic}"
+        android:theme="@style/Theme.GitRehub"
+        tools:replace="android:allowBackup"
+        tools:targetApi="n">
+        <activity
+            android:name="io.github.busybin.gitrehub.compose.MainComposeActivity"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:configChanges="orientation|screenSize|keyboardHidden|uiMode|smallestScreenSize|screenLayout"
+            android:windowSoftInputMode="adjustResize"
+            android:theme="@style/Theme.GitRehub.Compose">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".compose.auth.OAuthLoginActivity"
+            android:configChanges="keyboard|orientation|screenSize"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:noHistory="true"
+            android:theme="@style/LoginTheme">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <!-- OAuth callback scheme, see GithubConfigHelper.redirectUrl -->
+                <data
+                    android:host="login"
+                    android:scheme="gitrehub" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".compose.DeepLinkActivity"
+            android:configChanges="keyboard|orientation|screenSize"
+            android:exported="true"
+            android:noHistory="true"
+            android:theme="@android:style/Theme.NoDisplay">
+            <!--
+                github.com links open here. autoVerify never passes: github.com's assetlinks.json
+                only covers GitHub's own clients, so the user must allow the link in system
+                settings (see SettingsScreen.openLinkHandlingSettings).
+            -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+
+                <data
+                    android:host="github.com"
+                    android:scheme="http" />
+                <data
+                    android:host="github.com"
+                    android:scheme="https" />
+                <data
+                    android:host="gist.github.com"
+                    android:scheme="http" />
+                <data
+                    android:host="gist.github.com"
+                    android:scheme="https" />
+                <data
+                    android:host="raw.githubusercontent.com"
+                    android:scheme="https" />
+                <data
+                    android:host="gist.githubusercontent.com"
+                    android:scheme="https" />
+                <data android:pathPattern=".*" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+
+                <data android:mimeType="text/plain" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
+        <service
+            android:name=".provider.tasks.notification.NotificationSchedulerJobTask"
+            android:exported="true"
+            android:permission="android.permission.BIND_JOB_SERVICE"/>
+        <service android:name=".provider.tasks.notification.ReadNotificationService" />
+        <service
+            android:name=".provider.tasks.notification.NotificationForegroundService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+        <receiver
+            android:name=".provider.tasks.DownloadCompleteReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.DOWNLOAD_COMPLETE" />
+            </intent-filter>
+        </receiver>
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+    </application>
+</manifest>

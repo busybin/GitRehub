@@ -1,0 +1,15 @@
+<resources xmlns:tools="http://schemas.android.com/tools"
+           tools:ignore="MissingTranslation">
+
+    <string name="english_please">Merci de soumettre votre demande en anglais.</string>
+
+    <string name="open">Ouvrir</string>
+    <string name="open_new_window">Ouvrir dans une nouvelle fenêtre</string>
+
+    <string name="copy">Copier URL</string>
+    <string name="success_copied">Copié</string>
+    <string name="marking_as_read">Marquer la notification comme lue</string>
+
+    <string name="mark_as_read">Marquer comme lu</string>
+
+</resources>

@@ -1,0 +1,11 @@
+<resources>
+
+    <string name="open">افتح</string>
+
+    <string name="copy">نسخ</string>
+    <string name="success_copied">تم النسخ</string>
+    <string name="marking_as_read">تحديد الإشعارات كمقروء</string>
+
+    <string name="mark_as_read">تحديد كمقروء</string>
+
+</resources>

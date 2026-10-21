@@ -1,0 +1,45 @@
+<!--
+Simplified-Chinese Translation Style Guide
+简体中文翻译风格规范 v1.0
+
+继承自社区翻译约定, 如有冲突请以本项目为准
+
+0. 专有名词 (如 Issue, Pull Request, Fork, Access Token 等) 不进行翻译,
+   尽可能避免熟悉英文原词的用户见到翻译后 "咦这是什么东西来着的" 情况的发生.
+1. 使用半角标点符号
+2. 在西文字符与中文字符前后加入空格 (除标点符号外, 见下一条)
+3. 标点符号后空一格
+4. 错误提示信息除特殊情况外统一为 "xxxx时发生错误"
+5. 统一将 account 译为 "帐号" 而非 "账号" "帐户" 等.
+6. "登录"不是"登陆"; "请稍候"不是"请稍后"; "请稍后再试" 不是 "请稍候再试".
+7. 若觉得此规范有什么问题, 欢迎改进或重写 0w0 只要所有文本的风格大体遵守同一个规范就好.
+   这套规范的主要目的是保持风格统一, 避免出现一个 APP 多种文本的混乱情况.
+-->
+
+<!-- 
+Commit @ 2018-3-14
+CaptainTF @ Github 提议：
+0. “没有”替换为“无”. 即精简文本.
+1. 使用敬语. 即“您”.
+2. 使用全角省略号, 即···而非....
+3. “APP” 替换为 “应用”.
+4. 请勿直译, 部分术语可在有道词典等平台获取已有专业翻译.
+   同时也请符合中文语序.
+-->
+
+<!-- 原文版本 (Original strings): 2018/03/14 -->
+<resources xmlns:tools="http://schemas.android.com/tools"
+           tools:ignore="MissingTranslation">
+
+    <string name="english_please">请使用英语描述您的问题.</string>
+
+    <string name="open">打开</string>
+    <string name="open_new_window">在新窗口中打开</string>
+
+    <string name="copy">复制</string>
+    <string name="success_copied">已复制</string>
+    <string name="marking_as_read">将通知标记为已读</string>
+
+    <string name="mark_as_read">标记为已读</string>
+
+</resources>
