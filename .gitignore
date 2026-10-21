@@ -1,0 +1,14 @@
+*.iml
+.gradle
+/local.properties
+.DS_Store
+/build
+/.idea/
+/app/build/
+/app/debug/
+/app/secrets.properties
+/app/keys_release.jks
+
+# local build artefacts
+*.bak
+*.bak.*

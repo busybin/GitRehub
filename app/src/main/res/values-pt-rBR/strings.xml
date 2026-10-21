@@ -1,0 +1,16 @@
+<resources xmlns:tools="http://schemas.android.com/tools"
+           tools:ignore="MissingTranslation">
+    <!--Please DO NOT translate github terms, such as Pull Request, Issues, Commits & etc.-->
+
+    <string name="english_please">Por favor submeta seu request em inglês.</string>
+
+    <string name="open">Abrir</string>
+    <string name="open_new_window">Abrir em nova janela</string>
+
+    <string name="copy">Copiar</string>
+    <string name="success_copied">Copiado</string>
+    <string name="marking_as_read">Marcar notificação como lida</string>
+
+    <string name="mark_as_read">Marcar como lido</string>
+
+</resources>

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Application theme: visible only for the moment before Compose draws. Dark, like the app. -->
+    <style name="Theme.GitRehub" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:windowBackground">#121212</item>
+        <item name="icon_color">#EEEEEE</item>
+        <item name="dividerColor">#33FFFFFF</item>
+    </style>
+
+    <!-- Only the OAuth round-trip activity uses this; it has no UI. -->
+    <style name="LoginTheme" parent="@android:style/Theme.Material.Light.NoActionBar">
+        <item name="icon_color">@color/white</item>
+    </style>
+
+    <!-- Theme of the modern (Compose) UI. Everything is drawn by Compose, so this only has to
+         provide a sane window background and transparent system bars. -->
+    <style name="Theme.GitRehub.Compose" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:windowBackground">?android:attr/colorBackground</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLayoutInDisplayCutoutMode" tools:targetApi="27">shortEdges</item>
+        <!-- The vector drawables inherit icon_color/dividerColor from the theme; without these
+             two the Compose vector parser resolves them to resource id 0 and logs a
+             NotFoundException for every icon it draws. -->
+        <item name="icon_color">#EEEEEE</item>
+        <item name="dividerColor">#33FFFFFF</item>
+    </style>
+</resources>
