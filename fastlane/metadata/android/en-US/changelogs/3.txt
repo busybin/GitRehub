@@ -1,0 +1,6 @@
+Fixes for signing in and for notifications.
+
+- The navigation drawer shows the full menu right after signing in
+- Only one notification poller runs at a time: no duplicate popups, and the ongoing notification stays
+- Notifications keep working after Android 15's six-hour dataSync limit
+- Fallback dates follow the in-app language; the launcher icon supports themed icons
