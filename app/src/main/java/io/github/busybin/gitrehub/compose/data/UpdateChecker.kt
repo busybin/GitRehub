@@ -23,10 +23,14 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
 /**
- * Update check: detect only, never download or install.
+ * Update check against our GitHub releases.
  *
- * Calls `GET releases/latest`, compares `tag_name` against `versionCode`, and offers a button to the
- * release page. Sends no device or user data and asks for no install permission.
+ * Calls `GET releases/latest`, compares `tag_name` against `versionCode`, and hands the release page
+ * or the APK asset to the UI. Nothing is sent unless the user asks for it (the automatic check is
+ * opt-in, see [UpdatePrefs.auto]), and no device or user data goes with the request.
+ *
+ * The APK can only be installed by builds signed with the release key; see
+ * [io.github.busybin.gitrehub.compose.common.UpdateSupport].
  *
  * Release tags and `versionName` are plain numbers matching `versionCode` (`V<number>` also parses).
  */

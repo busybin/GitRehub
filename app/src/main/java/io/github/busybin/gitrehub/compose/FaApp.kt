@@ -101,6 +101,7 @@ import io.github.busybin.gitrehub.compose.common.ConfirmDialog
 import io.github.busybin.gitrehub.compose.common.OfflineBanner
 import io.github.busybin.gitrehub.compose.common.TabBadges
 import io.github.busybin.gitrehub.compose.common.UpdatePromptHost
+import io.github.busybin.gitrehub.compose.common.UpdateSupport
 import io.github.busybin.gitrehub.compose.common.restartModernUi
 import kotlinx.coroutines.runBlocking
 import io.github.busybin.gitrehub.core.auth.Session
@@ -242,6 +243,8 @@ fun FaApp(routeRequest: MutableState<String?>? = null) {
         val drawerState = rememberDrawerState(DrawerValue.Closed)
         val scope = rememberCoroutineScope()
         val context = LocalContext.current
+        // a third-party store / re-signed builds cannot install our APK, so they never prompt for updates.
+        val selfUpdateAvailable = remember { UpdateSupport.isAvailable(context) }
 
         val backStack by nav.currentBackStackEntryAsState()
         val current = backStack?.destination?.route
@@ -404,7 +407,7 @@ fun FaApp(routeRequest: MutableState<String?>? = null) {
             )
         }
 
-        UpdatePromptHost(enabled = loggedIn)
+        UpdatePromptHost(enabled = loggedIn && selfUpdateAvailable)
 
         ModalNavigationDrawer(
             drawerState = drawerState,

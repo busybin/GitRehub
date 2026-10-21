@@ -373,6 +373,7 @@ GitHub has no push channel for third-party clients, so this is real polling: the
 
     <!-- update check -->
     <string name="m3_update_title">Check for updates</string>
+    <string name="m3_update_store_managed">Updates are handled by the store that installed this build.</string>
     <string name="m3_update_uptodate">You\'re on the latest version</string>
     <string name="m3_update_available">New version available: %1$s</string>
     <string name="m3_update_check">Check</string>

@@ -371,6 +371,7 @@
 
     <!-- update check -->
     <string name="m3_update_title">Проверить обновления</string>
+    <string name="m3_update_store_managed">Обновлениями управляет магазин, установивший эту сборку.</string>
     <string name="m3_update_uptodate">У вас последняя версия</string>
     <string name="m3_update_available">Доступна новая версия: %1$s</string>
     <string name="m3_update_check">Проверить</string>

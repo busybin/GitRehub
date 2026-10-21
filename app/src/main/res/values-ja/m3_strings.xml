@@ -373,6 +373,7 @@ GitHub にはサードパーティ製クライアント向けのプッシュチ�
 
     <!-- update check -->
     <string name="m3_update_title">アップデートを確認</string>
+    <string name="m3_update_store_managed">このビルドをインストールしたストアが更新を管理します。</string>
     <string name="m3_update_uptodate">最新バージョンです</string>
     <string name="m3_update_available">新しいバージョンがあります：%1$s</string>
     <string name="m3_update_check">確認</string>
