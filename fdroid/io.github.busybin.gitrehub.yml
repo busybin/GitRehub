@@ -1,13 +1,12 @@
-# Draft for fdroiddata submission. Does not affect the build: copy the whole file to
-# fdroiddata's metadata/io.github.busybin.gitrehub.yml and fill in the release info. IzzyOnDroid
-# (accepts developer-signed APKs) is an alternative; see fdroid/README.md.
+# Metadata for the F-Droid main repository. Copy this file to
+# fdroiddata's metadata/io.github.busybin.gitrehub.yml. IzzyOnDroid
+# (developer-signed APKs) is the faster channel; see fdroid/README.md.
 
 Categories:
   - Code & Forge
   - Internet
-License: GPL-3.0-or-later
+License: GPL-3.0-only
 AuthorName: busybin
-WebSite: https://github.com/busybin/gitrehub
 SourceCode: https://github.com/busybin/gitrehub
 IssueTracker: https://github.com/busybin/gitrehub/issues
 Changelog: https://github.com/busybin/gitrehub/releases
@@ -17,18 +16,13 @@ RepoType: git
 Repo: https://github.com/busybin/gitrehub.git
 
 Builds:
-  - versionName: '1'
-    versionCode: 1
-    commit: '1'
-    gradle: yes
   - versionName: '2'
     versionCode: 2
-    commit: '2'
-    gradle: yes
-
-# Releases are self-signed; F-Droid can keep our signature only if reproducible builds are set up,
-# otherwise it re-signs and the two channels cannot update over each other.
-AllowedAPKSigningKeys: c42c7adc15075ed7349ef5600dd03ddb45177cf82f615534d8309bc0633f53bc
+    commit: dd0e52ce8ca53cc1e06c9e281c7f1c7e274b681c
+    gradle:
+      - yes
+    gradleprops:
+      - gitrehub.store=fdroid
 
 AutoUpdateMode: Version
 UpdateCheckMode: Tags .*[0-9]$
@@ -36,18 +30,17 @@ UpdateCheckData: app/build.gradle.kts|versionCode\s*=\s*(\d+)|.|versionName\s*=\
 CurrentVersion: '2'
 CurrentVersionCode: 2
 
-# Anti-features:
-#  · NonFreeNet — the app's whole purpose is accessing GitHub, a non-free network service.
-#  · Tracking does not apply: the update check is off by default and only reads the public
-#    releases page when the user opts in, which F-Droid accepts.
 AntiFeatures:
   - NonFreeNet
 
 MaintainerNotes: |-
-  Independent GitHub client (GPL-3), Compose only, version numbering is a plain integer.
-  Build: Gradle 9.8 / AGP 9.4 / built-in Kotlin / compileSdk 37, standard `gradle: yes`.
-  The repo ships its own app/keys_debug.jks, used for debug builds only (stable debug signing is
-  intentional); release builds do not need it — add scanignore if the scanner flags the "binary".
-  The OAuth client id lives in the gitignored app/secrets.properties, so a from-source F-Droid build
-  has none: the only effect is that the device-code login entry is hidden, while token login and the
-  rest work (README covers usage).
+  Independent GitHub client (GPL-3), Compose only, versionName == versionCode == a plain integer.
+  Build: Gradle 9.8.1 (wrapper), AGP 9.4.0, compileSdk 37; `gradle: yes` runs assembleRelease.
+  The release key is not in the repo, so the build is unsigned and F-Droid signs it. It never falls
+  back to app/keys_debug.jks (a public debug key used only by debug builds).
+  `-Pgitrehub.store=fdroid` compiles out the in-app APK updater: a re-signed build would otherwise
+  offer an APK that cannot be installed over F-Droid's. Builds signed with the release key check the
+  certificate at runtime instead.
+  No API keys: the OAuth client id is read from a gitignored properties file, so this build hides the
+  device-code login entry; token login works. Update checks are opt-in, so Tracking does not apply.
+  Build 2 uses the post-release fix commit (same versionCode); tag 2 predates these build fixes.
