@@ -373,6 +373,7 @@ GitHub no tiene canal de notificaciones push para los clientes de terceros, así
 
     <!-- update check -->
     <string name="m3_update_title">Buscar actualizaciones</string>
+    <string name="m3_update_store_managed">Las actualizaciones las gestiona la tienda que instaló esta versión.</string>
     <string name="m3_update_uptodate">Ya tienes la última versión</string>
     <string name="m3_update_available">Nueva versión disponible: %1$s</string>
     <string name="m3_update_check">Comprobar</string>

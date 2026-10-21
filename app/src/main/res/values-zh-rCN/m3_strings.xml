@@ -370,6 +370,7 @@ github 不给第三方客户端推送通道，所以这是真的轮询：最短 
 
     <!-- update check -->
     <string name="m3_update_title">检查更新</string>
+    <string name="m3_update_store_managed">由安装此版本的商店负责更新。</string>
     <string name="m3_update_uptodate">已是最新版本</string>
     <string name="m3_update_available">发现新版本：%1$s</string>
     <string name="m3_update_check">检查</string>

@@ -72,6 +72,7 @@ import io.github.busybin.gitrehub.compose.common.SwipeAction
 import io.github.busybin.gitrehub.compose.common.SwipePrefs
 import io.github.busybin.gitrehub.compose.common.UiText
 import io.github.busybin.gitrehub.compose.common.UpdateInstaller
+import io.github.busybin.gitrehub.compose.common.UpdateSupport
 import io.github.busybin.gitrehub.compose.common.render
 import io.github.busybin.gitrehub.compose.common.restartModernUi
 import io.github.busybin.gitrehub.compose.common.formatBytes
@@ -347,6 +348,19 @@ fun SettingsScreen() {
 @Composable
 private fun UpdateRow() {
     val context = LocalContext.current
+    if (!remember { UpdateSupport.isAvailable(context) }) {
+        // F-Droid (and any other re-signed build): the store owns updates, our APK cannot replace it.
+        Column {
+            Text(stringResource(R.string.m3_update_title), style = MaterialTheme.typography.bodyLarge)
+            Text(
+                text = stringResource(R.string.m3_update_store_managed),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            HorizontalDivider(Modifier.padding(vertical = 6.dp))
+        }
+        return
+    }
     val scope = rememberCoroutineScope()
     var result by remember { mutableStateOf<UpdateChecker.Result?>(null) }
     var downloading by remember { mutableStateOf(false) }

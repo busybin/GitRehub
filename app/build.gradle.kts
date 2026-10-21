@@ -34,6 +34,14 @@ val config = loadConfig()
 // given base URL and allow cleartext HTTP so the release build can be exercised on an emulator.
 val mockApi = (project.findProperty("gitrehub.mockApi") as String?)?.takeIf { it.isNotBlank() }
 
+// F-Droid re-signs the APK, so the in-app self-updater cannot install anything there. The F-Droid
+// recipe passes -Pgitrehub.store=fdroid, which compiles the updater out; other builds keep it.
+val storeFdroid = (project.findProperty("gitrehub.store") as String?) == "fdroid"
+
+// The release key is not in the repo. F-Droid builds from source without it and expects an unsigned
+// APK, so only attach the signing config when the key is actually present.
+val releaseKeystore = rootProject.file("app/keys_release.jks")
+
 android {
     namespace = "io.github.busybin.gitrehub"
     // SDK versions come from the baseline.* keys in gradle.properties; do not hardcode.
@@ -54,6 +62,8 @@ android {
         buildConfigField("String", "GITHUB_CLIENT_ID", "\"${config["GITHUB_CLIENT_ID"]}\"")
         buildConfigField("String", "GITHUB_SECRET", "\"${config["GITHUB_SECRET"]}\"")
         buildConfigField("String", "REST_URL", "\"${mockApi ?: "https://api.github.com/"}\"")
+        // False in F-Droid builds: updates are managed by the store, not by an APK we ship.
+        buildConfigField("boolean", "SELF_UPDATE", (!storeFdroid).toString())
         manifestPlaceholders["usesCleartextTraffic"] = if (mockApi != null) "true" else "false"
         multiDexEnabled = true
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -67,7 +77,7 @@ android {
         // Release: app/keys_release.jks is NOT in the repo (.gitignore) — provide your own, or set
         // PASSWORD / KEY_ALIAS in app/secrets.properties before building a release.
         create("release") {
-            val keystore = rootProject.file("app/keys_release.jks")
+            val keystore = releaseKeystore
             if (keystore.exists()) {
                 storeFile = keystore
                 storePassword = config["PASSWORD"]
@@ -86,7 +96,8 @@ android {
                 // AGP 9: getDefaultProguardFile only accepts the optimize variant.
                 getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
             )
-            signingConfig = signingConfigs.getByName("release")
+            // Unsigned when the key is absent (F-Droid); never fall back to the debug key.
+            if (releaseKeystore.exists()) signingConfig = signingConfigs.getByName("release")
         }
         debug {
             signingConfig = signingConfigs.getByName("debug")

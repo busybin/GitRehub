@@ -373,6 +373,7 @@
 
     <!-- update check -->
     <string name="m3_update_title">التحقق من التحديثات</string>
+    <string name="m3_update_store_managed">يتولى المتجر الذي ثبّت هذا الإصدار تحديثه.</string>
     <string name="m3_update_uptodate">لديك أحدث إصدار</string>
     <string name="m3_update_available">يتوفر إصدار جديد: %1$s</string>
     <string name="m3_update_check">تحقق</string>

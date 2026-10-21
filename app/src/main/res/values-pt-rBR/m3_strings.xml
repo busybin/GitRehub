@@ -373,6 +373,7 @@ O GitHub não tem canal de push para clientes de terceiros, então isto é uma c
 
     <!-- update check -->
     <string name="m3_update_title">Verificar atualizações</string>
+    <string name="m3_update_store_managed">As atualizações são gerenciadas pela loja que instalou esta versão.</string>
     <string name="m3_update_uptodate">Você está na versão mais recente</string>
     <string name="m3_update_available">Nova versão disponível: %1$s</string>
     <string name="m3_update_check">Verificar</string>

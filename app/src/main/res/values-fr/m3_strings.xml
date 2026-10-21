@@ -373,6 +373,7 @@ GitHub n\'a pas de canal push pour les clients tiers, il s\'agit donc d\'une vé
 
     <!-- update check -->
     <string name="m3_update_title">Rechercher des mises à jour</string>
+    <string name="m3_update_store_managed">Les mises à jour sont gérées par la boutique qui a installé cette version.</string>
     <string name="m3_update_uptodate">Vous avez la dernière version</string>
     <string name="m3_update_available">Nouvelle version disponible : %1$s</string>
     <string name="m3_update_check">Vérifier</string>
