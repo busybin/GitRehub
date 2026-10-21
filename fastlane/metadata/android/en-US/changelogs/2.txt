@@ -1,6 +1,7 @@
 Rewritten data layer and a much smaller APK.
 
-- APK is 58% smaller: the Retrofit/Gson/RxJava/ObjectBox/Glide stacks are gone
+- APK is 64% smaller (6.4 MB): the Retrofit/Gson/RxJava/ObjectBox/Glide stacks are gone
 - New networking and account storage with the same features
 - Classic View leftovers removed (themes, resources, dependencies)
+- Markdown rendering rewritten: tables, code highlighting, emoji and mentions
 - Fixes: token sent with every request, icons resolving to nothing, links opening in the default browser

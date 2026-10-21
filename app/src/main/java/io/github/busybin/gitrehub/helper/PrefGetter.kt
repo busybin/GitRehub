@@ -22,6 +22,9 @@ object PrefGetter {
     private const val NOTIFICATION_SOUND_PATH = "notification_sound_path"
     private const val DISABLE_AUTO_LOAD_IMAGE = "disable_auto_loading_image"
 
+    /** Shared with `NotificationPrefs`, which owns the toggle in the modern settings screen. */
+    const val NOTIFICATION_FOREGROUND = "m3_notif_foreground"
+
     /**
      * In-memory mirror of the signed-in token, seeded by `core/auth/TokenStore` on launch. Kept
      * because the OkHttp interceptors are synchronous; nothing writes it to disk.
@@ -104,6 +107,10 @@ object PrefGetter {
                 ?: return DEFAULT_NOTIFICATION_MINUTES
             return if (minutes in 1..MAX_NOTIFICATION_MINUTES) minutes else DEFAULT_NOTIFICATION_MINUTES
         }
+
+    /** The 15-second foreground poller; while it runs the interval job must not be scheduled too. */
+    val isNotificationForegroundEnabled: Boolean
+        get() = PrefHelper.getBoolean(NOTIFICATION_FOREGROUND)
 
     @IntDef(LIGHT, DARK)
     @kotlin.annotation.Retention(AnnotationRetention.SOURCE)

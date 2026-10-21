@@ -277,6 +277,11 @@ fun FaApp(routeRequest: MutableState<String?>? = null) {
         // from it drops the user into the feed.
         var loggedIn by remember { mutableStateOf(Session.isLoggedIn) }
 
+        // The login screens start their own activity/nav entry and only report back through
+        // Session.accountRevision. Without this the drawer kept the pre-login (empty) layout until
+        // the next process start.
+        LaunchedEffect(accountRevision) { loggedIn = Session.isLoggedIn }
+
         // The pre-rewrite build left its token in MMKV but not in our encrypted store yet; adopting
         // it needs a `GET /user` (to learn whose token it is), so it cannot run inside `start`.
         LaunchedEffect(Unit) {

@@ -281,7 +281,9 @@ class NotificationSchedulerJobTask : JobService() {
         @JvmStatic
         fun scheduleJob(context: Context) {
             val minutes = PrefGetter.notificationIntervalMinutes
-            if (minutes == -1) {
+            // Never run alongside the 15-second foreground service: two pollers would notify twice and
+            // the job's cancelAll() would also clear the service's ongoing notification.
+            if (minutes == -1 || PrefGetter.isNotificationForegroundEnabled) {
                 cancelAll(context)
             } else {
                 scheduleNext(context, minutes)

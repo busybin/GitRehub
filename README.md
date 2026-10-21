@@ -52,22 +52,19 @@ Gradle 9.8.1 / AGP 9.4.0, `compileSdk 37`, `minSdk 26`, Java 17.
 ./gradlew testDebugUnitTest  # JVM tests
 ```
 
-The repository ships **no** OAuth or Imgur credentials. Plain access-token login needs none. To enable
+The repository ships **no** OAuth credentials. Plain access-token login needs none. To enable
 device-code login, create your own GitHub OAuth App (with *Enable Device Flow* ticked) and put the
 credentials in `app/secrets.properties` (not committed):
 
 ```properties
 GITHUB_CLIENT_ID=…
 GITHUB_SECRET=…
-# optional, only for image uploads
-IMGUR_CLIENT_ID=…
-IMGUR_SECRET=…
 ```
 
 ### Versioning and release signing
 
-No `V` prefix: `versionName` and `versionCode` are the same plain number, so the next
-release after `1` is `2`, tagged `2`.
+No `V` prefix: `versionName` and `versionCode` are the same plain number (`1`, `2`, …), and the
+release tag uses that number too.
 
 Release builds are signed from a git-ignored `app/keys_release.jks` (with `PASSWORD` /
 `KEY_ALIAS` in `app/secrets.properties`). Without it a release build is left unsigned and prints a
