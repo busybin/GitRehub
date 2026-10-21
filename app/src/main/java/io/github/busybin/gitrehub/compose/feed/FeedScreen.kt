@@ -76,6 +76,7 @@ fun FeedScreen(
     val me by vm.me.collectAsStateWithLifecycle()
     val readIds by ReadState.readIds.collectAsStateWithLifecycle()
     val readKeys by ReadState.readKeys.collectAsStateWithLifecycle()
+    val readBefore by ReadState.readBefore.collectAsStateWithLifecycle()
     var showAll by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(Unit) { vm.refresh() }
@@ -102,12 +103,12 @@ fun FeedScreen(
                 loading = { SkeletonList(rows = 7) },
             ) { events ->
                 // Filtering only depends on the loaded page, the filters and the read set.
-                val visible = remember(events, filter, me, readIds, readKeys, showAll) {
+                val visible = remember(events, filter, me, readIds, readKeys, readBefore, showAll) {
                     if (showAll) {
                         events
                     } else {
                         events
-                            .filter { event -> event.matchesFilter(filter, me, isEventRead(event, readIds, readKeys)) }
+                            .filter { event -> event.matchesFilter(filter, me, isEventRead(event, readIds, readKeys, readBefore)) }
                             .let { filtered ->
                                 when (filter.order) {
                                     FeedOrder.NEWEST -> filtered.sortedByDescending { it.createdAt }
@@ -178,7 +179,7 @@ fun FeedScreen(
                         EventCard(
                             event = event,
                             tokens = tokens,
-                            isRead = isEventRead(event, readIds, readKeys),
+                            isRead = isEventRead(event, readIds, readKeys, readBefore),
                             onOpenUser = onOpenUser,
                             onOpenRepo = { fullName ->
                                 markEventRead(event)

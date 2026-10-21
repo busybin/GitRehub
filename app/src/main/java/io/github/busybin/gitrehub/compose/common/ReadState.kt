@@ -26,6 +26,7 @@ object ReadState {
     private const val KEY_READ_IDS = "m3_feed_read_ids"
     private const val KEY_READ_KEYS = "m3_read_thread_keys"
     private const val KEY_READ_KEY_TIMES = "m3_read_thread_times"
+    private const val KEY_READ_BEFORE = "m3_read_before"
 
     private const val MAX_READ_IDS = 500
     private const val MAX_READ_KEYS = 500
@@ -52,6 +53,23 @@ object ReadState {
 
     private val _readKeyTimes = MutableStateFlow<Map<String, Long>>(readTimeStore.toMap())
     val readKeyTimes: StateFlow<Map<String, Long>> = _readKeyTimes.asStateFlow()
+
+    /**
+     * Watermark for "mark everything as read": every feed event created at or before this instant is
+     * read. The id set only ever covers what was loaded, so deeper pages (and their interleaved
+     * older rows) came back unread after a mark-all; the watermark covers them.
+     */
+    private val _readBefore = MutableStateFlow(
+        PrefHelper.getString(KEY_READ_BEFORE)?.toLongOrNull() ?: 0L
+    )
+    val readBefore: StateFlow<Long> = _readBefore.asStateFlow()
+
+    /** Moves the watermark forward; never backwards. */
+    fun markAllBefore(at: Long) {
+        if (at <= _readBefore.value) return
+        PrefHelper.putAny(KEY_READ_BEFORE, at.toString())
+        _readBefore.value = at
+    }
 
     fun markRead(id: Long) {
         if (id == 0L) return
@@ -124,9 +142,11 @@ object ReadState {
         PrefHelper.clearKey<String>(KEY_READ_IDS)
         PrefHelper.clearKey<String>(KEY_READ_KEYS)
         PrefHelper.clearKey<String>(KEY_READ_KEY_TIMES)
+        PrefHelper.clearKey<String>(KEY_READ_BEFORE)
         _readIds.value = emptySet()
         _readKeys.value = emptySet()
         _readKeyTimes.value = emptyMap()
+        _readBefore.value = 0L
     }
 
     private fun trimIds() {
