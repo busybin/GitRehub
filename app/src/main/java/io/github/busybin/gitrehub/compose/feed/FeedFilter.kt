@@ -162,8 +162,15 @@ fun Event.matchesFilter(
 }
 
 /** Read check (event id or thread key), same rule as `ReadState`; shared by the predicate and the UI. */
-fun isEventRead(event: Event, readIds: Set<Long>, readKeys: Set<String>): Boolean =
-    readIds.contains(event.id) || readKeys.contains(ThreadKey.ofEvent(event))
+fun isEventRead(
+    event: Event,
+    readIds: Set<Long>,
+    readKeys: Set<String>,
+    readBefore: Long = 0L,
+): Boolean =
+    readIds.contains(event.id) ||
+        readKeys.contains(ThreadKey.ofEvent(event)) ||
+        (readBefore > 0L && (event.createdAt?.toEpochMilli() ?: Long.MAX_VALUE) <= readBefore)
 
 /** Comma, semicolon and whitespace all separate keywords. */
 fun parseKeywords(raw: String): List<String> = raw

@@ -142,4 +142,21 @@ class FeedFilterTest {
         assertEquals("a, b", joinKeywords(listOf("a", "b")))
         assertTrue(parseKeywords("   ").isEmpty())
     }
+
+    @Test
+    fun markAllWatermarkCoversUnloadedEvents() {
+        val now = Instant.now()
+        val watermark = now.toEpochMilli()
+        val older = Event(id = 10, createdAt = now.minusSeconds(3_600))
+        val newer = Event(id = 11, createdAt = now.plusSeconds(60))
+        assertTrue(isEventRead(older, emptySet(), emptySet(), watermark))
+        assertFalse(isEventRead(newer, emptySet(), emptySet(), watermark))
+        assertFalse(isEventRead(older, emptySet(), emptySet(), 0L))
+    }
+
+    @Test
+    fun watermarkLeavesUndatedEventsUnread() {
+        val undated = Event(id = 12, createdAt = null)
+        assertFalse(isEventRead(undated, emptySet(), emptySet(), System.currentTimeMillis()))
+    }
 }
