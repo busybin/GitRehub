@@ -14,22 +14,27 @@ import kotlinx.coroutines.flow.asStateFlow
  * activity. Reading a thread in one of them has to show up in the other, so instead of each screen
  * keeping its own bookkeeping they both write here:
  *
- * - [readIds]  — activity *event* ids (rows the feed itself opened; events such as pushes or stars
+ * - [readIds]  — activity *event* ids (rows the feed itself opened; events such as stars or forks
  *   have no thread to match on),
  * - [readKeys] — [ThreadKey]s (`owner/repo#i42`), which notifications and thread-based feed events
- *   can both be resolved to.
+ *   can both be resolved to,
+ * - [readPushes] — [ThreadKey.ofPush] keys, so a push stays read even when its event id is gone.
  *
- * Keys are `m3_` prefixed and stored through [PrefHelper]. Both sets are bounded.
+ * Keys are `m3_` prefixed and stored through [PrefHelper]. All three tables are bounded.
  */
 object ReadState {
 
     private const val KEY_READ_IDS = "m3_feed_read_ids"
     private const val KEY_READ_KEYS = "m3_read_thread_keys"
     private const val KEY_READ_KEY_TIMES = "m3_read_thread_times"
+    private const val KEY_READ_PUSHES = "m3_feed_read_pushes"
     private const val KEY_READ_BEFORE = "m3_read_before"
 
-    private const val MAX_READ_IDS = 500
+    // The events API serves ~300 rows per stream, so 500 ids were trimmed while still on screen:
+    // the oldest mark (the bottom of the list) dropped out and the row came back unread.
+    private const val MAX_READ_IDS = 2_000
     private const val MAX_READ_KEYS = 500
+    private const val MAX_READ_PUSHES = 2_000
 
     /** Insertion-ordered so the oldest ids can be dropped when the list grows. */
     private val readStore: LinkedHashSet<Long> = LinkedHashSet(readStoredIds())
@@ -53,6 +58,12 @@ object ReadState {
 
     private val _readKeyTimes = MutableStateFlow<Map<String, Long>>(readTimeStore.toMap())
     val readKeyTimes: StateFlow<Map<String, Long>> = _readKeyTimes.asStateFlow()
+
+    /** Read pushes, keyed by [ThreadKey.ofPush] (see there for why pushes need their own table). */
+    private val pushStore: LinkedHashSet<String> = LinkedHashSet(readStoredPushes())
+
+    private val _readPushes = MutableStateFlow<Set<String>>(pushStore.toSet())
+    val readPushes: StateFlow<Set<String>> = _readPushes.asStateFlow()
 
     /**
      * Watermark for "mark everything as read": every feed event created at or before this instant is
@@ -131,6 +142,26 @@ object ReadState {
         if (removedTime) persistTimes()
     }
 
+    /** Marks a push read; [key] comes from [ThreadKey.ofPush]. */
+    fun markReadPush(key: String?) {
+        if (key.isNullOrBlank()) return
+        if (pushStore.add(key)) {
+            trimPushes()
+            persistPushes()
+        }
+    }
+
+    fun markReadPushes(keys: Collection<String>) {
+        var changed = false
+        keys.forEach { key ->
+            if (key.isNotBlank() && pushStore.add(key)) changed = true
+        }
+        if (changed) {
+            trimPushes()
+            persistPushes()
+        }
+    }
+
     /** True when this event was read (either the event itself or its underlying thread). */
     fun isRead(eventId: Long, threadKey: String?): Boolean =
         readStore.contains(eventId) || (threadKey != null && readKeyStore.contains(threadKey))
@@ -139,13 +170,16 @@ object ReadState {
         readStore.clear()
         readKeyStore.clear()
         readTimeStore.clear()
+        pushStore.clear()
         PrefHelper.clearKey<String>(KEY_READ_IDS)
         PrefHelper.clearKey<String>(KEY_READ_KEYS)
         PrefHelper.clearKey<String>(KEY_READ_KEY_TIMES)
+        PrefHelper.clearKey<String>(KEY_READ_PUSHES)
         PrefHelper.clearKey<String>(KEY_READ_BEFORE)
         _readIds.value = emptySet()
         _readKeys.value = emptySet()
         _readKeyTimes.value = emptyMap()
+        _readPushes.value = emptySet()
         _readBefore.value = 0L
     }
 
@@ -161,6 +195,13 @@ object ReadState {
             val oldest = readKeyStore.firstOrNull() ?: return
             readKeyStore.remove(oldest)
             readTimeStore.remove(oldest)
+        }
+    }
+
+    private fun trimPushes() {
+        while (pushStore.size > MAX_READ_PUSHES) {
+            val oldest = pushStore.firstOrNull() ?: return
+            pushStore.remove(oldest)
         }
     }
 
@@ -197,12 +238,27 @@ object ReadState {
         _readKeyTimes.value = readTimeStore.toMap()
     }
 
+    private fun persistPushes() {
+        if (pushStore.isEmpty()) {
+            PrefHelper.clearKey<String>(KEY_READ_PUSHES)
+        } else {
+            PrefHelper.putAny(KEY_READ_PUSHES, pushStore.joinToString(","))
+        }
+        _readPushes.value = pushStore.toSet()
+    }
+
     private fun readStoredIds(): List<Long> = PrefHelper.getString(KEY_READ_IDS)
         .orEmpty()
         .split(',')
         .mapNotNull { it.trim().toLongOrNull() }
 
     private fun readStoredKeys(): List<String> = PrefHelper.getString(KEY_READ_KEYS)
+        .orEmpty()
+        .split(',')
+        .map { it.trim() }
+        .filter { it.isNotEmpty() }
+
+    private fun readStoredPushes(): List<String> = PrefHelper.getString(KEY_READ_PUSHES)
         .orEmpty()
         .split(',')
         .map { it.trim() }

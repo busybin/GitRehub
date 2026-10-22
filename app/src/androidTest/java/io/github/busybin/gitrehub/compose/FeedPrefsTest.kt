@@ -111,6 +111,21 @@ class ReadStateTest {
     }
 
     @Test
+    fun pushKeysAreTrackedAndCleared() {
+        ReadState.clear()
+        assertTrue(ReadState.readPushes.value.isEmpty())
+
+        ReadState.markReadPush("push:9001")
+        assertEquals(setOf("push:9001"), ReadState.readPushes.value)
+        ReadState.markReadPushes(listOf("push:9002", " "))
+        assertEquals(setOf("push:9001", "push:9002"), ReadState.readPushes.value)
+
+        ReadState.clear()
+        assertTrue(ReadState.readPushes.value.isEmpty())
+        assertNull(PrefHelper.getString("m3_feed_read_pushes"))
+    }
+
+    @Test
     fun removingTheLastReadKeyClearsTheStoredValue() {
         ReadState.clear()
         ReadState.markReadKey("octocat/Hello-World#i42")

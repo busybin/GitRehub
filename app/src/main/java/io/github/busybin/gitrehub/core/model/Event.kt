@@ -66,6 +66,8 @@ data class EventPayload(
     @SerialName("ref_type") val refType: String? = null,
     val before: String? = null,
     val head: String? = null,
+    /** GitHub's own id for a push; stable when the same push is served again. */
+    @SerialName("push_id") @Serializable(with = EventIdSerializer::class) val pushId: Long = 0,
     val size: Int = 0,
     val commits: List<EventCommit> = emptyList(),
     val forkee: EventRepo? = null,
