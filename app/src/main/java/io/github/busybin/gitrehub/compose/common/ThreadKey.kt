@@ -17,8 +17,9 @@ import io.github.busybin.gitrehub.core.model.Issue
  * - PR       -> `octocat/Hello-World#p42`
  * - release  -> `octocat/Hello-World#r123456`
  *
- * Events that carry no thread (pushes, stars, forks, ...) have no key and simply fall back to the
- * event-id based bookkeeping.
+ * Events that carry no thread (stars, forks, ...) have no key and simply fall back to the
+ * event-id based bookkeeping; pushes get a [ofPush] key because they are by far the most common
+ * rows and the id-only bookkeeping kept re-surfacing them as unread.
  */
 object ThreadKey {
 
@@ -82,6 +83,21 @@ object ThreadKey {
         val at = readAt[key]
         if (at == null) return readAt.isEmpty()
         return updatedAt == null || updatedAt <= at
+    }
+
+    /**
+     * Stable content key for a push event. Pushes have no thread, so the feed used to rely on the
+     * event id alone — and pushes are the rows users keep seeing unread again (event ids get dropped
+     * from the bounded id table, and the same push may be served by two event streams).
+     *
+     * `push_id` identifies the push itself, so a card read once stays read even if the event id
+     * changes; the head sha is the fallback for payloads that were trimmed.
+     */
+    fun ofPush(event: Event): String? {
+        event.payload.pushId.takeIf { it != 0L }?.let { return "push:$it" }
+        val repo = event.repoFullName ?: return null
+        val head = event.payload.head?.takeIf { it.isNotBlank() } ?: return null
+        return "push:$repo@$head"
     }
 
     /** The thread an activity feed event is about, or null when it is not thread based. */

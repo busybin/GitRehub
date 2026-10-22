@@ -1,5 +1,6 @@
 package io.github.busybin.gitrehub.compose.feed
 
+import io.github.busybin.gitrehub.compose.common.ThreadKey
 import io.github.busybin.gitrehub.core.model.Event
 import io.github.busybin.gitrehub.core.model.EventActor
 import io.github.busybin.gitrehub.core.model.EventPayload
@@ -152,6 +153,37 @@ class FeedFilterTest {
         assertTrue(isEventRead(older, emptySet(), emptySet(), watermark))
         assertFalse(isEventRead(newer, emptySet(), emptySet(), watermark))
         assertFalse(isEventRead(older, emptySet(), emptySet(), 0L))
+    }
+
+    @Test
+    fun readPushStaysReadWhenTheEventListReissuesIt() {
+        val now = Instant.now()
+        val push = Event(
+            id = 20,
+            type = EventType.PushEvent,
+            createdAt = now,
+            repo = EventRepo(name = "octocat/Hello-World"),
+            payload = EventPayload(ref = "refs/heads/main", pushId = 9001),
+        )
+        val read = setOf("push:9001")
+
+        assertTrue(isEventRead(push, emptySet(), emptySet(), 0L, read))
+        // The event id can drop out of the bounded id table while the push record still holds.
+        assertTrue(isEventRead(push.copy(id = 21), emptySet(), emptySet(), 0L, read))
+        // A different push to the same branch is genuinely new.
+        assertFalse(isEventRead(push.copy(id = 22, payload = EventPayload(pushId = 9002)), emptySet(), emptySet(), 0L, read))
+    }
+
+    @Test
+    fun pushKeyFallsBackToTheHeadCommit() {
+        val push = Event(
+            id = 30,
+            type = EventType.PushEvent,
+            repo = EventRepo(name = "octocat/Hello-World"),
+            payload = EventPayload(ref = "refs/heads/main", head = "0123456789abcdef0123456789abcdef01234567"),
+        )
+        assertEquals("push:octocat/Hello-World@0123456789abcdef0123456789abcdef01234567", ThreadKey.ofPush(push))
+        assertTrue(isEventRead(push, emptySet(), emptySet(), 0L, setOf("push:octocat/Hello-World@0123456789abcdef0123456789abcdef01234567")))
     }
 
     @Test

@@ -117,6 +117,7 @@ class FeedViewModel : PagedViewModel<Event>() {
             if (ok) {
                 ReadState.markAllRead(loaded.map { it.id })
                 ReadState.markReadKeys(loaded.mapNotNull { ThreadKey.ofEvent(it) })
+                ReadState.markReadPushes(loaded.mapNotNull { ThreadKey.ofPush(it) })
                 // Deeper pages and events not loaded yet are older than this instant: without the
                 // watermark they reappeared unread on the next scroll/refresh.
                 ReadState.markAllBefore(System.currentTimeMillis())

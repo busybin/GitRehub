@@ -77,6 +77,7 @@ fun FeedScreen(
     val readIds by ReadState.readIds.collectAsStateWithLifecycle()
     val readKeys by ReadState.readKeys.collectAsStateWithLifecycle()
     val readBefore by ReadState.readBefore.collectAsStateWithLifecycle()
+    val readPushes by ReadState.readPushes.collectAsStateWithLifecycle()
     var showAll by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(Unit) { vm.refresh() }
@@ -103,12 +104,18 @@ fun FeedScreen(
                 loading = { SkeletonList(rows = 7) },
             ) { events ->
                 // Filtering only depends on the loaded page, the filters and the read set.
-                val visible = remember(events, filter, me, readIds, readKeys, readBefore, showAll) {
+                val visible = remember(events, filter, me, readIds, readKeys, readPushes, readBefore, showAll) {
                     if (showAll) {
                         events
                     } else {
                         events
-                            .filter { event -> event.matchesFilter(filter, me, isEventRead(event, readIds, readKeys, readBefore)) }
+                            .filter { event ->
+                                event.matchesFilter(
+                                    filter,
+                                    me,
+                                    isEventRead(event, readIds, readKeys, readBefore, readPushes),
+                                )
+                            }
                             .let { filtered ->
                                 when (filter.order) {
                                     FeedOrder.NEWEST -> filtered.sortedByDescending { it.createdAt }
@@ -179,7 +186,7 @@ fun FeedScreen(
                         EventCard(
                             event = event,
                             tokens = tokens,
-                            isRead = isEventRead(event, readIds, readKeys, readBefore),
+                            isRead = isEventRead(event, readIds, readKeys, readBefore, readPushes),
                             onOpenUser = onOpenUser,
                             onOpenRepo = { fullName ->
                                 markEventRead(event)
@@ -226,10 +233,12 @@ fun FeedScreen(
 }
 
 /**
- * Opening an event from the feed counts as reading it. The event id covers non-thread events;
- * the thread key also marks the opened issue/PR read on the notifications screen.
+ * Opening an event from the feed counts as reading it. The event id covers rows without a content
+ * key, the thread key also marks the opened issue/PR read on the notifications screen, and the push
+ * key keeps "pushed to" cards read even once their event id has been dropped.
  */
 private fun markEventRead(event: Event) {
     ReadState.markRead(event.id)
     ReadState.markReadKey(ThreadKey.ofEvent(event))
+    ReadState.markReadPush(ThreadKey.ofPush(event))
 }

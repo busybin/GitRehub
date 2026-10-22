@@ -161,15 +161,17 @@ fun Event.matchesFilter(
     return true
 }
 
-/** Read check (event id or thread key), same rule as `ReadState`; shared by the predicate and the UI. */
+/** Read check (event id, thread key or push key), same rule as `ReadState`; shared by the predicate and the UI. */
 fun isEventRead(
     event: Event,
     readIds: Set<Long>,
     readKeys: Set<String>,
     readBefore: Long = 0L,
+    readPushes: Set<String> = emptySet(),
 ): Boolean =
     readIds.contains(event.id) ||
         readKeys.contains(ThreadKey.ofEvent(event)) ||
+        ThreadKey.ofPush(event)?.let { it in readPushes } == true ||
         (readBefore > 0L && (event.createdAt?.toEpochMilli() ?: Long.MAX_VALUE) <= readBefore)
 
 /** Comma, semicolon and whitespace all separate keywords. */
