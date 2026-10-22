@@ -3,6 +3,10 @@
 
 # GitRehub
 
+<p align="center">
+  <a href="https://buymeacoffee.com/busybin"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me a Coffee" height="56"></a>
+</p>
+
 An open-source GitHub client for Android with a modern **Material 3 / Jetpack Compose** interface.
 
 ## Screenshots
