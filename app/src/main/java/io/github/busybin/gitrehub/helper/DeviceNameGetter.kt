@@ -18,7 +18,6 @@ class DeviceNameGetter private constructor() {
     }
 
     private fun queryToDevice() {
-        // Todo use local save
         val codename = Build.DEVICE
         val model = Build.MODEL
         val db = DeviceDatabase(App.getInstance())

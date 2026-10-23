@@ -1,6 +1,6 @@
 # Third-party components
 
-GitRehub is distributed under the GNU General Public License v3.0 or later (see `LICENSE`).
+GitRehub is distributed under the GNU General Public License, version 3.0 only (see `LICENSE`).
 The components below are included or bundled and remain under their own licenses.
 
 ## Libraries (via Gradle)

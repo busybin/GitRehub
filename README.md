@@ -88,3 +88,9 @@ Report bugs and feature requests at <https://github.com/busybin/gitrehub/issues>
 GitRehub is free software under the **GNU General Public License v3.0** — see [LICENSE](LICENSE)
 for the full text. Bundled third-party components and their licenses are listed in
 [THIRD-PARTY.md](THIRD-PARTY.md).
+
+GitRehub is a maintained successor of [FastHub-RE](https://github.com/LightDestory/FastHub-RE)
+(GPL-3.0), which descends from [FastHub](https://github.com/k0shk0sh/FastHub) through
+[FastHub-Libre](https://github.com/thermatk/FastHub-Libre) and
+[zero's Kotlin port](https://github.com/zeromake/FastHub). The data layer and the user interface
+have since been rewritten; copyright of the original code remains with its authors.
