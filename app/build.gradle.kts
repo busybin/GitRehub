@@ -51,10 +51,10 @@ android {
         minSdk = (rootProject.findProperty("baseline.minSdk") as String).toInt()
         // Baseline pins targetSdk to 36 while compileSdk tracks 37.
         targetSdk = (rootProject.findProperty("baseline.targetSdk") as String).toInt()
-        versionCode = 3
+        versionCode = 4
         // Plain number, no "V" prefix, so third-party stores can compare it directly; the release
         // tag equals the versionCode.
-        versionName = "3"
+        versionName = "4"
         buildConfigField("String", "GITHUB_APP_ID", "\"io.github.busybin.gitrehub\"")
         // OAuth callback; your own GitHub OAuth App must whitelist it. Only needed for the
         // device-code login flow (see README) — plain token login needs no OAuth app at all.
