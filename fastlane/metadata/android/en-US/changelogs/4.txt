@@ -1,0 +1,6 @@
+The activity feed keeps its place, its read state and its cache.
+
+- Cards you have read stay read: pushes are tracked by push id, so older rows no longer go unread after a reload or a restart
+- Mark all as read now covers pages you have not loaded yet
+- The feed opens on the newest event, and a back-to-top button appears once you scroll; notifications and repository activity behave the same
+- The feed's first paint includes other people's stars, forks, pull requests and issues on your repositories, cached per account, and a failed call falls back to that snapshot

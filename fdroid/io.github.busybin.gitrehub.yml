@@ -16,6 +16,13 @@ RepoType: git
 Repo: https://github.com/busybin/gitrehub.git
 
 Builds:
+  - versionName: '4'
+    versionCode: 4
+    commit: '4'
+    gradle:
+      - yes
+    gradleprops:
+      - gitrehub.store=fdroid
   - versionName: '3'
     versionCode: 3
     commit: '3'
@@ -34,8 +41,8 @@ Builds:
 AutoUpdateMode: Version
 UpdateCheckMode: Tags .*[0-9]$
 UpdateCheckData: app/build.gradle.kts|versionCode\s*=\s*(\d+)|.|versionName\s*=\s*"([^"]+)"
-CurrentVersion: '3'
-CurrentVersionCode: 3
+CurrentVersion: '4'
+CurrentVersionCode: 4
 
 AntiFeatures:
   - NonFreeNet
