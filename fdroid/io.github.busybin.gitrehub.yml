@@ -18,14 +18,14 @@ Repo: https://github.com/busybin/gitrehub.git
 Builds:
   - versionName: '4'
     versionCode: 4
-    commit: '4'
+    commit: a59ba2a36e03d584b1c10aaac54512da66cfd7fb
     gradle:
       - yes
     gradleprops:
       - gitrehub.store=fdroid
   - versionName: '3'
     versionCode: 3
-    commit: '3'
+    commit: 33f6cf4c84c23edce0f942608b3f4ad85276a4b7
     gradle:
       - yes
     gradleprops:
@@ -48,6 +48,9 @@ AntiFeatures:
   - NonFreeNet
 
 MaintainerNotes: |-
+  Successor of FastHub-RE (GPL-3.0, unmaintained since 2022): the data layer and the whole UI were
+  rewritten in Compose. The public git history was restarted after release 1, so it looks younger
+  than the development history; releases 2-4 are on GitHub.
   Independent GitHub client (GPL-3), Compose only, versionName == versionCode == a plain integer.
   Build: Gradle 9.8.1 (wrapper), AGP 9.4.0, compileSdk 37; `gradle: yes` runs assembleRelease.
   The release key is not in the repo, so the build is unsigned and F-Droid signs it. It never falls
@@ -55,5 +58,6 @@ MaintainerNotes: |-
   `-Pgitrehub.store=fdroid` compiles out the in-app APK updater: a re-signed build would otherwise
   offer an APK that cannot be installed over F-Droid's. Builds signed with the release key check the
   certificate at runtime instead.
+  `REQUEST_INSTALL_PACKAGES` belongs to that updater only and is unused in this build.
   No API keys: the OAuth client id is read from a gitignored properties file, so this build hides the
   device-code login entry; token login works. Update checks are opt-in, so Tracking does not apply.
