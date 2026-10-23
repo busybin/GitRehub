@@ -1,6 +1,6 @@
 # Metadata for the F-Droid main repository. Copy this file to
-# fdroiddata's metadata/io.github.busybin.gitrehub.yml. IzzyOnDroid
-# (developer-signed APKs) is the faster channel; see fdroid/README.md.
+# fdroiddata's metadata/io.github.busybin.gitrehub.yml. The project also publishes
+# its own F-Droid repo (same APK signature); see fdroid/README.md.
 
 Categories:
   - Code & Forge
