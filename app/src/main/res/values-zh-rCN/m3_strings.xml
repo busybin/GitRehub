@@ -137,6 +137,7 @@
     <string name="m3_device_grant_rejected">GitHub 拒绝了这次授权请求（grant type）</string>
     <string name="m3_device_connect_failed">连不上 GitHub：%1$s</string>
     <string name="m3_network_error">网络错误</string>
+    <string name="m3_oauth_bad_state">这个登录链接不是本应用发起的，已忽略</string>
     <string name="m3_oauth_no_code">授权没有返回 code（可能被拒绝了）</string>
     
     <string name="m3_oauth_success">登录成功</string>

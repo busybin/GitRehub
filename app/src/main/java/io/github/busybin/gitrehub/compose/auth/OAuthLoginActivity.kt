@@ -7,7 +7,6 @@ import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.annotation.StringRes
-import io.github.busybin.gitrehub.BuildConfig
 import io.github.busybin.gitrehub.R
 import io.github.busybin.gitrehub.compose.common.LanguagePrefs
 import io.github.busybin.gitrehub.core.auth.OAuthFlow
@@ -66,6 +65,14 @@ class OAuthLoginActivity : ComponentActivity() {
         if (exchanging) return true
         exchanging = true
 
+        // The redirect must carry the state this app issued; anything else is a link from
+        // somewhere else and would sign the user into that account.
+        if (!OAuthFlow.consumeState(data.getQueryParameter("state"))) {
+            toast(str(R.string.m3_oauth_bad_state))
+            finish()
+            return true
+        }
+
         val code = data.getQueryParameter("code")
         if (code.isNullOrBlank()) {
             toast(str(R.string.m3_oauth_no_code))
@@ -85,7 +92,7 @@ class OAuthLoginActivity : ComponentActivity() {
             .appendQueryParameter("client_id", GithubConfigHelper.clientId)
             .appendQueryParameter("redirect_uri", GithubConfigHelper.redirectUrl)
             .appendQueryParameter("scope", SCOPE)
-            .appendQueryParameter("state", BuildConfig.GITHUB_APP_ID)
+            .appendQueryParameter("state", OAuthFlow.beginState())
             .build()
         // A plain VIEW, not a Custom Tab: the OAuth page must open in the user's own browser, and
         // the Custom-Tabs helper used to force Chrome (or hand-build a chooser) instead.

@@ -139,6 +139,7 @@
     <string name="m3_device_grant_rejected">GitHub rejected this authorisation request (grant type)</string>
     <string name="m3_device_connect_failed">Can\'t reach GitHub: %1$s</string>
     <string name="m3_network_error">network error</string>
+    <string name="m3_oauth_bad_state">This login link did not come from GitRehub; nothing was changed</string>
     <string name="m3_oauth_no_code">The authorisation returned no code (it may have been denied)</string>
     
     <string name="m3_oauth_success">Signed in</string>

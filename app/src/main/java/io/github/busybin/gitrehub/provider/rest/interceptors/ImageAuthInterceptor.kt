@@ -12,13 +12,15 @@ import okhttp3.Response
  * image slot stayed empty until the repository was public. The API host is not in the list — those
  * calls go through [AuthenticationInterceptor] already.
  */
-class ImageAuthInterceptor : Interceptor {
+class ImageAuthInterceptor(
+    private val hosts: Set<String> = PRIVATE_IMAGE_HOSTS,
+) : Interceptor {
 
     override fun intercept(chain: Interceptor.Chain): Response {
         val request = chain.request()
         val token = PrefGetter.token?.takeIf { it.isNotBlank() } ?: return chain.proceed(request)
         if (request.header("Authorization") != null) return chain.proceed(request)
-        if (request.url.host !in PRIVATE_IMAGE_HOSTS) return chain.proceed(request)
+        if (request.url.host !in hosts) return chain.proceed(request)
         return chain.proceed(request.newBuilder().header("Authorization", "token $token").build())
     }
 
