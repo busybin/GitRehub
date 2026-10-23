@@ -34,12 +34,11 @@ val config = loadConfig()
 // given base URL and allow cleartext HTTP so the release build can be exercised on an emulator.
 val mockApi = (project.findProperty("gitrehub.mockApi") as String?)?.takeIf { it.isNotBlank() }
 
-// F-Droid re-signs the APK, so the in-app self-updater cannot install anything there. The F-Droid
-// recipe passes -Pgitrehub.store=fdroid, which compiles the updater out; other builds keep it.
+// Builds made for a third-party store pass -Pgitrehub.store=fdroid, which compiles the in-app
+// self-updater out (that store re-signs the APK, so our packages cannot be installed over it).
 val storeFdroid = (project.findProperty("gitrehub.store") as String?) == "fdroid"
 
-// The release key is not in the repo. F-Droid builds from source without it and expects an unsigned
-// APK, so only attach the signing config when the key is actually present.
+// The release key is not in the repo, so only attach the signing config when the key is present.
 val releaseKeystore = rootProject.file("app/keys_release.jks")
 
 android {

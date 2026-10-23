@@ -65,19 +65,10 @@ GITHUB_CLIENT_ID=…
 GITHUB_SECRET=…
 ```
 
-### Versioning and release signing
+### Versioning
 
-No `V` prefix: `versionName` and `versionCode` are the same plain number (`1`, `2`, …), and the
-release tag uses that number too.
-
-Release builds are signed from a git-ignored `app/keys_release.jks` (with `PASSWORD` /
-`KEY_ALIAS` in `app/secrets.properties`). Without it a release build is left unsigned and prints a
-warning — that is what the F-Droid build machine gets; it never falls back to debug signing. The
-F-Droid recipe also builds with `-Pgitrehub.store=fdroid`, which disables the in-app APK updater
-(F-Droid re-signs, so our APK could not be installed over it); builds signed with the release key
-verify the certificate at runtime before offering an update. See
-[fdroid/README.md](fdroid/README.md) for the key fingerprint, the anti-features this app carries on
-F-Droid, and the release checklist.
+`versionName` and `versionCode` are the same plain number (`1`, `2`, …), and the release tag uses
+that number too.
 
 ## Issues
 
