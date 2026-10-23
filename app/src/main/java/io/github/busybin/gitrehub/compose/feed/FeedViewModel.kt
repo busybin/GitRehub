@@ -61,7 +61,7 @@ class FeedViewModel : PagedViewModel<Event>() {
         val mineCall = async { runCatching { GitHubApi.userEvents(user, page) }.getOrNull() }
         // "Actions on my repos" (star / fork / PR / issue): a snapshot of the newest N, so only on page 1.
         val interactionsCall = if (page == 1) async {
-            runCatching { GitHubApi.repoInteractions() }.getOrDefault(emptyList())
+            runCatching { GitHubApi.repoInteractions() }.getOrNull()
         } else {
             null
         }
@@ -69,14 +69,16 @@ class FeedViewModel : PagedViewModel<Event>() {
         val received = receivedCall.await()
         val mine = mineCall.await()
         val events = received?.value.orEmpty() + mine?.value.orEmpty()
-        val interactions = interactionsCall?.await().orEmpty()
+        // A failed GraphQL round-trip must not drop the star/fork rows already painted from disk.
+        val fetchedInteractions = interactionsCall?.await()
+        val interactions = if (page == 1) {
+            fetchedInteractions ?: InteractionsCache.load(user)
+        } else {
+            emptyList()
+        }
+        if (fetchedInteractions != null) InteractionsCache.save(user, fetchedInteractions)
 
-        // Keep the events-stream copy on duplicates (it has the real id and a fuller payload).
-        val inEventStream = events.mapNotNullTo(mutableSetOf()) { it.interactionSignature() }
-
-        val merged = (events + interactions.filterNot { it.interactionSignature() in inEventStream })
-            .filter { seenIds.add(it.id) }
-            .sortedByDescending { it.createdAt }
+        val merged = mergeFeedEvents(events, interactions).filter { seenIds.add(it.id) }
 
         if (page == 1) {
             _interactionsLoaded.value = interactions.isNotEmpty()
@@ -87,18 +89,18 @@ class FeedViewModel : PagedViewModel<Event>() {
     }
 
     /**
-     * Disk-only pass: the two event streams, without the GraphQL "interactions" call (it is a
-     * snapshot, not a page, and the cache-only client cannot page it). Enough to show the previous
-     * visit instantly.
+     * Disk-only pass: the two event streams plus the last "actions on my repos" snapshot, so opening
+     * the feed shows the previous visit complete — star/fork rows included — instead of having them
+     * pop in after the network refresh. Enough to show the previous visit instantly.
      */
     override suspend fun fetchCached(page: Int): PageResult<Event>? {
         val user = login ?: return null
         val received = runCatching { GitHubApi.receivedEvents(user, page, cacheOnly = true) }.getOrNull()
         val mine = runCatching { GitHubApi.userEvents(user, page, cacheOnly = true) }.getOrNull()
-        val merged = (received?.value.orEmpty() + mine?.value.orEmpty())
-            .distinctBy { it.id }
-            .sortedByDescending { it.createdAt }
+        val interactions = if (page == 1) InteractionsCache.load(user) else emptyList()
+        val merged = mergeFeedEvents(received?.value.orEmpty() + mine?.value.orEmpty(), interactions)
         if (merged.isEmpty()) return null
+        if (page == 1 && interactions.isNotEmpty()) _interactionsLoaded.value = true
         return PageResult(merged, received?.hasMoreEvents() == true || mine?.hasMoreEvents() == true)
     }
 
