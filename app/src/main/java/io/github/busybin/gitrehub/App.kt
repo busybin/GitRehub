@@ -15,9 +15,11 @@ import io.github.busybin.gitrehub.helper.OfflineStatus
 import io.github.busybin.gitrehub.helper.PrefHelper.init
 import io.github.busybin.gitrehub.helper.TypeFaceHelper.generateTypeface
 import io.github.busybin.gitrehub.provider.colors.ColorsProvider
+import io.github.busybin.gitrehub.provider.rest.interceptors.ImageAuthInterceptor
 import io.github.busybin.gitrehub.provider.crash.Report
 import io.github.busybin.gitrehub.provider.emoji.EmojiStore
 import io.github.busybin.gitrehub.provider.tasks.notification.NotificationSchedulerJobTask
+import okhttp3.OkHttpClient
 
 /**
  * Created by Kosh on 03 Feb 2017, 12:07 AM
@@ -57,6 +59,8 @@ class App : Application(), ImageLoaderFactory {
         .crossfade(true)
         // Animated GIFs in READMEs and issue bodies (coil-gif).
         .components { add(GifDecoder.Factory()) }
+        // README images of private repositories need the token (see ImageAuthInterceptor).
+        .okHttpClient { OkHttpClient.Builder().addInterceptor(ImageAuthInterceptor()).build() }
         .build()
 
     @RequiresApi(Build.VERSION_CODES.N_MR1)
