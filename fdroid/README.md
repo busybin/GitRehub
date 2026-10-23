@@ -33,8 +33,8 @@ none: the device-code login entry is hidden, token login and everything else wor
 
 ## Self-hosted F-Droid repo
 
-One repository hosts several apps (Deluge, GitRehub, Leftover, IRL Noob) and keeps every APK
-signature: only the index is signed with a separate repo key. The F-Droid client can install and
+One shared repository will host all four apps (Deluge, GitRehub, Leftover, IRL Noob) and
+keeps every APK signature: only the index is signed with a separate repo key. The F-Droid client can install and
 update any of them from it.
 
 ## Anti-features
