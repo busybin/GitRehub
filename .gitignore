@@ -12,3 +12,6 @@
 # local build artefacts
 *.bak
 *.bak.*
+
+# Internal runbooks, audit notes and self-use scripts
+.internal/
