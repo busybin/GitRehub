@@ -1,5 +1,10 @@
 package io.github.busybin.gitrehub.compose.feed
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,11 +19,13 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.DoneAll
+import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -28,6 +35,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -38,13 +46,16 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.busybin.gitrehub.R
 import io.github.busybin.gitrehub.compose.common.AsyncContent
+import io.github.busybin.gitrehub.compose.common.KeepTopOnRefresh
 import io.github.busybin.gitrehub.compose.common.LoadState
 import io.github.busybin.gitrehub.compose.common.LocalTokens
 import io.github.busybin.gitrehub.compose.common.MetaText
 import io.github.busybin.gitrehub.compose.common.ReadState
 import io.github.busybin.gitrehub.compose.common.SkeletonList
 import io.github.busybin.gitrehub.compose.common.ThreadKey
+import io.github.busybin.gitrehub.compose.common.rememberShowBackToTop
 import io.github.busybin.gitrehub.core.model.Event
+import kotlinx.coroutines.launch
 
 /**
  * Activity feed (GitHub "received events") with pull-to-refresh, infinite scrolling, keyword
@@ -54,7 +65,8 @@ import io.github.busybin.gitrehub.core.model.Event
  * toggling the filter is instant and never refetches.
  *
  * "Mark everything read" is the bottom-right FAB, deliberately identical to the notifications
- * screen's: same icon, same place, same `PUT /notifications` call behind it.
+ * screen's: same icon, same place, same `PUT /notifications` call behind it. Above it sits the
+ * "back to top" pill, which only appears once the list is scrolled away from the newest events.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -71,6 +83,9 @@ fun FeedScreen(
     val hasMore by vm.hasMore.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
     val tokens = LocalTokens.current
+    val scope = rememberCoroutineScope()
+    KeepTopOnRefresh(listState, refreshing)
+    val showBackToTop = rememberShowBackToTop(listState)
 
     val filter by FeedPrefs.filter.collectAsStateWithLifecycle()
     val me by vm.me.collectAsStateWithLifecycle()
@@ -220,6 +235,25 @@ fun FeedScreen(
         }
 
         if (state is LoadState.Ready) {
+            // Siblings rather than one column: the "mark all read" FAB must not move when the
+            // back-to-top pill fades in above it.
+            AnimatedVisibility(
+                visible = showBackToTop,
+                modifier = Modifier.align(Alignment.BottomEnd).padding(end = 18.dp, bottom = 86.dp),
+                enter = fadeIn() + scaleIn(),
+                exit = fadeOut() + scaleOut(),
+            ) {
+                SmallFloatingActionButton(
+                    onClick = { scope.launch { listState.animateScrollToItem(0) } },
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                ) {
+                    Icon(
+                        Icons.Outlined.ExpandLess,
+                        contentDescription = stringResource(R.string.m3_back_to_top),
+                    )
+                }
+            }
             FloatingActionButton(
                 onClick = { vm.markAllRead() },
                 modifier = Modifier
