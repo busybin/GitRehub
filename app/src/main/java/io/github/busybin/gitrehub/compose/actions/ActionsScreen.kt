@@ -54,6 +54,7 @@ import io.github.busybin.gitrehub.compose.common.Avatar
 import io.github.busybin.gitrehub.compose.common.EmptyView
 import io.github.busybin.gitrehub.compose.common.FailureView
 import io.github.busybin.gitrehub.compose.common.LinkCopyDialog
+import io.github.busybin.gitrehub.compose.common.KeepTopOnRefresh
 import io.github.busybin.gitrehub.compose.common.LoadState
 import io.github.busybin.gitrehub.compose.common.LocalTokens
 import io.github.busybin.gitrehub.compose.common.MetaText
@@ -81,6 +82,7 @@ fun ActionsScreen(owner: String, repo: String) {
     val loadingMore by vm.loadingMore.collectAsStateWithLifecycle()
     val hasMore by vm.hasMore.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
+    KeepTopOnRefresh(listState, refreshing)
     val tokens = LocalTokens.current
     val selectedWorkflow = vm.currentWorkflowId()
 

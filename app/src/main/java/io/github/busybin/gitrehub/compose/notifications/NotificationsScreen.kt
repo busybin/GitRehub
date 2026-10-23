@@ -1,6 +1,11 @@
 package io.github.busybin.gitrehub.compose.notifications
 
 import android.net.Uri
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -39,6 +44,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
@@ -52,6 +58,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -68,6 +75,7 @@ import io.github.busybin.gitrehub.R
 import io.github.busybin.gitrehub.compose.common.AsyncContent
 import io.github.busybin.gitrehub.compose.common.Avatar
 import io.github.busybin.gitrehub.compose.common.EmptyView
+import io.github.busybin.gitrehub.compose.common.KeepTopOnRefresh
 import io.github.busybin.gitrehub.compose.common.LoadState
 import io.github.busybin.gitrehub.compose.common.LocalTokens
 import io.github.busybin.gitrehub.compose.common.MetaText
@@ -78,11 +86,13 @@ import io.github.busybin.gitrehub.compose.common.SwipePrefs
 import io.github.busybin.gitrehub.compose.common.ThreadKey
 import io.github.busybin.gitrehub.compose.common.isWideLayout
 import io.github.busybin.gitrehub.compose.common.relativeTime
+import io.github.busybin.gitrehub.compose.common.rememberShowBackToTop
 import io.github.busybin.gitrehub.compose.code.CommitDetailScreen
 import io.github.busybin.gitrehub.compose.discussions.DiscussionDetailScreen
 import io.github.busybin.gitrehub.compose.issues.IssueDetailScreen
 import io.github.busybin.gitrehub.core.model.Notification
 import io.github.busybin.gitrehub.provider.scheme.SchemeParser
+import kotlinx.coroutines.launch
 
 /**
  * Notifications screen: narrow down what concerns me without leaving the screen (type chips, repo
@@ -183,6 +193,9 @@ private fun NotificationsList(
     val swipeStart by SwipePrefs.start.collectAsStateWithLifecycle()
     val swipeEnd by SwipePrefs.end.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
+    val scope = rememberCoroutineScope()
+    KeepTopOnRefresh(listState, refreshing)
+    val showBackToTop = rememberShowBackToTop(listState)
     val context = LocalContext.current
     val tokens = LocalTokens.current
     var sheetOpen by rememberSaveable { mutableStateOf(false) }
@@ -339,6 +352,24 @@ private fun NotificationsList(
         }
 
         if (state is LoadState.Ready) {
+            // Siblings so the "mark all read" FAB stays put when the pill fades in above it.
+            AnimatedVisibility(
+                visible = showBackToTop,
+                modifier = Modifier.align(Alignment.BottomEnd).padding(end = 18.dp, bottom = 86.dp),
+                enter = fadeIn() + scaleIn(),
+                exit = fadeOut() + scaleOut(),
+            ) {
+                SmallFloatingActionButton(
+                    onClick = { scope.launch { listState.animateScrollToItem(0) } },
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                ) {
+                    Icon(
+                        Icons.Outlined.ExpandLess,
+                        contentDescription = stringResource(R.string.m3_back_to_top),
+                    )
+                }
+            }
             FloatingActionButton(
                 onClick = { vm.markAllAsRead() },
                 modifier = Modifier

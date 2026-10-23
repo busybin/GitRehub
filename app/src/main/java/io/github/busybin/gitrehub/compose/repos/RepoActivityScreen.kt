@@ -1,5 +1,10 @@
 package io.github.busybin.gitrehub.compose.repos
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -21,12 +26,16 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SecondaryScrollableTabRow
+import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -37,6 +46,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -49,9 +59,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.busybin.gitrehub.R
 import io.github.busybin.gitrehub.compose.common.AsyncContent
+import io.github.busybin.gitrehub.compose.common.KeepTopOnRefresh
 import io.github.busybin.gitrehub.compose.common.LocalTokens
 import io.github.busybin.gitrehub.compose.common.SkeletonList
 import io.github.busybin.gitrehub.compose.common.UiTokens
+import io.github.busybin.gitrehub.compose.common.rememberShowBackToTop
 import io.github.busybin.gitrehub.core.model.StatsOutcome
 import io.github.busybin.gitrehub.core.model.WeekActivity
 import io.github.busybin.gitrehub.compose.feed.EventCard
@@ -66,6 +78,7 @@ import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import java.time.format.TextStyle
 import java.util.Locale
+import kotlinx.coroutines.launch
 
 /**
  * Repo activity page, matching github.com/{owner}/{repo}/activity in five blocks:
@@ -148,6 +161,9 @@ private fun RepoEventsTab(
     val hasMore by vm.hasMore.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
     val tokens = LocalTokens.current
+    val scope = rememberCoroutineScope()
+    KeepTopOnRefresh(listState, refreshing)
+    val showBackToTop = rememberShowBackToTop(listState)
 
     val shouldLoadMore by remember {
         derivedStateOf {
@@ -219,6 +235,24 @@ private fun RepoEventsTab(
                         }
                     }
                 }
+            }
+        }
+
+        AnimatedVisibility(
+            visible = showBackToTop,
+            modifier = Modifier.align(Alignment.BottomEnd).padding(14.dp),
+            enter = fadeIn() + scaleIn(),
+            exit = fadeOut() + scaleOut(),
+        ) {
+            SmallFloatingActionButton(
+                onClick = { scope.launch { listState.animateScrollToItem(0) } },
+                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+            ) {
+                Icon(
+                    Icons.Outlined.ExpandLess,
+                    contentDescription = stringResource(R.string.m3_back_to_top),
+                )
             }
         }
     }

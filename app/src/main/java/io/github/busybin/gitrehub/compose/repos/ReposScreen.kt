@@ -51,6 +51,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.busybin.gitrehub.R
 import io.github.busybin.gitrehub.compose.common.AsyncContent
 import io.github.busybin.gitrehub.compose.common.EmptyView
+import io.github.busybin.gitrehub.compose.common.KeepTopOnRefresh
 import io.github.busybin.gitrehub.compose.common.LocalTokens
 import io.github.busybin.gitrehub.compose.common.MetaText
 import io.github.busybin.gitrehub.compose.common.Pill
@@ -148,6 +149,7 @@ private fun ReposList(
     val loadingMore by vm.loadingMore.collectAsStateWithLifecycle()
     val hasMore by vm.hasMore.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
+    KeepTopOnRefresh(listState, refreshing)
     val filter = vm.filter
     val tokens = LocalTokens.current
 
