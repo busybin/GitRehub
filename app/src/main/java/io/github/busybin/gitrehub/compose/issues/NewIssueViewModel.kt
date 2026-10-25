@@ -23,11 +23,12 @@ data class NewIssueOptions(
     val labels: List<Label> = emptyList(),
     val assignees: List<User> = emptyList(),
     val milestones: List<Milestone> = emptyList(),
+    val templates: List<IssueTemplate> = emptyList(),
 )
 
 /**
- * Create an issue (`POST /repos/{o}/{r}/issues`). Only fields that fit in one request; issue
- * templates (issue forms) would need reading and parsing `ISSUE_TEMPLATE` and are not done here.
+ * Create an issue (`POST /repos/{o}/{r}/issues`), pre-filling from the repository's issue templates
+ * (Markdown files and issue forms, see [IssueTemplates]).
  */
 class NewIssueViewModel : ViewModel() {
 
@@ -58,10 +59,21 @@ class NewIssueViewModel : ViewModel() {
                     val assignees = GitHubApi.assignableUsers(owner, repo)
                     val milestones = runCatching { GitHubApi.repoMilestones(owner, repo) }
                         .getOrDefault(emptyList())
-                    NewIssueOptions(false, false, labels, assignees, milestones)
+                    val templates = runCatching { IssueTemplates.load(owner, repo) }
+                        .getOrDefault(emptyList())
+                    NewIssueOptions(
+                        loading = false,
+                        failed = false,
+                        labels = labels,
+                        assignees = assignees,
+                        milestones = milestones,
+                        templates = templates,
+                    )
                 }
             }
-            _options.value = result.getOrElse { NewIssueOptions(loading = false, failed = true) }
+            _options.value = result.getOrElse {
+                _options.value.copy(loading = false, failed = true)
+            }
         }
     }
 

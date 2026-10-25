@@ -9,6 +9,7 @@ import io.github.busybin.gitrehub.core.model.Commit
 import io.github.busybin.gitrehub.core.model.CommitFile
 import io.github.busybin.gitrehub.core.model.ContributionCalendar
 import io.github.busybin.gitrehub.core.model.ContributorStat
+import io.github.busybin.gitrehub.core.model.CreatedPullRequest
 import io.github.busybin.gitrehub.core.model.Discussion
 import io.github.busybin.gitrehub.core.model.DiscussionComment
 import io.github.busybin.gitrehub.core.model.Event
@@ -75,6 +76,10 @@ object GitHubApi {
 
     suspend fun following(login: String, page: Int): ApiResponse<List<User>> =
         people("/users/$login/following", page)
+
+    /** Public members of an organization (`GET /orgs/{org}/members`). */
+    suspend fun orgMembers(org: String, page: Int): ApiResponse<List<User>> =
+        people("/orgs/$org/members", page)
 
     /** `GET /user/following/{login}`: 204 when followed, 404 when not. */
     suspend fun isFollowing(login: String): Boolean =
@@ -319,6 +324,9 @@ object GitHubApi {
     /**
      * `GET /repos/{o}/{r}/issues` — pull requests included, callers filter with `isPullRequest`.
      * [sort] is `created`/`updated`/`comments`; GitHub defaults the direction per sort.
+     *
+     * [labels] is a comma-separated AND filter, [assignee] takes a login or `*` (nobody) and
+     * [milestone] a milestone number, `*` or `none`.
      */
     suspend fun repoIssues(
         owner: String,
@@ -327,10 +335,29 @@ object GitHubApi {
         sort: String,
         page: Int,
         cacheOnly: Boolean = false,
+        direction: String? = null,
+        labels: List<String> = emptyList(),
+        assignee: String? = null,
+        milestone: Int? = null,
     ): ApiResponse<List<Issue>> = issues(
         "/repos/$owner/$repo/issues",
         page,
-        mapOf("state" to state, "sort" to sort),
+        buildMap {
+            put("state", state)
+            put("sort", sort)
+            if (!direction.isNullOrBlank()) put("direction", direction)
+            if (labels.isNotEmpty()) put("labels", labels.joinToString(","))
+            when (assignee) {
+                null -> Unit
+                "*" -> put("assignee", "none")
+                else -> put("assignee", assignee)
+            }
+            when (milestone) {
+                null -> Unit
+                -1 -> put("milestone", "none")
+                else -> put("milestone", milestone.toString())
+            }
+        },
         cacheOnly,
     )
 
@@ -715,6 +742,67 @@ object GitHubApi {
     /** Raw file text, fetched from the entry's own URL (works for private repositories too). */
     suspend fun fileText(url: String): String =
         GitHubClient.getTextUrl(url, accept = "application/vnd.github.VERSION.raw")
+
+    // ---------------------------------------------------------------- contents: write paths
+
+    /**
+     * `PUT /repos/{o}/{r}/contents/{path}`. [content] is already base64; [sha] is the blob sha of
+     * the file being replaced (omitted when creating). The answer's commit is not needed by callers.
+     */
+    suspend fun putFile(
+        owner: String,
+        repo: String,
+        path: String,
+        message: String,
+        content: String,
+        sha: String? = null,
+        branch: String? = null,
+    ) = GitHubClient.sendNoContent(
+        "PUT",
+        "/repos/$owner/$repo/contents/${encodePath(path)}",
+        WriteBodies.fileUpdate(message, content, sha, branch),
+    )
+
+    /** `POST /git/refs`: branches off an existing commit. */
+    suspend fun createBranch(owner: String, repo: String, branch: String, sha: String) =
+        GitHubClient.sendNoContent(
+            "POST",
+            "/repos/$owner/$repo/git/refs",
+            WriteBodies.createBranch("refs/heads/$branch", sha),
+        )
+
+    /** Head commit of a branch, needed to branch off it. */
+    suspend fun branchHeadSha(owner: String, repo: String, branch: String): String =
+        GitHubClient.get(
+            "/repos/$owner/$repo/git/ref/heads/$branch",
+            GitRefEnvelope.serializer(),
+        ).value.objectSha
+
+    /** `POST /pulls`. */
+    suspend fun createPull(
+        owner: String,
+        repo: String,
+        title: String,
+        head: String,
+        base: String,
+        body: String? = null,
+        draft: Boolean = false,
+    ): CreatedPullRequest = GitHubClient.send(
+        "POST",
+        "/repos/$owner/$repo/pulls",
+        WriteBodies.createPull(title, head, base, body, draft),
+        CreatedPullRequest.serializer(),
+    ).value
+
+    @Serializable
+    private data class GitRefEnvelope(
+        @SerialName("object") val objectRef: GitRefObject? = null,
+    ) {
+        val objectSha: String get() = objectRef?.sha.orEmpty()
+    }
+
+    @Serializable
+    private data class GitRefObject(val sha: String = "")
 
     // ---------------------------------------------------------------- repository stats
 

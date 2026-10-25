@@ -1,9 +1,12 @@
 package io.github.busybin.gitrehub.compose.code
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -16,15 +19,19 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.ContentCopy
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
+import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -69,6 +76,7 @@ import io.github.busybin.gitrehub.compose.common.MetaText
 import io.github.busybin.gitrehub.compose.common.relativeTime
 import io.github.busybin.gitrehub.compose.common.repoBlobBaseUrl
 import io.github.busybin.gitrehub.compose.common.repoRawBaseUrl
+import io.github.busybin.gitrehub.compose.common.shareText
 import io.github.busybin.gitrehub.compose.theme.CodePalette
 import io.github.busybin.gitrehub.compose.theme.LocalCodePalette
 import io.github.busybin.gitrehub.helper.BrowserLauncher
@@ -85,18 +93,24 @@ import kotlinx.coroutines.launch
  * time. Line numbers and in-file search are supported, with the body rendered line by line in a
  * LazyColumn so a match can be scrolled to directly.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun FileViewerScreen(
     owner: String,
     repo: String,
     path: String,
     ref: String? = null,
+    onOpenHistory: (() -> Unit)? = null,
+    onEdit: (() -> Unit)? = null,
+    refreshSignal: Boolean = false,
+    onRefreshConsumed: () -> Unit = {},
 ) {
     val vm: FileViewerViewModel = viewModel()
     val state by vm.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val clipboard = LocalClipboardManager.current
     val scope = rememberCoroutineScope()
+    val wrapLines by CodePrefs.wrap.collectAsStateWithLifecycle()
     var rawMode by remember(path) { mutableStateOf(false) }
     var searchOpen by remember(path) { mutableStateOf(false) }
     var query by remember(path) { mutableStateOf("") }
@@ -104,6 +118,12 @@ fun FileViewerScreen(
     val listState = rememberLazyListState()
 
     LaunchedEffect(owner, repo, path, ref) { vm.load(owner, repo, path, ref) }
+    LaunchedEffect(refreshSignal) {
+        if (refreshSignal) {
+            vm.load(owner, repo, path, ref, force = true)
+            onRefreshConsumed()
+        }
+    }
 
     AsyncContent(state = state, onRetry = { vm.load(owner, repo, path, ref, force = true) }) { file ->
         val isMarkdown = isMarkdown(file.path)
@@ -134,9 +154,10 @@ fun FileViewerScreen(
                 )
 
                 Spacer(Modifier.height(10.dp))
-                Row(
+                FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
+                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                    itemVerticalAlignment = Alignment.CenterVertically,
                 ) {
                     TextButton(
                         onClick = {
@@ -157,6 +178,31 @@ fun FileViewerScreen(
                             Text(stringResource(R.string.m3_copy))
                         }
                     }
+                    if (onEdit != null) {
+                        TextButton(onClick = onEdit) {
+                            Icon(Icons.Outlined.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text(stringResource(R.string.m3_edit_file))
+                        }
+                    }
+                    if (onOpenHistory != null) {
+                        TextButton(onClick = onOpenHistory) {
+                            Icon(Icons.Outlined.History, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text(stringResource(R.string.m3_file_history))
+                        }
+                    }
+                    TextButton(
+                        onClick = {
+                            val url = file.htmlUrl
+                                ?: "https://github.com/$owner/$repo/blob/${file.ref ?: "HEAD"}/${file.path}"
+                            shareText(context, url, subject = "$owner/$repo/${file.path}")
+                        }
+                    ) {
+                        Icon(Icons.Outlined.Share, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text(stringResource(R.string.m3_share))
+                    }
                     if (showCode) {
                         TextButton(
                             onClick = {
@@ -168,9 +214,13 @@ fun FileViewerScreen(
                             Spacer(Modifier.width(6.dp))
                             Text(stringResource(R.string.m3_search))
                         }
+                        FilterChip(
+                            selected = wrapLines,
+                            onClick = { CodePrefs.toggle() },
+                            label = { Text(stringResource(R.string.m3_wrap_lines)) },
+                        )
                     }
                     if (isMarkdown && !file.text.isNullOrEmpty()) {
-                        Spacer(Modifier.weight(1f))
                         // Toggle between rendered and raw (rendered by default).
                         FilterChip(
                             selected = !rawMode,
@@ -298,6 +348,7 @@ fun FileViewerScreen(
                                 background = code.background,
                                 plain = code.plain,
                                 matched = matches.contains(index),
+                                wrap = wrapLines,
                             )
                         }
                     }
@@ -307,7 +358,10 @@ fun FileViewerScreen(
     }
 }
 
-/** One line: line number on the left, highlighted source on the right; no wrap, scrolls horizontally. */
+/**
+ * One line: line number on the left, highlighted source on the right. When wrapping is off the line
+ * stays on one row and scrolls horizontally, which is how a diff / code reviewer reads fixed columns.
+ */
 @Composable
 private fun CodeLine(
     number: Int,
@@ -316,7 +370,9 @@ private fun CodeLine(
     background: Color,
     plain: Color,
     matched: Boolean,
+    wrap: Boolean,
 ) {
+    val lineScroll = rememberScrollState()
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -337,8 +393,11 @@ private fun CodeLine(
                 text = annotated,
                 style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
                 color = plain,
+                softWrap = wrap,
+                maxLines = if (wrap) Int.MAX_VALUE else 1,
                 modifier = Modifier
                     .weight(1f)
+                    .then(if (wrap) Modifier else Modifier.horizontalScroll(lineScroll))
                     .padding(end = 12.dp, top = 1.dp, bottom = 1.dp),
             )
         }

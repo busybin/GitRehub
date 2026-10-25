@@ -14,13 +14,17 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material.icons.outlined.Clear
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
@@ -50,6 +54,8 @@ import io.github.busybin.gitrehub.compose.common.Avatar
 import io.github.busybin.gitrehub.compose.common.EmptyView
 import io.github.busybin.gitrehub.compose.common.MetaText
 import io.github.busybin.gitrehub.compose.common.Pill
+import io.github.busybin.gitrehub.compose.common.SavedPrefs
+import io.github.busybin.gitrehub.compose.common.SavedSearch
 import io.github.busybin.gitrehub.compose.common.compactNumber
 import io.github.busybin.gitrehub.core.model.Issue
 import io.github.busybin.gitrehub.core.model.Repo
@@ -68,6 +74,8 @@ fun SearchScreen(
     var query by rememberSaveable { mutableStateOf("") }
     var scope by rememberSaveable { mutableStateOf(SearchScope.REPOS) }
     val keyboard = LocalSoftwareKeyboardController.current
+    val saved by SavedPrefs.searches.collectAsStateWithLifecycle()
+    val isSaved = SavedPrefs.isSaved(query, scope.name)
 
     Column(Modifier.fillMaxSize()) {
         OutlinedTextField(
@@ -80,11 +88,28 @@ fun SearchScreen(
             singleLine = true,
             leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
             trailingIcon = {
-                if (query.isNotEmpty()) {
-                    IconButton(onClick = {
-                        query = ""
-                        vm.search("", scope)
-                    }) { Icon(Icons.Outlined.Clear, contentDescription = stringResource(R.string.m3_clear)) }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (query.isNotBlank()) {
+                        IconButton(onClick = {
+                            if (isSaved) {
+                                SavedPrefs.removeSearch(SavedSearch(query.trim(), scope.name))
+                            } else {
+                                SavedPrefs.saveSearch(query, scope.name)
+                            }
+                        }) {
+                            Icon(
+                                imageVector = if (isSaved) Icons.Filled.Bookmark
+                                else Icons.Outlined.BookmarkBorder,
+                                contentDescription = stringResource(
+                                    if (isSaved) R.string.m3_search_unsave else R.string.m3_search_save
+                                ),
+                            )
+                        }
+                        IconButton(onClick = {
+                            query = ""
+                            vm.search("", scope)
+                        }) { Icon(Icons.Outlined.Clear, contentDescription = stringResource(R.string.m3_clear)) }
+                    }
                 }
             },
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
@@ -107,6 +132,40 @@ fun SearchScreen(
                     },
                     label = { Text(stringResource(entry.labelRes)) },
                 )
+            }
+        }
+
+        if (saved.isNotEmpty()) {
+            LazyRow(
+                contentPadding = PaddingValues(horizontal = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                items(saved, key = { "${it.scope}\t${it.query}" }) { item ->
+                    val targetScope = SearchScope.entries.firstOrNull { it.name == item.scope }
+                        ?: SearchScope.REPOS
+                    FilterChip(
+                        selected = query == item.query && scope == targetScope,
+                        onClick = {
+                            query = item.query
+                            scope = targetScope
+                            keyboard?.hide()
+                            vm.search(item.query, targetScope)
+                        },
+                        label = { Text(item.query, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                        trailingIcon = {
+                            IconButton(
+                                onClick = { SavedPrefs.removeSearch(item) },
+                                modifier = Modifier.size(18.dp),
+                            ) {
+                                Icon(
+                                    Icons.Outlined.Close,
+                                    contentDescription = stringResource(R.string.m3_search_unsave),
+                                    modifier = Modifier.size(14.dp),
+                                )
+                            }
+                        },
+                    )
+                }
             }
         }
 

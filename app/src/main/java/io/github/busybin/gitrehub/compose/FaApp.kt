@@ -32,6 +32,7 @@ import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Assignment
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.SwitchAccount
 import androidx.compose.material.icons.outlined.TrendingUp
 import androidx.compose.material3.Badge
@@ -93,6 +94,8 @@ import io.github.busybin.gitrehub.compose.code.BranchesScreen
 import io.github.busybin.gitrehub.compose.code.CodeBrowserScreen
 import io.github.busybin.gitrehub.compose.code.CommitDetailScreen
 import io.github.busybin.gitrehub.compose.code.CommitsScreen
+import io.github.busybin.gitrehub.compose.code.EditFileScreen
+import io.github.busybin.gitrehub.compose.code.FileHistoryScreen
 import io.github.busybin.gitrehub.compose.code.FileViewerScreen
 import io.github.busybin.gitrehub.compose.code.RefKind
 import io.github.busybin.gitrehub.compose.common.Avatar
@@ -103,6 +106,7 @@ import io.github.busybin.gitrehub.compose.common.TabBadges
 import io.github.busybin.gitrehub.compose.common.UpdatePromptHost
 import io.github.busybin.gitrehub.compose.common.UpdateSupport
 import io.github.busybin.gitrehub.compose.common.restartModernUi
+import io.github.busybin.gitrehub.compose.common.shareText
 import kotlinx.coroutines.runBlocking
 import io.github.busybin.gitrehub.core.auth.Session
 import io.github.busybin.gitrehub.compose.data.CacheWarmer
@@ -175,6 +179,8 @@ object Routes {
     const val REPO_ACTIVITY = "repo-activity/{owner}/{repo}"
     const val CODE = "code/{owner}/{repo}?ref={ref}&path={path}"
     const val FILE = "file/{owner}/{repo}?path={path}&ref={ref}"
+    const val FILE_HISTORY = "file-history/{owner}/{repo}?path={path}&ref={ref}"
+    const val EDIT_FILE = "edit-file/{owner}/{repo}?path={path}&ref={ref}"
 
     fun repo(owner: String, name: String) = "repo/$owner/$name"
 
@@ -221,6 +227,12 @@ object Routes {
 
     fun file(owner: String, repo: String, path: String, ref: String? = null) =
         "file/$owner/$repo?path=${Uri.encode(path)}&ref=${Uri.encode(ref.orEmpty())}"
+
+    fun fileHistory(owner: String, repo: String, path: String, ref: String? = null) =
+        "file-history/$owner/$repo?path=${Uri.encode(path)}&ref=${Uri.encode(ref.orEmpty())}"
+
+    fun editFile(owner: String, repo: String, path: String, ref: String? = null) =
+        "edit-file/$owner/$repo?path=${Uri.encode(path)}&ref=${Uri.encode(ref.orEmpty())}"
 }
 
 private data class Tab(val route: String, @StringRes val labelRes: Int, val icon: ImageVector)
@@ -834,11 +846,92 @@ fun FaApp(routeRequest: MutableState<String?>? = null) {
                                 },
                             ),
                         ) { entry ->
+                            val fileOwner = entry.arguments?.getString("owner").orEmpty()
+                            val fileRepo = entry.arguments?.getString("repo").orEmpty()
+                            val filePath = entry.arguments?.getString("path").orEmpty()
+                            val fileRef = entry.arguments?.getString("ref").orEmpty().ifBlank { null }
+                            val fileRefresh by entry.savedStateHandle
+                                .getStateFlow("file_refresh", false)
+                                .collectAsStateWithLifecycle()
                             FileViewerScreen(
-                                owner = entry.arguments?.getString("owner").orEmpty(),
-                                repo = entry.arguments?.getString("repo").orEmpty(),
+                                owner = fileOwner,
+                                repo = fileRepo,
+                                path = filePath,
+                                ref = fileRef,
+                                onOpenHistory = {
+                                    nav.navigate(
+                                        Routes.fileHistory(fileOwner, fileRepo, filePath, fileRef)
+                                    )
+                                },
+                                onEdit = {
+                                    nav.navigate(
+                                        Routes.editFile(fileOwner, fileRepo, filePath, fileRef)
+                                    )
+                                },
+                                refreshSignal = fileRefresh,
+                                onRefreshConsumed = {
+                                    entry.savedStateHandle["file_refresh"] = false
+                                },
+                            )
+                        }
+                        composable(
+                            route = Routes.FILE_HISTORY,
+                            arguments = listOf(
+                                navArgument("owner") { type = NavType.StringType },
+                                navArgument("repo") { type = NavType.StringType },
+                                navArgument("path") {
+                                    type = NavType.StringType
+                                    defaultValue = ""
+                                },
+                                navArgument("ref") {
+                                    type = NavType.StringType
+                                    defaultValue = ""
+                                },
+                            ),
+                        ) { entry ->
+                            val historyOwner = entry.arguments?.getString("owner").orEmpty()
+                            val historyRepo = entry.arguments?.getString("repo").orEmpty()
+                            FileHistoryScreen(
+                                owner = historyOwner,
+                                repo = historyRepo,
                                 path = entry.arguments?.getString("path").orEmpty(),
                                 ref = entry.arguments?.getString("ref").orEmpty().ifBlank { null },
+                                onOpenCommit = { sha ->
+                                    nav.navigate(Routes.commit(historyOwner, historyRepo, sha))
+                                },
+                            )
+                        }
+                        composable(
+                            route = Routes.EDIT_FILE,
+                            arguments = listOf(
+                                navArgument("owner") { type = NavType.StringType },
+                                navArgument("repo") { type = NavType.StringType },
+                                navArgument("path") {
+                                    type = NavType.StringType
+                                    defaultValue = ""
+                                },
+                                navArgument("ref") {
+                                    type = NavType.StringType
+                                    defaultValue = ""
+                                },
+                            ),
+                        ) { entry ->
+                            val editOwner = entry.arguments?.getString("owner").orEmpty()
+                            val editRepo = entry.arguments?.getString("repo").orEmpty()
+                            EditFileScreen(
+                                owner = editOwner,
+                                repo = editRepo,
+                                path = entry.arguments?.getString("path").orEmpty(),
+                                ref = entry.arguments?.getString("ref").orEmpty().ifBlank { null },
+                                onDone = { prNumber ->
+                                    nav.previousBackStackEntry?.savedStateHandle
+                                        ?.set("file_refresh", true)
+                                    if (prNumber != null) {
+                                        nav.navigate(Routes.issue(editOwner, editRepo, prNumber))
+                                    } else {
+                                        nav.popBackStack()
+                                    }
+                                },
                             )
                         }
                         composable(
@@ -1093,6 +1186,10 @@ private fun FaTopBar(
         Routes.FILE -> entry?.arguments?.getString("path")?.substringAfterLast('/')
             ?: stringResource(R.string.m3_title_file)
 
+        Routes.FILE_HISTORY -> stringResource(R.string.m3_file_history)
+
+        Routes.EDIT_FILE -> stringResource(R.string.m3_edit_file)
+
         Routes.MY_WORK -> stringResource(R.string.m3_my_work)
         Routes.ISSUE -> "#${entry?.arguments?.getInt("number") ?: 0}"
         Routes.PR_FILES -> stringResource(R.string.m3_pr_files_title)
@@ -1112,11 +1209,58 @@ private fun FaTopBar(
                 Icon(Icons.Outlined.Menu, contentDescription = stringResource(R.string.m3_menu))
             }
         },
-        actions = { actions() },
+        actions = {
+            actions()
+            val context = LocalContext.current
+            val shareUrl = remember(route, entry) { shareUrlFor(route, entry) }
+            if (shareUrl != null) {
+                IconButton(onClick = { shareText(context, shareUrl) }) {
+                    Icon(
+                        Icons.Outlined.Share,
+                        contentDescription = stringResource(R.string.m3_share),
+                    )
+                }
+            }
+        },
         colors = TopAppBarDefaults.topAppBarColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainer,
         ),
     )
+}
+
+
+/** Canonical github.com URL of the screen on top, for the share action in the top bar. */
+private fun shareUrlFor(route: String?, entry: androidx.navigation.NavBackStackEntry?): String? {
+    val args = entry?.arguments ?: return null
+    val owner = args.getString("owner")
+    val repo = args.getString("repo") ?: args.getString("name")
+    if (route == Routes.USER) {
+        return args.getString("login")?.takeIf { it.isNotBlank() }?.let { "https://github.com/$it" }
+    }
+    if (owner.isNullOrBlank() || repo.isNullOrBlank()) return null
+    val base = "https://github.com/$owner/$repo"
+    val number = args.getInt("number")
+    val sha = args.getString("sha").orEmpty()
+    val ref = args.getString("ref").orEmpty().ifBlank { "HEAD" }
+    val path = args.getString("path").orEmpty().trim('/')
+    val encodedPath = path.split('/').filter { it.isNotEmpty() }.joinToString("/") { Uri.encode(it) }
+    return when (route) {
+        Routes.REPO -> base
+        Routes.ISSUES -> if (args.getString("kind") == "pull") "$base/pulls" else "$base/issues"
+        Routes.ISSUE -> "$base/issues/$number"
+        Routes.PR_FILES -> "$base/pull/$number/files"
+        Routes.COMMIT -> "$base/commit/$sha"
+        Routes.COMMITS -> "$base/commits/$ref"
+        Routes.RELEASES -> "$base/releases"
+        Routes.BRANCHES -> if (args.getString("kind") == "tag") "$base/tags" else "$base/branches"
+        Routes.CODE -> if (encodedPath.isBlank()) "$base/tree/$ref" else "$base/tree/$ref/$encodedPath"
+        Routes.FILE -> "$base/blob/$ref/$encodedPath"
+        Routes.FILE_HISTORY -> "$base/commits/$ref/$encodedPath"
+        Routes.DISCUSSIONS -> "$base/discussions"
+        Routes.DISCUSSION -> "$base/discussions/$number"
+        Routes.ACTIONS -> "$base/actions"
+        else -> null
+    }
 }
 
 @Composable

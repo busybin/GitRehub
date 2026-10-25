@@ -107,7 +107,7 @@ fun CommitsScreen(
 }
 
 @Composable
-private fun CommitListRow(commit: Commit, onClick: () -> Unit) {
+internal fun CommitListRow(commit: Commit, onClick: () -> Unit) {
     val tokens = LocalTokens.current
     val message = commit.messageTitle
     val author = commit.authorName

@@ -4,6 +4,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -16,12 +18,15 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.CallMerge
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.ErrorOutline
+import androidx.compose.material.icons.outlined.FilterList
 import androidx.compose.material.icons.outlined.TaskAlt
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -31,7 +36,9 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
@@ -41,6 +48,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -142,6 +150,9 @@ private fun IssuesList(
     val hasMore by vm.hasMore.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
     val filter = vm.currentFilter()
+    val query = vm.currentQuery()
+    val options by vm.options.collectAsStateWithLifecycle()
+    var showFilters by rememberSaveable { mutableStateOf(false) }
     val tokens = LocalTokens.current
 
     LaunchedEffect(owner, repo, kind) { vm.setup(owner, repo, kind) }
@@ -172,6 +183,7 @@ private fun IssuesList(
                     .fillMaxWidth()
                     .padding(horizontal = 12.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 IssueFilter.entries.forEach { entry ->
                     FilterChip(
@@ -180,6 +192,30 @@ private fun IssuesList(
                         label = { Text(stringResource(entry.labelRes)) },
                     )
                 }
+                Spacer(Modifier.weight(1f))
+                FilterChip(
+                    selected = query.activeCount > 0,
+                    onClick = {
+                        vm.loadOptions()
+                        showFilters = true
+                    },
+                    leadingIcon = {
+                        Icon(
+                            Icons.Outlined.FilterList,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                        )
+                    },
+                    label = {
+                        Text(
+                            if (query.activeCount > 0) {
+                                stringResource(R.string.m3_issue_filters_count, query.activeCount)
+                            } else {
+                                stringResource(R.string.m3_issue_filters)
+                            }
+                        )
+                    },
+                )
             }
             PullToRefreshBox(
                 isRefreshing = refreshing,
@@ -234,6 +270,182 @@ private fun IssuesList(
             }
         }
     }
+    if (showFilters) {
+        IssueFilterSheet(
+            query = query,
+            options = options,
+            onChange = { vm.setQuery(it) },
+            onDismiss = { showFilters = false },
+        )
+    }
+}
+
+/**
+ * Server-side issue filters: state, sort, labels, assignee and milestone. Every change applies at
+ * once (the list refreshes behind the sheet), so there is no "apply" button to forget.
+ */
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
+@Composable
+private fun IssueFilterSheet(
+    query: IssueQuery,
+    options: IssueFilterOptions,
+    onChange: (IssueQuery) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 24.dp),
+        ) {
+            Text(stringResource(R.string.m3_issue_filters), style = MaterialTheme.typography.titleLarge)
+            Spacer(Modifier.height(14.dp))
+
+            FilterGroupTitle(stringResource(R.string.m3_filter_state))
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                IssueFilter.entries.forEach { entry ->
+                    FilterChip(
+                        selected = query.state == entry,
+                        onClick = { onChange(query.copy(state = entry)) },
+                        label = { Text(stringResource(entry.labelRes)) },
+                    )
+                }
+            }
+
+            FilterGroupTitle(stringResource(R.string.m3_filter_sort))
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                IssueSort.entries.forEach { entry ->
+                    FilterChip(
+                        selected = query.sort == entry,
+                        onClick = { onChange(query.copy(sort = entry)) },
+                        label = { Text(stringResource(entry.labelRes)) },
+                    )
+                }
+                FilterChip(
+                    selected = query.descending,
+                    onClick = { onChange(query.copy(descending = true)) },
+                    label = { Text(stringResource(R.string.m3_issue_sort_desc)) },
+                )
+                FilterChip(
+                    selected = !query.descending,
+                    onClick = { onChange(query.copy(descending = false)) },
+                    label = { Text(stringResource(R.string.m3_issue_sort_asc)) },
+                )
+            }
+
+            if (options.labels.isNotEmpty()) {
+                FilterGroupTitle(stringResource(R.string.m3_filter_labels))
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    options.labels.forEach { label ->
+                        val name = label.name.orEmpty()
+                        FilterChip(
+                            selected = name in query.labels,
+                            onClick = {
+                                val next = if (name in query.labels) {
+                                    query.labels - name
+                                } else {
+                                    query.labels + name
+                                }
+                                onChange(query.copy(labels = next))
+                            },
+                            label = { Text(name) },
+                        )
+                    }
+                }
+            }
+
+            if (options.assignees.isNotEmpty()) {
+                FilterGroupTitle(stringResource(R.string.m3_filter_assignee))
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(
+                        selected = query.assignee == null,
+                        onClick = { onChange(query.copy(assignee = null)) },
+                        label = { Text(stringResource(R.string.m3_filter_any)) },
+                    )
+                    FilterChip(
+                        selected = query.assignee == IssueQuery.NOBODY,
+                        onClick = { onChange(query.copy(assignee = IssueQuery.NOBODY)) },
+                        label = { Text(stringResource(R.string.m3_filter_nobody)) },
+                    )
+                    options.assignees.forEach { user ->
+                        val login = user.login.orEmpty()
+                        FilterChip(
+                            selected = query.assignee == login,
+                            onClick = {
+                                onChange(
+                                    query.copy(
+                                        assignee = if (query.assignee == login) null else login
+                                    )
+                                )
+                            },
+                            label = { Text(login) },
+                        )
+                    }
+                }
+            }
+
+            if (options.milestones.isNotEmpty()) {
+                FilterGroupTitle(stringResource(R.string.m3_filter_milestone))
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(
+                        selected = query.milestone == null,
+                        onClick = { onChange(query.copy(milestone = null)) },
+                        label = { Text(stringResource(R.string.m3_filter_any)) },
+                    )
+                    FilterChip(
+                        selected = query.milestone == IssueQuery.NO_MILESTONE,
+                        onClick = { onChange(query.copy(milestone = IssueQuery.NO_MILESTONE)) },
+                        label = { Text(stringResource(R.string.m3_filter_none)) },
+                    )
+                    options.milestones.forEach { milestone ->
+                        FilterChip(
+                            selected = query.milestone == milestone.number,
+                            onClick = {
+                                onChange(
+                                    query.copy(
+                                        milestone = if (query.milestone == milestone.number) {
+                                            null
+                                        } else {
+                                            milestone.number
+                                        }
+                                    )
+                                )
+                            },
+                            label = { Text(milestone.title.orEmpty()) },
+                        )
+                    }
+                }
+            }
+
+            if (options.failed) {
+                Spacer(Modifier.height(10.dp))
+                MetaText(stringResource(R.string.m3_new_issue_options_failed))
+            }
+
+            Spacer(Modifier.height(18.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                TextButton(onClick = { onChange(IssueQuery()) }) {
+                    Text(stringResource(R.string.m3_filter_clear))
+                }
+                Spacer(Modifier.weight(1f))
+                TextButton(onClick = onDismiss) {
+                    Text(stringResource(R.string.m3_close))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FilterGroupTitle(text: String) {
+    Spacer(Modifier.height(16.dp))
+    Text(
+        text = text,
+        style = MaterialTheme.typography.titleSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    Spacer(Modifier.height(6.dp))
 }
 
 @Composable

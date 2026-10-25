@@ -23,6 +23,7 @@ data class UserPage(
     val repos: List<Repo>,
     val following: Boolean = false,
     val isSelf: Boolean = false,
+    val isOrg: Boolean = false,
 )
 
 /** The four user-page tabs (loaded on demand). */
@@ -31,6 +32,7 @@ enum class UserTab(@StringRes val labelRes: Int) {
     STARRED(R.string.m3_starred),
     FOLLOWING(R.string.m3_following),
     FOLLOWERS(R.string.m3_followers),
+    MEMBERS(R.string.m3_members),
 }
 
 /**
@@ -55,6 +57,9 @@ class UserProfileViewModel : ViewModel() {
 
     private val _followers = MutableStateFlow<LoadState<List<User>>?>(null)
     val followers: StateFlow<LoadState<List<User>>?> = _followers.asStateFlow()
+
+    private val _members = MutableStateFlow<LoadState<List<User>>?>(null)
+    val members: StateFlow<LoadState<List<User>>?> = _members.asStateFlow()
 
     private val _followBusy = MutableStateFlow(false)
     val followBusy: StateFlow<Boolean> = _followBusy.asStateFlow()
@@ -81,6 +86,10 @@ class UserProfileViewModel : ViewModel() {
 
             UserTab.FOLLOWERS -> if (force || _followers.value == null) {
                 load(login, _followers) { GitHubApi.followers(login, 1).value }
+            }
+
+            UserTab.MEMBERS -> if (force || _members.value == null) {
+                load(login, _members) { GitHubApi.orgMembers(login, 1).value }
             }
         }
     }
@@ -113,7 +122,13 @@ class UserProfileViewModel : ViewModel() {
             val isSelf = me != null && me.equals(login, ignoreCase = true)
             val following = !isSelf && runCatching { GitHubApi.isFollowing(login) }
                 .getOrDefault(false)
-            UserPage(user, repos, following = following, isSelf = isSelf)
+            UserPage(
+                user = user,
+                repos = repos,
+                following = following,
+                isSelf = isSelf,
+                isOrg = user.type.equals("Organization", ignoreCase = true),
+            )
         }
     }
 

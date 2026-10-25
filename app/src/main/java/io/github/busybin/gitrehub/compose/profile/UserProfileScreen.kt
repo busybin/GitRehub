@@ -64,6 +64,7 @@ fun UserProfileScreen(
     val starred by vm.starred.collectAsStateWithLifecycle()
     val following by vm.following.collectAsStateWithLifecycle()
     val followers by vm.followers.collectAsStateWithLifecycle()
+    val members by vm.members.collectAsStateWithLifecycle()
     val followBusy by vm.followBusy.collectAsStateWithLifecycle()
     val message by vm.message.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -84,6 +85,7 @@ fun UserProfileScreen(
         val noFollowing = stringResource(R.string.m3_no_following)
         val noFollowers = stringResource(R.string.m3_no_followers)
         val noRepos = stringResource(R.string.m3_no_public_repos)
+        val noMembers = stringResource(R.string.m3_no_members)
         LazyColumn(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -113,7 +115,13 @@ fun UserProfileScreen(
             item {
                 Spacer(Modifier.height(8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    UserTab.entries.forEach { entry ->
+                    UserTab.entries.filter { entry ->
+                        if (page.isOrg) {
+                            entry == UserTab.REPOS || entry == UserTab.MEMBERS
+                        } else {
+                            entry != UserTab.MEMBERS
+                        }
+                    }.forEach { entry ->
                         FilterChip(
                             selected = tab == entry,
                             onClick = { vm.selectTab(login, entry) },
@@ -151,6 +159,13 @@ fun UserProfileScreen(
                     state = followers,
                     onRetry = { vm.selectTab(login, UserTab.FOLLOWERS, force = true) },
                     empty = noFollowers,
+                    onOpenUser = onOpenUser,
+                )
+
+                UserTab.MEMBERS -> UserSection(
+                    state = members,
+                    onRetry = { vm.selectTab(login, UserTab.MEMBERS, force = true) },
+                    empty = noMembers,
                     onOpenUser = onOpenUser,
                 )
             }

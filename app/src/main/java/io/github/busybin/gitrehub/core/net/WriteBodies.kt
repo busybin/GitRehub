@@ -63,6 +63,40 @@ internal object WriteBodies {
     fun assignees(logins: List<String>): JsonObject =
         buildJsonObject { put("assignees", JsonArray(logins.map(::JsonPrimitive))) }
 
+    /** `PUT /repos/{o}/{r}/contents/{path}`: [sha] is required when replacing an existing file. */
+    fun fileUpdate(
+        message: String,
+        base64Content: String,
+        sha: String? = null,
+        branch: String? = null,
+    ): JsonObject = buildJsonObject {
+        put("message", JsonPrimitive(message))
+        put("content", JsonPrimitive(base64Content))
+        if (!sha.isNullOrBlank()) put("sha", JsonPrimitive(sha))
+        if (!branch.isNullOrBlank()) put("branch", JsonPrimitive(branch))
+    }
+
+    /** `POST /git/refs`: [ref] must be the full `refs/heads/...` name. */
+    fun createBranch(ref: String, sha: String): JsonObject = buildJsonObject {
+        put("ref", JsonPrimitive(ref))
+        put("sha", JsonPrimitive(sha))
+    }
+
+    /** `POST /pulls`: [head] may be `owner:branch` for a fork; [base] is the target branch. */
+    fun createPull(
+        title: String,
+        head: String,
+        base: String,
+        body: String? = null,
+        draft: Boolean = false,
+    ): JsonObject = buildJsonObject {
+        put("title", JsonPrimitive(title))
+        put("head", JsonPrimitive(head))
+        put("base", JsonPrimitive(base))
+        if (!body.isNullOrBlank()) put("body", JsonPrimitive(body))
+        if (draft) put("draft", JsonPrimitive(true))
+    }
+
     /** One inline comment of a pending review. `side` is `LEFT` (deletions) or `RIGHT`. */
     fun reviewComment(path: String, line: Int, side: String, body: String): JsonObject =
         buildJsonObject {

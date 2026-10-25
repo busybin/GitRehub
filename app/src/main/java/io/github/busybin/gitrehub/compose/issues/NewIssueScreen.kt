@@ -59,6 +59,7 @@ fun NewIssueScreen(owner: String, repo: String, onCreated: (Int) -> Unit) {
     var labels by remember { mutableStateOf(emptySet<String>()) }
     var assignees by remember { mutableStateOf(emptySet<String>()) }
     var milestone by remember { mutableStateOf<Int?>(null) }
+    var templateIndex by remember { mutableStateOf<Int?>(null) }
 
     LaunchedEffect(owner, repo) { vm.load(owner, repo) }
     LaunchedEffect(created) { created?.let(onCreated) }
@@ -70,6 +71,38 @@ fun NewIssueScreen(owner: String, repo: String, onCreated: (Int) -> Unit) {
             .imePadding()
             .padding(16.dp),
     ) {
+        val templates = options.templates
+        if (templates.isNotEmpty()) {
+            Text(stringResource(R.string.m3_issue_template), style = MaterialTheme.typography.titleSmall)
+            Spacer(Modifier.height(6.dp))
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilterChip(
+                    selected = templateIndex == null,
+                    onClick = { templateIndex = null },
+                    label = { Text(stringResource(R.string.m3_issue_template_blank)) },
+                )
+                templates.forEachIndexed { index, template ->
+                    FilterChip(
+                        selected = templateIndex == index,
+                        onClick = {
+                            templateIndex = index
+                            body = template.body
+                            val prefix = template.titlePrefix
+                            if (!prefix.isNullOrBlank() && title.isBlank()) title = prefix
+                        },
+                        label = { Text(template.name + if (template.isForm) " · form" else "") },
+                    )
+                }
+            }
+            templateIndex?.let { index ->
+                templates.getOrNull(index)?.description?.takeIf { it.isNotBlank() }?.let {
+                    Spacer(Modifier.height(4.dp))
+                    MetaText(it)
+                }
+            }
+            Spacer(Modifier.height(14.dp))
+        }
+
         OutlinedTextField(
             value = title,
             onValueChange = { title = it },

@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.ForkRight
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.StarBorder
@@ -27,6 +28,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
@@ -55,6 +57,7 @@ import io.github.busybin.gitrehub.compose.common.KeepTopOnRefresh
 import io.github.busybin.gitrehub.compose.common.LocalTokens
 import io.github.busybin.gitrehub.compose.common.MetaText
 import io.github.busybin.gitrehub.compose.common.Pill
+import io.github.busybin.gitrehub.compose.common.SavedPrefs
 import io.github.busybin.gitrehub.compose.common.compactNumber
 import io.github.busybin.gitrehub.compose.common.isWideLayout
 import io.github.busybin.gitrehub.compose.common.relativeTime
@@ -151,6 +154,7 @@ private fun ReposList(
     val listState = rememberLazyListState()
     KeepTopOnRefresh(listState, refreshing)
     val filter = vm.filter
+    val favorites by SavedPrefs.favorites.collectAsStateWithLifecycle()
     val tokens = LocalTokens.current
 
     LaunchedEffect(Unit) { vm.refresh() }
@@ -206,6 +210,8 @@ private fun ReposList(
                             repo = repo,
                             onOpenRepo = onOpenRepo,
                             highlighted = repo.fullName.isNotBlank() && repo.fullName == selected,
+                            favorite = repo.fullName in favorites,
+                            onToggleFavorite = { SavedPrefs.toggleFavorite(repo.fullName) },
                         )
                     }
                     if (loadingMore) {
@@ -223,7 +229,13 @@ private fun ReposList(
 }
 
 @Composable
-fun RepoCard(repo: Repo, onOpenRepo: (String) -> Unit, highlighted: Boolean = false) {
+fun RepoCard(
+    repo: Repo,
+    onOpenRepo: (String) -> Unit,
+    highlighted: Boolean = false,
+    favorite: Boolean = false,
+    onToggleFavorite: (() -> Unit)? = null,
+) {
     val tokens = LocalTokens.current
     Card(
         modifier = Modifier
@@ -254,6 +266,19 @@ fun RepoCard(repo: Repo, onOpenRepo: (String) -> Unit, highlighted: Boolean = fa
                 )
                 if (repo.fork) {
                     Pill("fork")
+                }
+                if (onToggleFavorite != null) {
+                    IconButton(onClick = onToggleFavorite, modifier = Modifier.size(30.dp)) {
+                        Icon(
+                            imageVector = if (favorite) Icons.Filled.Star else Icons.Outlined.StarBorder,
+                            contentDescription = stringResource(
+                                if (favorite) R.string.m3_repo_unfavorite else R.string.m3_repo_favorite
+                            ),
+                            modifier = Modifier.size(18.dp),
+                            tint = if (favorite) MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
             }
             if (!repo.description.isNullOrBlank()) {

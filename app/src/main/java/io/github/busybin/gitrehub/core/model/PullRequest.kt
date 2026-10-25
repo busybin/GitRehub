@@ -55,6 +55,13 @@ data class MergeResult(
     val message: String? = null,
 )
 
+/** `POST /pulls` answer: the new PR's number is all the caller needs to navigate. */
+@Serializable
+data class CreatedPullRequest(
+    val number: Int = 0,
+    @SerialName("html_url") val htmlUrl: String? = null,
+)
+
 /** `head`/`base` of a PR: the ref name is what the write paths and the diff view need. */
 @Serializable
 data class PullRequestBranch(
