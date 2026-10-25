@@ -80,6 +80,8 @@ fun ReposScreen(
     onOpenWatchers: (String, String) -> Unit = { _, _ -> },
     onOpenForks: (String, String) -> Unit = { _, _ -> },
     onOpenActivity: (String, String) -> Unit = { _, _ -> },
+    onOpenLabels: (String, String) -> Unit = { _, _ -> },
+    onOpenMilestones: (String, String) -> Unit = { _, _ -> },
     onOpenUser: (String) -> Unit = {},
 ) {
     val wide = isWideLayout()
@@ -123,6 +125,8 @@ fun ReposScreen(
                             onOpenDiscussions = onOpenDiscussions,
                             onOpenActions = onOpenActions,
                             onOpenActivity = onOpenActivity,
+                            onOpenLabels = onOpenLabels,
+                            onOpenMilestones = onOpenMilestones,
                             onOpenUser = onOpenUser,
                             onOpenRepo = { o, r -> onOpenRepo("$o/$r") },
                         )

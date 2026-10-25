@@ -1,8 +1,10 @@
 package io.github.busybin.gitrehub.compose.common
 
+import io.github.busybin.gitrehub.App
 import io.github.busybin.gitrehub.compose.mywork.MyWorkSection
 import io.github.busybin.gitrehub.core.auth.Session
 import io.github.busybin.gitrehub.core.net.GitHubApi
+import io.github.busybin.gitrehub.widget.UnreadWidgetProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -38,6 +40,7 @@ object TabBadges {
 
     fun setNotifications(count: Int) {
         _notifications.value = count.coerceAtLeast(0)
+        publishWidget()
     }
 
     /** A single row was marked read (already counted as unread before the action). */
@@ -87,6 +90,13 @@ object TabBadges {
 
     private fun publishMyWork() {
         _myWork.value = myWorkSections.values.flatten().toSet().size
+        publishWidget()
+    }
+
+    private fun publishWidget() {
+        runCatching {
+            UnreadWidgetProvider.publish(App.getInstance(), _notifications.value, _myWork.value)
+        }
     }
 
     fun reset() {

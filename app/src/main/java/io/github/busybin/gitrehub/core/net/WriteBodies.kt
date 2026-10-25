@@ -54,6 +54,26 @@ internal object WriteBodies {
     fun reaction(content: String): JsonObject =
         buildJsonObject { put("content", JsonPrimitive(content)) }
 
+    /** `POST/PATCH /labels`: colour is six hex digits without `#`. */
+    fun label(name: String, color: String, description: String?): JsonObject = buildJsonObject {
+        put("name", JsonPrimitive(name))
+        put("color", JsonPrimitive(color.removePrefix("#")))
+        if (!description.isNullOrBlank()) put("description", JsonPrimitive(description))
+    }
+
+    /** `POST/PATCH /milestones`: `due_on` is an ISO-8601 instant. */
+    fun milestone(
+        title: String,
+        state: String,
+        description: String?,
+        dueOn: String?,
+    ): JsonObject = buildJsonObject {
+        put("title", JsonPrimitive(title))
+        put("state", JsonPrimitive(state))
+        if (!description.isNullOrBlank()) put("description", JsonPrimitive(description))
+        if (!dueOn.isNullOrBlank()) put("due_on", JsonPrimitive(dueOn))
+    }
+
     /** `PUT /pulls/{n}/merge`: the message is optional and must not be sent empty. */
     fun merge(method: String, commitMessage: String?): JsonObject = buildJsonObject {
         put("merge_method", JsonPrimitive(method))

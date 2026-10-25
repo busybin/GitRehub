@@ -662,11 +662,73 @@ object GitHubApi {
     ).value
 
     suspend fun repoMilestones(owner: String, repo: String): List<Milestone> =
+        repoMilestones(owner, repo, state = "open")
+
+    /** Management screens list closed milestones too. */
+    suspend fun repoMilestones(owner: String, repo: String, state: String): List<Milestone> =
         GitHubClient.get(
             "/repos/$owner/$repo/milestones",
             ListSerializer(Milestone.serializer()),
-            query = mapOf("state" to "open", "per_page" to "100"),
+            query = mapOf("state" to state, "per_page" to "100"),
         ).value
+
+    // ------------------------------------------------- repository labels / milestones (write)
+
+    suspend fun createLabel(owner: String, repo: String, name: String, color: String, description: String?): Label =
+        GitHubClient.send(
+            "POST",
+            "/repos/$owner/$repo/labels",
+            WriteBodies.label(name, color, description),
+            Label.serializer(),
+        ).value
+
+    suspend fun editLabel(
+        owner: String,
+        repo: String,
+        currentName: String,
+        name: String,
+        color: String,
+        description: String?,
+    ): Label = GitHubClient.send(
+        "PATCH",
+        "/repos/$owner/$repo/labels/${encodePath(currentName)}",
+        WriteBodies.label(name, color, description),
+        Label.serializer(),
+    ).value
+
+    suspend fun deleteLabel(owner: String, repo: String, name: String) =
+        GitHubClient.sendNoContent("DELETE", "/repos/$owner/$repo/labels/${encodePath(name)}")
+
+    suspend fun createMilestone(
+        owner: String,
+        repo: String,
+        title: String,
+        description: String?,
+        dueOn: String?,
+    ): Milestone = GitHubClient.send(
+        "POST",
+        "/repos/$owner/$repo/milestones",
+        WriteBodies.milestone(title, "open", description, dueOn),
+        Milestone.serializer(),
+    ).value
+
+    suspend fun editMilestone(
+        owner: String,
+        repo: String,
+        number: Int,
+        title: String,
+        state: String,
+        description: String?,
+        dueOn: String?,
+    ): Milestone = GitHubClient.send(
+        "PATCH",
+        "/repos/$owner/$repo/milestones/$number",
+        WriteBodies.milestone(title, state, description, dueOn),
+        Milestone.serializer(),
+    ).value
+
+    suspend fun deleteMilestone(owner: String, repo: String, number: Int) =
+        GitHubClient.sendNoContent("DELETE", "/repos/$owner/$repo/milestones/$number")
 
     // ------------------------------------------------- commits / refs / releases / contents
 

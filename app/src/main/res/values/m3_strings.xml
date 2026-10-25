@@ -770,4 +770,23 @@ GitHub has no push channel for third-party clients, so this is real polling: the
     <string name="m3_notif_rule_value">owner/repo or text</string>
     <string name="m3_notif_rule_add">Add</string>
     <string name="m3_notif_rule_remove">Remove rule</string>
+    <string name="m3_widget_unread">Unread notifications</string>
+    <string name="m3_widget_mywork">My Work: %1$d</string>
+    <string name="m3_labels">Labels</string>
+    <string name="m3_milestones">Milestones</string>
+    <string name="m3_labels_empty">No labels yet</string>
+    <string name="m3_label_new">New label</string>
+    <string name="m3_label_edit">Edit label</string>
+    <string name="m3_label_name">Name</string>
+    <string name="m3_label_color">Color (#RRGGBB)</string>
+    <string name="m3_label_description">Description</string>
+    <string name="m3_label_delete">Delete label</string>
+    <string name="m3_milestone_new">New milestone</string>
+    <string name="m3_milestone_edit">Edit milestone</string>
+    <string name="m3_milestone_title">Title</string>
+    <string name="m3_milestone_description">Description</string>
+    <string name="m3_milestone_open">Open</string>
+    <string name="m3_milestone_closed">Closed</string>
+    <string name="m3_milestone_delete">Delete milestone</string>
+    <string name="m3_milestones_empty">No milestones yet</string>
 </resources>

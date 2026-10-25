@@ -769,4 +769,23 @@ GitHub n\'a pas de canal push pour les clients tiers, il s\'agit donc d\'une vé
     <string name="m3_notif_rule_value">owner/repo ou texte</string>
     <string name="m3_notif_rule_add">Ajouter</string>
     <string name="m3_notif_rule_remove">Retirer la règle</string>
+    <string name="m3_widget_unread">Notifications non lues</string>
+    <string name="m3_widget_mywork">Mon travail : %1$d</string>
+    <string name="m3_labels">Étiquettes</string>
+    <string name="m3_milestones">Jalons</string>
+    <string name="m3_labels_empty">Aucune étiquette</string>
+    <string name="m3_label_new">Nouvelle étiquette</string>
+    <string name="m3_label_edit">Modifier l\'étiquette</string>
+    <string name="m3_label_name">Nom</string>
+    <string name="m3_label_color">Couleur (#RRGGBB)</string>
+    <string name="m3_label_description">Description</string>
+    <string name="m3_label_delete">Supprimer l\'étiquette</string>
+    <string name="m3_milestone_new">Nouveau jalon</string>
+    <string name="m3_milestone_edit">Modifier le jalon</string>
+    <string name="m3_milestone_title">Titre</string>
+    <string name="m3_milestone_description">Description</string>
+    <string name="m3_milestone_open">Ouvert</string>
+    <string name="m3_milestone_closed">Fermé</string>
+    <string name="m3_milestone_delete">Supprimer le jalon</string>
+    <string name="m3_milestones_empty">Aucun jalon</string>
 </resources>

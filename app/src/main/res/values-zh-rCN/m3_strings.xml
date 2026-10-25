@@ -767,4 +767,23 @@ github 不给第三方客户端推送通道，所以这是真的轮询：最短 
     <string name="m3_notif_rule_value">owner/repo 或文本</string>
     <string name="m3_notif_rule_add">添加</string>
     <string name="m3_notif_rule_remove">删除规则</string>
+    <string name="m3_widget_unread">未读通知</string>
+    <string name="m3_widget_mywork">我的工作：%1$d</string>
+    <string name="m3_labels">标签</string>
+    <string name="m3_milestones">里程碑</string>
+    <string name="m3_labels_empty">暂无标签</string>
+    <string name="m3_label_new">新建标签</string>
+    <string name="m3_label_edit">编辑标签</string>
+    <string name="m3_label_name">名称</string>
+    <string name="m3_label_color">颜色（#RRGGBB）</string>
+    <string name="m3_label_description">描述</string>
+    <string name="m3_label_delete">删除标签</string>
+    <string name="m3_milestone_new">新建里程碑</string>
+    <string name="m3_milestone_edit">编辑里程碑</string>
+    <string name="m3_milestone_title">标题</string>
+    <string name="m3_milestone_description">描述</string>
+    <string name="m3_milestone_open">打开</string>
+    <string name="m3_milestone_closed">已关闭</string>
+    <string name="m3_milestone_delete">删除里程碑</string>
+    <string name="m3_milestones_empty">暂无里程碑</string>
 </resources>

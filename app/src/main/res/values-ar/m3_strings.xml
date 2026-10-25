@@ -769,4 +769,23 @@
     <string name="m3_notif_rule_value">owner/repo أو نص</string>
     <string name="m3_notif_rule_add">إضافة</string>
     <string name="m3_notif_rule_remove">إزالة القاعدة</string>
+    <string name="m3_widget_unread">إشعارات غير مقروءة</string>
+    <string name="m3_widget_mywork">عملي: %1$d</string>
+    <string name="m3_labels">التسميات</string>
+    <string name="m3_milestones">المعالم</string>
+    <string name="m3_labels_empty">لا توجد تسميات</string>
+    <string name="m3_label_new">تسمية جديدة</string>
+    <string name="m3_label_edit">تعديل التسمية</string>
+    <string name="m3_label_name">الاسم</string>
+    <string name="m3_label_color">اللون (#RRGGBB)</string>
+    <string name="m3_label_description">الوصف</string>
+    <string name="m3_label_delete">حذف التسمية</string>
+    <string name="m3_milestone_new">معلم جديد</string>
+    <string name="m3_milestone_edit">تعديل المعلم</string>
+    <string name="m3_milestone_title">العنوان</string>
+    <string name="m3_milestone_description">الوصف</string>
+    <string name="m3_milestone_open">مفتوح</string>
+    <string name="m3_milestone_closed">مغلق</string>
+    <string name="m3_milestone_delete">حذف المعلم</string>
+    <string name="m3_milestones_empty">لا توجد معالم</string>
 </resources>

@@ -769,4 +769,23 @@ GitHub no tiene canal de notificaciones push para los clientes de terceros, así
     <string name="m3_notif_rule_value">owner/repo o texto</string>
     <string name="m3_notif_rule_add">Añadir</string>
     <string name="m3_notif_rule_remove">Quitar regla</string>
+    <string name="m3_widget_unread">Notificaciones sin leer</string>
+    <string name="m3_widget_mywork">Mi trabajo: %1$d</string>
+    <string name="m3_labels">Etiquetas</string>
+    <string name="m3_milestones">Hitos</string>
+    <string name="m3_labels_empty">Aún no hay etiquetas</string>
+    <string name="m3_label_new">Nueva etiqueta</string>
+    <string name="m3_label_edit">Editar etiqueta</string>
+    <string name="m3_label_name">Nombre</string>
+    <string name="m3_label_color">Color (#RRGGBB)</string>
+    <string name="m3_label_description">Descripción</string>
+    <string name="m3_label_delete">Eliminar etiqueta</string>
+    <string name="m3_milestone_new">Nuevo hito</string>
+    <string name="m3_milestone_edit">Editar hito</string>
+    <string name="m3_milestone_title">Título</string>
+    <string name="m3_milestone_description">Descripción</string>
+    <string name="m3_milestone_open">Abierto</string>
+    <string name="m3_milestone_closed">Cerrado</string>
+    <string name="m3_milestone_delete">Eliminar hito</string>
+    <string name="m3_milestones_empty">Aún no hay hitos</string>
 </resources>

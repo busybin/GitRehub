@@ -769,4 +769,23 @@ O GitHub não tem canal de push para clientes de terceiros, então isto é uma c
     <string name="m3_notif_rule_value">owner/repo ou texto</string>
     <string name="m3_notif_rule_add">Adicionar</string>
     <string name="m3_notif_rule_remove">Remover regra</string>
+    <string name="m3_widget_unread">Notificações não lidas</string>
+    <string name="m3_widget_mywork">Meu trabalho: %1$d</string>
+    <string name="m3_labels">Rótulos</string>
+    <string name="m3_milestones">Marcos</string>
+    <string name="m3_labels_empty">Nenhum rótulo</string>
+    <string name="m3_label_new">Novo rótulo</string>
+    <string name="m3_label_edit">Editar rótulo</string>
+    <string name="m3_label_name">Nome</string>
+    <string name="m3_label_color">Cor (#RRGGBB)</string>
+    <string name="m3_label_description">Descrição</string>
+    <string name="m3_label_delete">Excluir rótulo</string>
+    <string name="m3_milestone_new">Novo marco</string>
+    <string name="m3_milestone_edit">Editar marco</string>
+    <string name="m3_milestone_title">Título</string>
+    <string name="m3_milestone_description">Descrição</string>
+    <string name="m3_milestone_open">Aberto</string>
+    <string name="m3_milestone_closed">Fechado</string>
+    <string name="m3_milestone_delete">Excluir marco</string>
+    <string name="m3_milestones_empty">Nenhum marco</string>
 </resources>

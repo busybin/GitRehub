@@ -131,6 +131,8 @@ import io.github.busybin.gitrehub.compose.profile.ProfileScreen
 import io.github.busybin.gitrehub.compose.profile.UserProfileScreen
 import io.github.busybin.gitrehub.compose.repos.RepoActivityScreen
 import io.github.busybin.gitrehub.compose.repos.RepoDetailScreen
+import io.github.busybin.gitrehub.compose.repos.RepoLabelsScreen
+import io.github.busybin.gitrehub.compose.repos.RepoMilestonesScreen
 import io.github.busybin.gitrehub.compose.repos.ReposScreen
 import io.github.busybin.gitrehub.compose.repos.ContributorsScreen
 import io.github.busybin.gitrehub.compose.repos.ForksScreen
@@ -175,6 +177,8 @@ object Routes {
     const val RELEASES = "releases/{owner}/{repo}"
     const val DISCUSSIONS = "discussions/{owner}/{repo}"
     const val DISCUSSION = "discussion/{owner}/{repo}/{number}"
+    const val LABELS = "labels/{owner}/{repo}"
+    const val MILESTONES = "milestones/{owner}/{repo}"
     const val ACTIONS = "actions/{owner}/{repo}"
     const val RUN_LOGS = "run-logs/{owner}/{repo}/{runId}"
     const val BRANCHES = "branches/{owner}/{repo}?kind={kind}"
@@ -200,6 +204,10 @@ object Routes {
         "discussion/$owner/$repo/$number"
 
     fun actions(owner: String, repo: String) = "actions/$owner/$repo"
+
+    fun labels(owner: String, repo: String) = "labels/$owner/$repo"
+
+    fun milestones(owner: String, repo: String) = "milestones/$owner/$repo"
 
     fun runLogs(owner: String, repo: String, runId: Long) = "run-logs/$owner/$repo/$runId"
 
@@ -645,6 +653,8 @@ fun FaApp(routeRequest: MutableState<String?>? = null) {
                                 onOpenDiscussions = { owner, repo -> nav.navigate(Routes.discussions(owner, repo)) },
                                 onOpenActions = { owner, repo -> nav.navigate(Routes.actions(owner, repo)) },
                                 onOpenActivity = { owner, repo -> nav.navigate(Routes.repoActivity(owner, repo)) },
+                                onOpenLabels = { owner, repo -> nav.navigate(Routes.labels(owner, repo)) },
+                                onOpenMilestones = { owner, repo -> nav.navigate(Routes.milestones(owner, repo)) },
                                 onOpenUser = { nav.navigate(Routes.user(it)) },
                             )
                         }
@@ -735,6 +745,8 @@ fun FaApp(routeRequest: MutableState<String?>? = null) {
                                 onOpenDiscussions = { owner, repo -> nav.navigate(Routes.discussions(owner, repo)) },
                                 onOpenActions = { owner, repo -> nav.navigate(Routes.actions(owner, repo)) },
                                 onOpenActivity = { owner, repo -> nav.navigate(Routes.repoActivity(owner, repo)) },
+                                onOpenLabels = { owner, repo -> nav.navigate(Routes.labels(owner, repo)) },
+                                onOpenMilestones = { owner, repo -> nav.navigate(Routes.milestones(owner, repo)) },
                                 onOpenUser = { nav.navigate(Routes.user(it)) },
                                 onOpenRepo = { o, r -> nav.navigate(Routes.repo(o, r)) },
                             )
@@ -1162,6 +1174,30 @@ fun FaApp(routeRequest: MutableState<String?>? = null) {
                             )
                         }
                         composable(
+                            route = Routes.LABELS,
+                            arguments = listOf(
+                                navArgument("owner") { type = NavType.StringType },
+                                navArgument("repo") { type = NavType.StringType },
+                            ),
+                        ) { entry ->
+                            RepoLabelsScreen(
+                                owner = entry.arguments?.getString("owner").orEmpty(),
+                                repo = entry.arguments?.getString("repo").orEmpty(),
+                            )
+                        }
+                        composable(
+                            route = Routes.MILESTONES,
+                            arguments = listOf(
+                                navArgument("owner") { type = NavType.StringType },
+                                navArgument("repo") { type = NavType.StringType },
+                            ),
+                        ) { entry ->
+                            RepoMilestonesScreen(
+                                owner = entry.arguments?.getString("owner").orEmpty(),
+                                repo = entry.arguments?.getString("repo").orEmpty(),
+                            )
+                        }
+                        composable(
                             route = Routes.RUN_LOGS,
                             arguments = listOf(
                                 navArgument("owner") { type = NavType.StringType },
@@ -1248,6 +1284,8 @@ private fun FaTopBar(
         Routes.DISCUSSIONS -> stringResource(R.string.m3_title_discussions)
         Routes.DISCUSSION -> "#${entry?.arguments?.getInt("number") ?: 0}"
         Routes.ACTIONS -> stringResource(R.string.m3_title_actions)
+        Routes.LABELS -> stringResource(R.string.m3_labels)
+        Routes.MILESTONES -> stringResource(R.string.m3_milestones)
         Routes.RUN_LOGS -> stringResource(R.string.m3_actions_logs)
         else -> "GitRehub"
     }

@@ -767,4 +767,23 @@
     <string name="m3_notif_rule_value">owner/repo или текст</string>
     <string name="m3_notif_rule_add">Добавить</string>
     <string name="m3_notif_rule_remove">Удалить правило</string>
+    <string name="m3_widget_unread">Непрочитанные уведомления</string>
+    <string name="m3_widget_mywork">Моя работа: %1$d</string>
+    <string name="m3_labels">Метки</string>
+    <string name="m3_milestones">Вехи</string>
+    <string name="m3_labels_empty">Меток пока нет</string>
+    <string name="m3_label_new">Новая метка</string>
+    <string name="m3_label_edit">Изменить метку</string>
+    <string name="m3_label_name">Имя</string>
+    <string name="m3_label_color">Цвет (#RRGGBB)</string>
+    <string name="m3_label_description">Описание</string>
+    <string name="m3_label_delete">Удалить метку</string>
+    <string name="m3_milestone_new">Новая веха</string>
+    <string name="m3_milestone_edit">Изменить веху</string>
+    <string name="m3_milestone_title">Название</string>
+    <string name="m3_milestone_description">Описание</string>
+    <string name="m3_milestone_open">Открыта</string>
+    <string name="m3_milestone_closed">Закрыта</string>
+    <string name="m3_milestone_delete">Удалить веху</string>
+    <string name="m3_milestones_empty">Вех пока нет</string>
 </resources>

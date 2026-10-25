@@ -769,4 +769,23 @@ GitHub にはサードパーティ製クライアント向けのプッシュチ�
     <string name="m3_notif_rule_value">owner/repo またはテキスト</string>
     <string name="m3_notif_rule_add">追加</string>
     <string name="m3_notif_rule_remove">規則を削除</string>
+    <string name="m3_widget_unread">未読通知</string>
+    <string name="m3_widget_mywork">マイワーク: %1$d</string>
+    <string name="m3_labels">ラベル</string>
+    <string name="m3_milestones">マイルストーン</string>
+    <string name="m3_labels_empty">ラベルはありません</string>
+    <string name="m3_label_new">新しいラベル</string>
+    <string name="m3_label_edit">ラベルを編集</string>
+    <string name="m3_label_name">名前</string>
+    <string name="m3_label_color">色 (#RRGGBB)</string>
+    <string name="m3_label_description">説明</string>
+    <string name="m3_label_delete">ラベルを削除</string>
+    <string name="m3_milestone_new">新しいマイルストーン</string>
+    <string name="m3_milestone_edit">マイルストーンを編集</string>
+    <string name="m3_milestone_title">タイトル</string>
+    <string name="m3_milestone_description">説明</string>
+    <string name="m3_milestone_open">オープン</string>
+    <string name="m3_milestone_closed">クローズ</string>
+    <string name="m3_milestone_delete">マイルストーンを削除</string>
+    <string name="m3_milestones_empty">マイルストーンはありません</string>
 </resources>

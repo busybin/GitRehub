@@ -120,6 +120,8 @@ fun RepoDetailScreen(
     onOpenDiscussions: (String, String) -> Unit = { _, _ -> },
     onOpenActions: (String, String) -> Unit = { _, _ -> },
     onOpenActivity: (String, String) -> Unit = { _, _ -> },
+    onOpenLabels: (String, String) -> Unit = { _, _ -> },
+    onOpenMilestones: (String, String) -> Unit = { _, _ -> },
     onOpenUser: (String) -> Unit = {},
     onOpenRepo: (String, String) -> Unit = { _, _ -> },
 ) {
@@ -404,6 +406,18 @@ fun RepoDetailScreen(
                         icon = null,
                         label = stringResource(R.string.m3_title_actions),
                         onClick = { onOpenActions(owner, name) },
+                    )
+                    NavChip(
+                        icon = Icons.Outlined.Label,
+                        label = stringResource(R.string.m3_labels),
+                        enabled = repo.permissions?.canTriage == true,
+                        onClick = { onOpenLabels(owner, name) },
+                    )
+                    NavChip(
+                        icon = null,
+                        label = stringResource(R.string.m3_milestones),
+                        enabled = repo.permissions?.canTriage == true,
+                        onClick = { onOpenMilestones(owner, name) },
                     )
                     NavChip(
                         icon = null,
