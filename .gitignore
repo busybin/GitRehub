@@ -12,6 +12,7 @@
 # local build artefacts
 *.bak
 *.bak.*
+.kotlin/
 
 # Internal runbooks, audit notes and self-use scripts
 .internal/
