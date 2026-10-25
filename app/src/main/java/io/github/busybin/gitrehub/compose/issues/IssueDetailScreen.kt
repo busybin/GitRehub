@@ -216,6 +216,7 @@ fun IssueDetailScreen(
                                     markdown = issue.body,
                                     baseUrl = repoRawBaseUrl(owner, repo),
                                     linkBaseUrl = repoBlobBaseUrl(owner, repo),
+                                    repo = "$owner/$repo",
                                 )
                             }
                             Spacer(Modifier.height(10.dp))
@@ -254,6 +255,7 @@ fun IssueDetailScreen(
                                 comment.user?.login.equals(myLogin, ignoreCase = true),
                             imageBaseUrl = repoRawBaseUrl(owner, repo),
                             linkBaseUrl = repoBlobBaseUrl(owner, repo),
+                            repo = "$owner/$repo",
                             reactionsMine = myReactions,
                             busy = busy,
                             onEdit = { editingComment = comment },
@@ -1037,6 +1039,7 @@ private fun CommentCard(
     mine: Boolean,
     imageBaseUrl: String? = null,
     linkBaseUrl: String? = null,
+    repo: String? = null,
     reactionsMine: Set<String> = emptySet(),
     busy: Boolean = false,
     onEdit: () -> Unit = {},
@@ -1068,7 +1071,12 @@ private fun CommentCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             } else {
-                MarkdownText(markdown = comment.body, baseUrl = imageBaseUrl, linkBaseUrl = linkBaseUrl)
+                MarkdownText(
+                    markdown = comment.body,
+                    baseUrl = imageBaseUrl,
+                    linkBaseUrl = linkBaseUrl,
+                    repo = repo,
+                )
             }
             Spacer(Modifier.height(10.dp))
             ReactionBar(

@@ -103,6 +103,7 @@ fun ReleasesScreen(owner: String, repo: String) {
                         release = release,
                         imageBaseUrl = repoRawBaseUrl(owner, repo),
                         linkBaseUrl = repoBlobBaseUrl(owner, repo),
+                        repo = "$owner/$repo",
                     ) { url, name ->
                         download(url, name)
                     }
@@ -125,6 +126,7 @@ private fun ReleaseCard(
     release: Release,
     imageBaseUrl: String,
     linkBaseUrl: String,
+    repo: String? = null,
     onDownload: (String, String) -> Unit,
 ) {
     val tokens = LocalTokens.current
@@ -179,6 +181,7 @@ private fun ReleaseCard(
                             markdown = release.body,
                             baseUrl = imageBaseUrl,
                             linkBaseUrl = linkBaseUrl,
+                            repo = repo,
                         )
                     }
                     val assets = release.assets

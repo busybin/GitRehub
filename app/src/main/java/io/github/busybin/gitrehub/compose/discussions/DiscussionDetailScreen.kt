@@ -190,6 +190,7 @@ private fun DiscussionHeader(discussion: Discussion, owner: String, repo: String
                 markdown = discussion.body,
                 baseUrl = repoRawBaseUrl(owner, repo),
                 linkBaseUrl = repoBlobBaseUrl(owner, repo),
+                repo = "$owner/$repo",
             )
         }
 
@@ -255,6 +256,7 @@ private fun CommentCard(
                     markdown = comment.body,
                     baseUrl = repoRawBaseUrl(owner, repo),
                     linkBaseUrl = repoBlobBaseUrl(owner, repo),
+                    repo = "$owner/$repo",
                 )
             }
         }

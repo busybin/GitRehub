@@ -788,4 +788,7 @@ GitHub にはサードパーティ製クライアント向けのプッシュチ�
     <string name="m3_milestone_closed">クローズ</string>
     <string name="m3_milestone_delete">マイルストーンを削除</string>
     <string name="m3_milestones_empty">マイルストーンはありません</string>
+    <string name="m3_copy_sha">コミットSHAをコピー</string>
+    <string name="m3_copy_code">コードをコピー</string>
+    <string name="m3_oauth_bad_state">このログインリンクはGitRehubからのものではありません。何も変更されていません</string>
 </resources>

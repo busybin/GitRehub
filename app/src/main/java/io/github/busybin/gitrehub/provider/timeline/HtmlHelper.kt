@@ -105,7 +105,15 @@ object HtmlHelper {
         mySpanner.isStripExtraWhiteSpace = true
         mySpanner.registerHandler(
             "pre",
-            PreTagHandler(palette.codeBackground, true, palette.codeText, palette.codeColors)
+            PreTagHandler(
+                palette.codeBackground,
+                true,
+                palette.codeText,
+                palette.codeColors,
+                copyLabel = textView.context.getString(R.string.m3_copy_code),
+                onCopy = { code -> AppHelper.copyToClipboard(textView.context, code) },
+                copyColor = palette.link,
+            )
         )
         mySpanner.registerHandler(
             "code",

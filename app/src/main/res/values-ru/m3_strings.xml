@@ -786,4 +786,7 @@
     <string name="m3_milestone_closed">Закрыта</string>
     <string name="m3_milestone_delete">Удалить веху</string>
     <string name="m3_milestones_empty">Вех пока нет</string>
+    <string name="m3_copy_sha">Скопировать SHA коммита</string>
+    <string name="m3_copy_code">Скопировать код</string>
+    <string name="m3_oauth_bad_state">Эта ссылка для входа не от GitRehub; ничего не изменено</string>
 </resources>

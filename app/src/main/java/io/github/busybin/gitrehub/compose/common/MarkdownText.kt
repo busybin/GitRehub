@@ -22,6 +22,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.viewinterop.AndroidView
 import io.github.busybin.gitrehub.compose.theme.LocalCodePalette
 import io.github.busybin.gitrehub.provider.markdown.MarkDownProvider
+import io.github.busybin.gitrehub.provider.markdown.ReferenceLinks
 import io.github.busybin.gitrehub.provider.timeline.HtmlHelper
 import io.github.busybin.gitrehub.provider.timeline.MarkdownCodeColors
 import io.github.busybin.gitrehub.provider.timeline.MarkdownPalette
@@ -43,6 +44,8 @@ fun MarkdownText(
     textSizeSp: Float = 14f,
     baseUrl: String? = null,
     linkBaseUrl: String? = null,
+    /** `owner/name`, so `#123` references link to that repository's issues. */
+    repo: String? = null,
     /** An in-page anchor (`#xxx` in a README) was tapped: anchor name, its vertical pixel offset in the rendered TextView, and the TextView's Y in the window. */
     onAnchor: ((anchor: String, yInView: Int, viewTopInWindow: Float) -> Unit)? = null,
 ) {
@@ -77,7 +80,7 @@ fun MarkdownText(
                     rendered.record(markdown, widthPx)
                     MarkDownProvider.setMdText(
                         view,
-                        markdown,
+                        ReferenceLinks.expand(markdown, repo),
                         widthPx,
                         palette,
                         baseUrl,

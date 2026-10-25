@@ -58,6 +58,7 @@ class UserProfileTabsTest {
                     UserTab.STARRED -> vm.starred.value
                     UserTab.FOLLOWING -> vm.following.value
                     UserTab.FOLLOWERS -> vm.followers.value
+                    UserTab.MEMBERS -> vm.members.value
                     UserTab.REPOS -> null
                 }
                 if (state != null && state !is LoadState.Loading) return@withTimeout state

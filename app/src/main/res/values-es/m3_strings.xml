@@ -788,4 +788,7 @@ GitHub no tiene canal de notificaciones push para los clientes de terceros, así
     <string name="m3_milestone_closed">Cerrado</string>
     <string name="m3_milestone_delete">Eliminar hito</string>
     <string name="m3_milestones_empty">Aún no hay hitos</string>
+    <string name="m3_copy_sha">Copiar SHA del commit</string>
+    <string name="m3_copy_code">Copiar código</string>
+    <string name="m3_oauth_bad_state">Este enlace de inicio de sesión no proviene de GitRehub; no se cambió nada</string>
 </resources>

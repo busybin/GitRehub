@@ -280,6 +280,7 @@ fun FileViewerScreen(
                                 markdown = file.text,
                                 baseUrl = repoRawBaseUrl(owner, repo, file.ref),
                                 linkBaseUrl = repoBlobBaseUrl(owner, repo, file.ref),
+                                repo = "$owner/$repo",
                             )
                         }
                     }

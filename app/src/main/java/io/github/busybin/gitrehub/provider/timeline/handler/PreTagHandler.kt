@@ -1,10 +1,13 @@
 package io.github.busybin.gitrehub.provider.timeline.handler
 
 import android.text.SpannableStringBuilder
+import android.text.TextPaint
 import android.text.Spanned
 import android.text.style.BackgroundColorSpan
+import android.text.style.ClickableSpan
 import android.text.style.ForegroundColorSpan
 import android.text.style.TypefaceSpan
+import android.view.View
 import androidx.annotation.ColorInt
 import io.github.busybin.gitrehub.provider.syntax.Syntax
 import io.github.busybin.gitrehub.provider.syntax.TokenKind
@@ -19,6 +22,10 @@ class PreTagHandler(
     private val block: Boolean,
     @field:ColorInt private val textColor: Int,
     private val codeColors: MarkdownCodeColors? = null,
+    /** Label appended under each fenced block; tapping it copies the block. */
+    private val copyLabel: String? = null,
+    private val onCopy: ((String) -> Unit)? = null,
+    @field:ColorInt private val copyColor: Int = textColor,
 ) : PreHandler() {
 
     override fun handleTagNode(node: TagNode, builder: SpannableStringBuilder, start: Int, end: Int) {
@@ -33,6 +40,26 @@ class PreTagHandler(
         builder.setSpan(CodeBackgroundRoundedSpan(background), from, to, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
         builder.setSpan(ForegroundColorSpan(textColor), from, to, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
         colourTokens(builder, code, node, from)
+        if (!copyLabel.isNullOrBlank() && onCopy != null) {
+            builder.append('\n')
+            val labelStart = builder.length
+            builder.append(copyLabel)
+            builder.setSpan(
+                object : ClickableSpan() {
+                    override fun onClick(widget: View) {
+                        onCopy?.invoke(code)
+                    }
+
+                    override fun updateDrawState(ds: TextPaint) {
+                        ds.isUnderlineText = false
+                        ds.color = copyColor
+                    }
+                },
+                labelStart,
+                builder.length,
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
+            )
+        }
         builder.append('\n')
         appendNewLine(builder)
     }

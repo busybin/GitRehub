@@ -788,4 +788,7 @@ GitHub n\'a pas de canal push pour les clients tiers, il s\'agit donc d\'une vé
     <string name="m3_milestone_closed">Fermé</string>
     <string name="m3_milestone_delete">Supprimer le jalon</string>
     <string name="m3_milestones_empty">Aucun jalon</string>
+    <string name="m3_copy_sha">Copier le SHA du commit</string>
+    <string name="m3_copy_code">Copier le code</string>
+    <string name="m3_oauth_bad_state">Ce lien de connexion ne provient pas de GitRehub ; rien n\'a été modifié</string>
 </resources>

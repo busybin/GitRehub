@@ -786,4 +786,6 @@ github 不给第三方客户端推送通道，所以这是真的轮询：最短 
     <string name="m3_milestone_closed">已关闭</string>
     <string name="m3_milestone_delete">删除里程碑</string>
     <string name="m3_milestones_empty">暂无里程碑</string>
+    <string name="m3_copy_sha">复制提交 SHA</string>
+    <string name="m3_copy_code">复制代码</string>
 </resources>

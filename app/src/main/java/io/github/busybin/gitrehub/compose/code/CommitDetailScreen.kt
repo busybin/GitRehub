@@ -1,6 +1,7 @@
 package io.github.busybin.gitrehub.compose.code
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -14,9 +15,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -24,6 +28,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
@@ -40,6 +45,7 @@ import io.github.busybin.gitrehub.compose.common.Pill
 import io.github.busybin.gitrehub.compose.common.relativeTime
 import io.github.busybin.gitrehub.core.model.Commit
 import io.github.busybin.gitrehub.core.model.CommitFile
+import io.github.busybin.gitrehub.helper.AppHelper
 
 /**
  * Commit detail plus diff.
@@ -120,12 +126,28 @@ private fun CommitHeader(commit: Commit) {
                     )
                     MetaText(relativeTime(date))
                 }
-                Text(
-                    text = commit.shortSha,
-                    style = MaterialTheme.typography.labelMedium,
-                    fontFamily = FontFamily.Monospace,
-                    color = MaterialTheme.colorScheme.primary,
-                )
+                val context = LocalContext.current
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .clickable { AppHelper.copyToClipboard(context, commit.sha) }
+                        .padding(horizontal = 4.dp, vertical = 2.dp),
+                ) {
+                    Text(
+                        text = commit.shortSha,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontFamily = FontFamily.Monospace,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Icon(
+                        imageVector = Icons.Outlined.ContentCopy,
+                        contentDescription = stringResource(R.string.m3_copy_sha),
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(14.dp),
+                    )
+                }
             }
             if (stats != null) {
                 Spacer(Modifier.height(10.dp))

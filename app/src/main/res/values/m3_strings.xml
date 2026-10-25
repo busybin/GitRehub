@@ -789,4 +789,6 @@ GitHub has no push channel for third-party clients, so this is real polling: the
     <string name="m3_milestone_closed">Closed</string>
     <string name="m3_milestone_delete">Delete milestone</string>
     <string name="m3_milestones_empty">No milestones yet</string>
+    <string name="m3_copy_sha">Copy commit SHA</string>
+    <string name="m3_copy_code">Copy code</string>
 </resources>

@@ -788,4 +788,7 @@
     <string name="m3_milestone_closed">مغلق</string>
     <string name="m3_milestone_delete">حذف المعلم</string>
     <string name="m3_milestones_empty">لا توجد معالم</string>
+    <string name="m3_copy_sha">نسخ SHA للالتزام</string>
+    <string name="m3_copy_code">نسخ الكود</string>
+    <string name="m3_oauth_bad_state">رابط تسجيل الدخول هذا ليس من GitRehub؛ لم يتم تغيير أي شيء</string>
 </resources>

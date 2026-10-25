@@ -788,4 +788,7 @@ O GitHub não tem canal de push para clientes de terceiros, então isto é uma c
     <string name="m3_milestone_closed">Fechado</string>
     <string name="m3_milestone_delete">Excluir marco</string>
     <string name="m3_milestones_empty">Nenhum marco</string>
+    <string name="m3_copy_sha">Copiar SHA do commit</string>
+    <string name="m3_copy_code">Copiar código</string>
+    <string name="m3_oauth_bad_state">Este link de login não veio do GitRehub; nada foi alterado</string>
 </resources>
