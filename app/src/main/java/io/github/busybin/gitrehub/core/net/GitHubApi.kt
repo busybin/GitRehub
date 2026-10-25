@@ -29,6 +29,7 @@ import io.github.busybin.gitrehub.core.model.SearchCode
 import io.github.busybin.gitrehub.core.model.SearchResult
 import io.github.busybin.gitrehub.core.model.StatsOutcome
 import io.github.busybin.gitrehub.core.model.Tag
+import io.github.busybin.gitrehub.core.model.ThreadSubscription
 import io.github.busybin.gitrehub.core.model.User
 import io.github.busybin.gitrehub.core.model.WatchersPage
 import io.github.busybin.gitrehub.core.model.WeekActivity
@@ -870,6 +871,22 @@ object GitHubApi {
             query = mapOf("per_page" to "100"),
         ).value.jobs
 
+    /** Re-runs every job of a completed run. */
+    suspend fun rerunRun(owner: String, repo: String, runId: Long) =
+        GitHubClient.sendNoContent(
+            "POST",
+            "/repos/$owner/$repo/actions/runs/$runId/rerun",
+            JsonObject(emptyMap()),
+        )
+
+    /** Cancels a queued/running run. */
+    suspend fun cancelRun(owner: String, repo: String, runId: Long) =
+        GitHubClient.sendNoContent(
+            "POST",
+            "/repos/$owner/$repo/actions/runs/$runId/cancel",
+            JsonObject(emptyMap()),
+        )
+
     suspend fun discussions(
         owner: String,
         repo: String,
@@ -1004,6 +1021,21 @@ object GitHubApi {
     /** Mute the thread (`DELETE .../subscription`). */
     suspend fun unsubscribeThread(id: String) =
         GitHubClient.sendNoContent("DELETE", "/notifications/threads/$id/subscription")
+
+    /** Per-thread subscription state; `ignored` is GitHub's "muted". */
+    suspend fun threadSubscription(id: String): ThreadSubscription =
+        GitHubClient.get(
+            "/notifications/threads/$id/subscription",
+            ThreadSubscription.serializer(),
+        ).value
+
+    /** `PUT .../subscription`: only the `ignored` flag is settable per thread. */
+    suspend fun setThreadIgnored(id: String, ignored: Boolean) =
+        GitHubClient.sendNoContent(
+            "PUT",
+            "/notifications/threads/$id/subscription",
+            buildJsonObject { put("ignored", JsonPrimitive(ignored)) },
+        )
 
     /** `latest_comment_url` is absolute; a mock build must still hit the mock host (see [GitHubClient.getUrl]). */
     suspend fun commentAt(url: String): Comment =

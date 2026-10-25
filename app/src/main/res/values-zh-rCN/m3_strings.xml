@@ -743,4 +743,14 @@ github 不给第三方客户端推送通道，所以这是真的轮询：最短 
     <string name="m3_edit_submit_pr">创建 PR</string>
     <string name="m3_members">成员</string>
     <string name="m3_no_members">没有公开成员。</string>
+    <string name="m3_actions_logs">运行日志</string>
+    <string name="m3_actions_rerun">重新运行</string>
+    <string name="m3_actions_cancel">取消运行</string>
+    <string name="m3_actions_rerun_confirm">重新运行这次运行的所有作业？</string>
+    <string name="m3_actions_cancel_confirm">取消这次运行？</string>
+    <string name="m3_actions_action_done">已完成</string>
+    <string name="m3_actions_no_logs">这次运行没有日志文件。</string>
+    <string name="m3_more">更多</string>
+    <string name="m3_notif_mute">静音此线程</string>
+    <string name="m3_notif_unmute">取消静音</string>
 </resources>

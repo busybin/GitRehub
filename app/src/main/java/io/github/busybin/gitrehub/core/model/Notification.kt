@@ -39,3 +39,11 @@ data class NotificationSubject(
     val type: String? = null,
     @SerialName("latest_comment_url") val latestCommentUrl: String? = null,
 )
+
+/** `GET /notifications/threads/{id}/subscription`: `ignored` is GitHub's mute flag. */
+@Serializable
+data class ThreadSubscription(
+    val subscribed: Boolean = false,
+    val ignored: Boolean = false,
+    val reason: String? = null,
+)

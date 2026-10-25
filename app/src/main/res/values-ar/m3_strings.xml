@@ -745,4 +745,14 @@
     <string name="m3_edit_submit_pr">إنشاء طلب سحب</string>
     <string name="m3_members">الأعضاء</string>
     <string name="m3_no_members">لا يوجد أعضاء عامون.</string>
+    <string name="m3_actions_logs">سجل التشغيل</string>
+    <string name="m3_actions_rerun">إعادة التشغيل</string>
+    <string name="m3_actions_cancel">إلغاء التشغيل</string>
+    <string name="m3_actions_rerun_confirm">إعادة تشغيل جميع المهام في هذا التشغيل؟</string>
+    <string name="m3_actions_cancel_confirm">إلغاء هذا التشغيل؟</string>
+    <string name="m3_actions_action_done">تم</string>
+    <string name="m3_actions_no_logs">لا توجد ملفات سجل في هذا التشغيل.</string>
+    <string name="m3_more">المزيد</string>
+    <string name="m3_notif_mute">كتم هذا الموضوع</string>
+    <string name="m3_notif_unmute">إلغاء كتم هذا الموضوع</string>
 </resources>

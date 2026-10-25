@@ -176,6 +176,38 @@ object GitHubClient {
             execute(builder.build(), token = null, cacheOnly = false).first
         }
 
+    /**
+     * Binary answer (Actions run logs are a zip behind a 302). Redirects are followed by OkHttp and
+     * the auth header is dropped on the cross-host hop; [maxBytes] guards the phone's memory.
+     */
+    suspend fun getBytes(path: String, maxBytes: Long): ByteArray = withContext(Dispatchers.IO) {
+        val request = Request.Builder().url(apiRoot + path).get().build()
+        val response = try {
+            clientFor(null, cacheOnly = false).newCall(request).execute()
+        } catch (e: IOException) {
+            throw ApiException(ApiError(0, e.message ?: e.javaClass.simpleName), e)
+        }
+        response.use { r ->
+            if (!r.isSuccessful) {
+                throw errorFor(r.code, r.body?.string().orEmpty(), r.headers)
+            }
+            val declared = r.body?.contentLength() ?: -1
+            if (declared > maxBytes) throw ApiException(413, "Response is too large")
+            val stream = r.body?.byteStream() ?: return@use ByteArray(0)
+            val out = java.io.ByteArrayOutputStream()
+            val buffer = ByteArray(16 * 1024)
+            var total = 0L
+            while (true) {
+                val read = stream.read(buffer)
+                if (read < 0) break
+                total += read
+                if (total > maxBytes) throw ApiException(413, "Response is too large")
+                out.write(buffer, 0, read)
+            }
+            out.toByteArray()
+        }
+    }
+
     /** `true` on 2xx, `false` on 404; anything else still throws (used for 204/404 probes). */
     suspend fun exists(path: String): Boolean = withContext(Dispatchers.IO) {
         try {

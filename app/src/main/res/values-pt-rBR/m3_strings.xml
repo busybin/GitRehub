@@ -745,4 +745,14 @@ O GitHub não tem canal de push para clientes de terceiros, então isto é uma c
     <string name="m3_edit_submit_pr">Criar pull request</string>
     <string name="m3_members">Membros</string>
     <string name="m3_no_members">Nenhum membro público.</string>
+    <string name="m3_actions_logs">Log da execução</string>
+    <string name="m3_actions_rerun">Executar novamente</string>
+    <string name="m3_actions_cancel">Cancelar execução</string>
+    <string name="m3_actions_rerun_confirm">Executar novamente todos os jobs desta execução?</string>
+    <string name="m3_actions_cancel_confirm">Cancelar esta execução?</string>
+    <string name="m3_actions_action_done">Concluído</string>
+    <string name="m3_actions_no_logs">Esta execução não tem arquivos de log.</string>
+    <string name="m3_more">Mais</string>
+    <string name="m3_notif_mute">Silenciar este tópico</string>
+    <string name="m3_notif_unmute">Reativar este tópico</string>
 </resources>

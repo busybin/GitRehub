@@ -87,6 +87,7 @@ import androidx.navigation.navArgument
 import io.github.busybin.gitrehub.R
 import io.github.busybin.gitrehub.compose.accounts.AccountsScreen
 import io.github.busybin.gitrehub.compose.actions.ActionsScreen
+import io.github.busybin.gitrehub.compose.actions.RunLogsScreen
 import io.github.busybin.gitrehub.compose.auth.DeviceLoginScreen
 import io.github.busybin.gitrehub.compose.auth.LoginMode
 import io.github.busybin.gitrehub.compose.auth.LoginScreen
@@ -171,6 +172,7 @@ object Routes {
     const val DISCUSSIONS = "discussions/{owner}/{repo}"
     const val DISCUSSION = "discussion/{owner}/{repo}/{number}"
     const val ACTIONS = "actions/{owner}/{repo}"
+    const val RUN_LOGS = "run-logs/{owner}/{repo}/{runId}"
     const val BRANCHES = "branches/{owner}/{repo}?kind={kind}"
     const val STARGAZERS = "stargazers/{owner}/{repo}"
     const val WATCHERS = "watchers/{owner}/{repo}"
@@ -194,6 +196,8 @@ object Routes {
         "discussion/$owner/$repo/$number"
 
     fun actions(owner: String, repo: String) = "actions/$owner/$repo"
+
+    fun runLogs(owner: String, repo: String, runId: Long) = "run-logs/$owner/$repo/$runId"
 
     fun issues(owner: String, repo: String, kind: String = "issue") =
         "issues/$owner/$repo?kind=$kind"
@@ -1123,9 +1127,28 @@ fun FaApp(routeRequest: MutableState<String?>? = null) {
                                 navArgument("repo") { type = NavType.StringType },
                             ),
                         ) { entry ->
+                            val actionsOwner = entry.arguments?.getString("owner").orEmpty()
+                            val actionsRepo = entry.arguments?.getString("repo").orEmpty()
                             ActionsScreen(
+                                owner = actionsOwner,
+                                repo = actionsRepo,
+                                onOpenLogs = { runId ->
+                                    nav.navigate(Routes.runLogs(actionsOwner, actionsRepo, runId))
+                                },
+                            )
+                        }
+                        composable(
+                            route = Routes.RUN_LOGS,
+                            arguments = listOf(
+                                navArgument("owner") { type = NavType.StringType },
+                                navArgument("repo") { type = NavType.StringType },
+                                navArgument("runId") { type = NavType.LongType },
+                            ),
+                        ) { entry ->
+                            RunLogsScreen(
                                 owner = entry.arguments?.getString("owner").orEmpty(),
                                 repo = entry.arguments?.getString("repo").orEmpty(),
+                                runId = entry.arguments?.getLong("runId") ?: 0L,
                             )
                         }
                     }
@@ -1200,6 +1223,7 @@ private fun FaTopBar(
         Routes.DISCUSSIONS -> stringResource(R.string.m3_title_discussions)
         Routes.DISCUSSION -> "#${entry?.arguments?.getInt("number") ?: 0}"
         Routes.ACTIONS -> stringResource(R.string.m3_title_actions)
+        Routes.RUN_LOGS -> stringResource(R.string.m3_actions_logs)
         else -> "GitRehub"
     }
     TopAppBar(

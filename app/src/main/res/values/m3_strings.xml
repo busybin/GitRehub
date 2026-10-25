@@ -746,4 +746,14 @@ GitHub has no push channel for third-party clients, so this is real polling: the
     <string name="m3_edit_submit_pr">Create pull request</string>
     <string name="m3_members">Members</string>
     <string name="m3_no_members">No public members.</string>
+    <string name="m3_actions_logs">Run log</string>
+    <string name="m3_actions_rerun">Re-run</string>
+    <string name="m3_actions_cancel">Cancel run</string>
+    <string name="m3_actions_rerun_confirm">Re-run all jobs of this workflow run?</string>
+    <string name="m3_actions_cancel_confirm">Cancel this run?</string>
+    <string name="m3_actions_action_done">Done</string>
+    <string name="m3_actions_no_logs">No log files in this run.</string>
+    <string name="m3_more">More</string>
+    <string name="m3_notif_mute">Mute this thread</string>
+    <string name="m3_notif_unmute">Unmute this thread</string>
 </resources>

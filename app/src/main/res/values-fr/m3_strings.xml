@@ -745,4 +745,14 @@ GitHub n\'a pas de canal push pour les clients tiers, il s\'agit donc d\'une vé
     <string name="m3_edit_submit_pr">Créer la pull request</string>
     <string name="m3_members">Membres</string>
     <string name="m3_no_members">Aucun membre public.</string>
+    <string name="m3_actions_logs">Journal</string>
+    <string name="m3_actions_rerun">Relancer</string>
+    <string name="m3_actions_cancel">Annuler l\'exécution</string>
+    <string name="m3_actions_rerun_confirm">Relancer tous les jobs de cette exécution ?</string>
+    <string name="m3_actions_cancel_confirm">Annuler cette exécution ?</string>
+    <string name="m3_actions_action_done">Terminé</string>
+    <string name="m3_actions_no_logs">Aucun fichier de journal pour cette exécution.</string>
+    <string name="m3_more">Plus</string>
+    <string name="m3_notif_mute">Mettre ce fil en sourdine</string>
+    <string name="m3_notif_unmute">Réactiver ce fil</string>
 </resources>

@@ -18,9 +18,14 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
+import android.widget.Toast
+import androidx.compose.material.icons.outlined.Article
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.OpenInNew
+import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -61,6 +66,7 @@ import io.github.busybin.gitrehub.compose.common.MetaText
 import io.github.busybin.gitrehub.compose.common.Pill
 import io.github.busybin.gitrehub.compose.common.SkeletonList
 import io.github.busybin.gitrehub.compose.common.relativeTime
+import io.github.busybin.gitrehub.compose.common.render
 import io.github.busybin.gitrehub.core.model.WorkflowJob
 import io.github.busybin.gitrehub.core.model.WorkflowRun
 import io.github.busybin.gitrehub.helper.BrowserLauncher
@@ -73,7 +79,7 @@ import io.github.busybin.gitrehub.helper.BrowserLauncher
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ActionsScreen(owner: String, repo: String) {
+fun ActionsScreen(owner: String, repo: String, onOpenLogs: (Long) -> Unit = {}) {
     val vm: ActionsViewModel = viewModel()
     val state by vm.state.collectAsStateWithLifecycle()
     val workflows by vm.workflows.collectAsStateWithLifecycle()
@@ -85,6 +91,16 @@ fun ActionsScreen(owner: String, repo: String) {
     KeepTopOnRefresh(listState, refreshing)
     val tokens = LocalTokens.current
     val selectedWorkflow = vm.currentWorkflowId()
+    val acting by vm.acting.collectAsStateWithLifecycle()
+    val message by vm.message.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val messageText = message?.render()
+    LaunchedEffect(messageText) {
+        if (messageText != null) {
+            Toast.makeText(context, messageText, Toast.LENGTH_SHORT).show()
+            vm.consumeMessage()
+        }
+    }
 
     LaunchedEffect(owner, repo) { vm.setup(owner, repo) }
 
@@ -153,7 +169,11 @@ fun ActionsScreen(owner: String, repo: String) {
                                 RunCard(
                                     run = run,
                                     jobsState = jobs[run.id],
+                                    busy = acting == run.id,
                                     onExpand = { vm.loadJobs(run.id) },
+                                    onRerun = { vm.rerun(run.id) },
+                                    onCancel = { vm.cancel(run.id) },
+                                    onOpenLogs = { onOpenLogs(run.id) },
                                 )
                             }
                             if (loadingMore) {
@@ -178,8 +198,14 @@ fun ActionsScreen(owner: String, repo: String) {
 private fun RunCard(
     run: WorkflowRun,
     jobsState: LoadState<List<WorkflowJob>>?,
+    busy: Boolean,
     onExpand: () -> Unit,
+    onRerun: () -> Unit,
+    onCancel: () -> Unit,
+    onOpenLogs: () -> Unit,
 ) {
+    var confirmRerun by remember { mutableStateOf(false) }
+    var confirmCancel by remember { mutableStateOf(false) }
     val tokens = LocalTokens.current
     val context = LocalContext.current
     var expanded by rememberSaveable(run.id) { mutableStateOf(false) }
@@ -250,16 +276,35 @@ private fun RunCard(
                     HorizontalDivider()
                     Spacer(Modifier.height(10.dp))
                     JobsSection(jobsState)
-                    run.htmlUrl?.let { url ->
-                        TextButton(onClick = { if (!BrowserLauncher.open(context, url)) pendingLink = url }) {
-                            Icon(
-                                Icons.Outlined.OpenInNew,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp),
-                            )
+                    Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                        TextButton(onClick = onOpenLogs, enabled = !busy) {
+                            Icon(Icons.Outlined.Article, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(Modifier.width(6.dp))
-                            Text(stringResource(R.string.m3_open_on_github))
+                            Text(stringResource(R.string.m3_actions_logs))
                         }
+                        if (run.isRunning) {
+                            TextButton(onClick = { confirmCancel = true }, enabled = !busy) {
+                                Icon(Icons.Outlined.Close, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text(stringResource(R.string.m3_actions_cancel))
+                            }
+                        } else {
+                            TextButton(onClick = { confirmRerun = true }, enabled = !busy) {
+                                Icon(Icons.Outlined.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text(stringResource(R.string.m3_actions_rerun))
+                            }
+                        }
+                        run.htmlUrl?.let { url ->
+                            TextButton(onClick = { if (!BrowserLauncher.open(context, url)) pendingLink = url }) {
+                                Icon(Icons.Outlined.OpenInNew, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text(stringResource(R.string.m3_open_on_github))
+                            }
+                        }
+                    }
+                    if (busy) {
+                        CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
                     }
                 }
             }
@@ -267,6 +312,41 @@ private fun RunCard(
     }
 
     pendingLink?.let { LinkCopyDialog(url = it, onDismiss = { pendingLink = null }) }
+
+    if (confirmRerun) {
+        AlertDialog(
+            onDismissRequest = { confirmRerun = false },
+            title = { Text(stringResource(R.string.m3_actions_rerun)) },
+            text = { Text(stringResource(R.string.m3_actions_rerun_confirm)) },
+            confirmButton = {
+                TextButton(onClick = { confirmRerun = false; onRerun() }) {
+                    Text(stringResource(R.string.m3_actions_rerun))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmRerun = false }) {
+                    Text(stringResource(R.string.m3_cancel))
+                }
+            },
+        )
+    }
+    if (confirmCancel) {
+        AlertDialog(
+            onDismissRequest = { confirmCancel = false },
+            title = { Text(stringResource(R.string.m3_actions_cancel)) },
+            text = { Text(stringResource(R.string.m3_actions_cancel_confirm)) },
+            confirmButton = {
+                TextButton(onClick = { confirmCancel = false; onCancel() }) {
+                    Text(stringResource(R.string.m3_actions_cancel))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmCancel = false }) {
+                    Text(stringResource(R.string.m3_cancel))
+                }
+            },
+        )
+    }
 }
 
 @Composable

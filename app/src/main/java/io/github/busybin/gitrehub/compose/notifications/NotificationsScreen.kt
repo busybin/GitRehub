@@ -26,6 +26,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.DoneAll
+import androidx.compose.material.icons.outlined.MoreVert
+import androidx.compose.material.icons.outlined.VolumeOff
+import androidx.compose.material.icons.outlined.VolumeUp
 import androidx.compose.material.icons.outlined.Block
 import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
@@ -191,6 +194,7 @@ private fun NotificationsList(
     val refreshing by vm.refreshing.collectAsStateWithLifecycle()
     val filter by NotificationFilterPrefs.filter.collectAsStateWithLifecycle()
     val swipeStart by SwipePrefs.start.collectAsStateWithLifecycle()
+    val ignoredMap by vm.ignored.collectAsStateWithLifecycle()
     val swipeEnd by SwipePrefs.end.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
@@ -325,6 +329,9 @@ private fun NotificationsList(
                                             selected = item.id == selectedId,
                                             startAction = swipeStart,
                                             endAction = swipeEnd,
+                                            ignored = ignoredMap[item.id],
+                                            onMenuOpen = { vm.loadSubscription(item.id) },
+                                            onSetIgnored = { vm.setIgnored(item.id, it) },
                                             onSwipe = { action ->
                                                 when (action) {
                                                     SwipeAction.MARK_READ -> vm.markAsRead(item)
@@ -526,7 +533,10 @@ private fun NotificationRow(
     selected: Boolean,
     startAction: SwipeAction,
     endAction: SwipeAction,
+    ignored: Boolean?,
     onSwipe: (SwipeAction) -> Unit,
+    onMenuOpen: () -> Unit,
+    onSetIgnored: (Boolean) -> Unit,
     onClick: () -> Unit,
 ) {
     val tokens = LocalTokens.current
@@ -591,12 +601,27 @@ private fun NotificationRow(
             }
         },
     ) {
-        NotificationCard(item, selected, onClick)
+        NotificationCard(
+            item = item,
+            selected = selected,
+            ignored = ignored,
+            onMenuOpen = onMenuOpen,
+            onSetIgnored = onSetIgnored,
+            onClick = onClick,
+        )
     }
 }
 
 @Composable
-private fun NotificationCard(item: Notification, selected: Boolean, onClick: () -> Unit) {
+private fun NotificationCard(
+    item: Notification,
+    selected: Boolean,
+    ignored: Boolean?,
+    onMenuOpen: () -> Unit,
+    onSetIgnored: (Boolean) -> Unit,
+    onClick: () -> Unit,
+) {
+    var menu by remember { mutableStateOf(false) }
     val unread = item.unread
     val tokens = LocalTokens.current
     val container = when {

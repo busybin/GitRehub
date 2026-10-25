@@ -745,4 +745,14 @@ GitHub no tiene canal de notificaciones push para los clientes de terceros, así
     <string name="m3_edit_submit_pr">Crear pull request</string>
     <string name="m3_members">Miembros</string>
     <string name="m3_no_members">No hay miembros públicos.</string>
+    <string name="m3_actions_logs">Registro</string>
+    <string name="m3_actions_rerun">Volver a ejecutar</string>
+    <string name="m3_actions_cancel">Cancelar ejecución</string>
+    <string name="m3_actions_rerun_confirm">¿Volver a ejecutar todos los trabajos de esta ejecución?</string>
+    <string name="m3_actions_cancel_confirm">¿Cancelar esta ejecución?</string>
+    <string name="m3_actions_action_done">Hecho</string>
+    <string name="m3_actions_no_logs">Esta ejecución no tiene archivos de registro.</string>
+    <string name="m3_more">Más</string>
+    <string name="m3_notif_mute">Silenciar este hilo</string>
+    <string name="m3_notif_unmute">Reactivar este hilo</string>
 </resources>

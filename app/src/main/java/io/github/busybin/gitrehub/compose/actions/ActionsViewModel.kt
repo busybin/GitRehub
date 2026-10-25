@@ -1,7 +1,10 @@
 package io.github.busybin.gitrehub.compose.actions
 
 import androidx.lifecycle.viewModelScope
+import io.github.busybin.gitrehub.R
 import io.github.busybin.gitrehub.compose.common.LoadState
+import io.github.busybin.gitrehub.compose.common.UiText
+import io.github.busybin.gitrehub.compose.common.toUiText
 import io.github.busybin.gitrehub.compose.common.PageResult
 import io.github.busybin.gitrehub.compose.common.PagedViewModel
 import io.github.busybin.gitrehub.compose.common.launchLoad
@@ -13,6 +16,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * Actions runs of one repository, one workflow at a time (or all of them).
@@ -59,6 +65,33 @@ class ActionsViewModel : PagedViewModel<WorkflowRun>() {
 
     override suspend fun fetchCached(page: Int): PageResult<WorkflowRun>? =
         runCatching { Actions.cachedRuns(owner, repo, page, workflowId) }.getOrNull()
+
+    private val _acting = MutableStateFlow<Long?>(null)
+    val acting: StateFlow<Long?> = _acting.asStateFlow()
+
+    private val _message = MutableStateFlow<UiText?>(null)
+    val message: StateFlow<UiText?> = _message.asStateFlow()
+
+    fun consumeMessage() { _message.value = null }
+
+    fun rerun(runId: Long) = act(runId) { Actions.rerun(owner, repo, runId) }
+
+    fun cancel(runId: Long) = act(runId) { Actions.cancel(owner, repo, runId) }
+
+    private fun act(runId: Long, block: suspend () -> Unit) {
+        if (_acting.value != null) return
+        _acting.value = runId
+        viewModelScope.launch {
+            val result = runCatching { withContext(Dispatchers.IO) { block() } }
+            _acting.value = null
+            if (result.isSuccess) {
+                _message.value = UiText.res(R.string.m3_actions_action_done)
+                refresh()
+            } else {
+                _message.value = result.exceptionOrNull()?.toUiText()
+            }
+        }
+    }
 
     private fun loadWorkflows() {
         viewModelScope.launchLoad({ _workflows.value = it }) { Actions.workflows(owner, repo) }

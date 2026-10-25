@@ -60,6 +60,31 @@ class NotificationsViewModel : PagedViewModel<Notification>() {
     }
 
     /** PUT /notifications marks every thread as read — same call the activity feed makes. */
+    private val _ignored = MutableStateFlow<Map<String, Boolean>>(emptyMap())
+    val ignored: StateFlow<Map<String, Boolean>> = _ignored.asStateFlow()
+
+    /** Opens the menu: fetch the thread's mute state once. */
+    fun loadSubscription(id: String) {
+        if (_ignored.value.containsKey(id)) return
+        viewModelScope.launch {
+            val ignored = runCatching {
+                withContext(Dispatchers.IO) { GitHubApi.threadSubscription(id) }
+            }.getOrNull()?.ignored ?: return@launch
+            _ignored.value = _ignored.value + (id to ignored)
+        }
+    }
+
+    fun setIgnored(id: String, ignored: Boolean) {
+        if (_ignored.value[id] == ignored) return
+        _ignored.value = _ignored.value + (id to ignored)
+        viewModelScope.launch {
+            val ok = runCatching {
+                withContext(Dispatchers.IO) { GitHubApi.setThreadIgnored(id, ignored) }
+            }.isSuccess
+            if (!ok) _ignored.value = _ignored.value + (id to !ignored)
+        }
+    }
+
     fun markAllAsRead() {
         val current = (state.value as? LoadState.Ready)?.value ?: return
         if (_busy.value) return

@@ -5,6 +5,7 @@ import io.github.busybin.gitrehub.core.model.Workflow
 import io.github.busybin.gitrehub.core.model.WorkflowJob
 import io.github.busybin.gitrehub.core.model.WorkflowRun
 import io.github.busybin.gitrehub.core.net.GitHubApi
+import io.github.busybin.gitrehub.core.net.GitHubClient
 import io.github.busybin.gitrehub.core.net.hasMore
 
 /**
@@ -45,4 +46,38 @@ object Actions {
 
     suspend fun jobs(owner: String, repo: String, runId: Long): List<WorkflowJob> =
         GitHubApi.runJobs(owner, repo, runId)
+
+    suspend fun rerun(owner: String, repo: String, runId: Long) =
+        GitHubApi.rerunRun(owner, repo, runId)
+
+    suspend fun cancel(owner: String, repo: String, runId: Long) =
+        GitHubApi.cancelRun(owner, repo, runId)
+
+    /** One file inside the run-log zip (`<job>/<n>_<step>.txt`). */
+    data class LogFile(val name: String, val text: String)
+
+    /**
+     * Downloads and unpacks the run log zip. GitHub caps the archive per run; the reader stops at
+     * [MAX_TOTAL_BYTES] so a runaway log cannot take the app down.
+     */
+    suspend fun logs(owner: String, repo: String, runId: Long): List<LogFile> {
+        val bytes = GitHubClient.getBytes(
+            "/repos/$owner/$repo/actions/runs/$runId/logs",
+            maxBytes = MAX_TOTAL_BYTES,
+        )
+        val out = mutableListOf<LogFile>()
+        java.util.zip.ZipInputStream(bytes.inputStream()).use { zip ->
+            while (true) {
+                val entry = zip.nextEntry ?: break
+                if (entry.isDirectory) continue
+                val text = zip.readBytes().toString(Charsets.UTF_8)
+                out += LogFile(entry.name, text)
+                if (out.size >= MAX_FILES) break
+            }
+        }
+        return out.sortedBy { it.name }
+    }
+
+    private const val MAX_TOTAL_BYTES = 24L * 1024 * 1024
+    private const val MAX_FILES = 80
 }

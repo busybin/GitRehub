@@ -745,4 +745,14 @@ GitHub にはサードパーティ製クライアント向けのプッシュチ�
     <string name="m3_edit_submit_pr">PR を作成</string>
     <string name="m3_members">メンバー</string>
     <string name="m3_no_members">公開メンバーはいません。</string>
+    <string name="m3_actions_logs">実行ログ</string>
+    <string name="m3_actions_rerun">再実行</string>
+    <string name="m3_actions_cancel">実行をキャンセル</string>
+    <string name="m3_actions_rerun_confirm">この実行のすべてのジョブを再実行しますか？</string>
+    <string name="m3_actions_cancel_confirm">この実行をキャンセルしますか？</string>
+    <string name="m3_actions_action_done">完了</string>
+    <string name="m3_actions_no_logs">この実行にはログファイルがありません。</string>
+    <string name="m3_more">その他</string>
+    <string name="m3_notif_mute">このスレッドをミュート</string>
+    <string name="m3_notif_unmute">このスレッドのミュートを解除</string>
 </resources>

@@ -743,4 +743,14 @@
     <string name="m3_edit_submit_pr">Создать pull request</string>
     <string name="m3_members">Участники</string>
     <string name="m3_no_members">Нет публичных участников.</string>
+    <string name="m3_actions_logs">Журнал</string>
+    <string name="m3_actions_rerun">Перезапустить</string>
+    <string name="m3_actions_cancel">Отменить запуск</string>
+    <string name="m3_actions_rerun_confirm">Перезапустить все задания этого запуска?</string>
+    <string name="m3_actions_cancel_confirm">Отменить этот запуск?</string>
+    <string name="m3_actions_action_done">Готово</string>
+    <string name="m3_actions_no_logs">В этом запуске нет файлов журнала.</string>
+    <string name="m3_more">Ещё</string>
+    <string name="m3_notif_mute">Отключить уведомления по теме</string>
+    <string name="m3_notif_unmute">Включить уведомления по теме</string>
 </resources>
