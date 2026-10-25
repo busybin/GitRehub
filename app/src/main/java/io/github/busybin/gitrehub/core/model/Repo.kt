@@ -67,6 +67,19 @@ data class RepoPermissions(
     val canTriage: Boolean get() = canWrite || triage
 }
 
+/**
+ * `GET /repos/{o}/{r}/subscription` — GitHub's "watch" state. The API has only two levels on top of
+ * "not watching": everything, and ignored (all notifications blocked).
+ */
+@Serializable
+data class RepoSubscription(
+    val subscribed: Boolean = false,
+    val ignored: Boolean = false,
+)
+
+/** What a watch button tap should send; `null` means unwatch. */
+enum class WatchLevel { ALL, IGNORED }
+
 /** One page of GraphQL watchers; `cursor` is opaque and only fed back into the next query. */
 data class WatchersPage(
     val users: List<User> = emptyList(),

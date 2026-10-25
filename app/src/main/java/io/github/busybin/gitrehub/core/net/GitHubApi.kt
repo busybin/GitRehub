@@ -13,6 +13,7 @@ import io.github.busybin.gitrehub.core.model.CreatedPullRequest
 import io.github.busybin.gitrehub.core.model.Discussion
 import io.github.busybin.gitrehub.core.model.DiscussionComment
 import io.github.busybin.gitrehub.core.model.Event
+import io.github.busybin.gitrehub.core.model.Gist
 import io.github.busybin.gitrehub.core.model.Issue
 import io.github.busybin.gitrehub.core.model.Label
 import io.github.busybin.gitrehub.core.model.MergeResult
@@ -23,6 +24,7 @@ import io.github.busybin.gitrehub.core.model.PunchCard
 import io.github.busybin.gitrehub.core.model.Reaction
 import io.github.busybin.gitrehub.core.model.Release
 import io.github.busybin.gitrehub.core.model.Repo
+import io.github.busybin.gitrehub.core.model.RepoSubscription
 import io.github.busybin.gitrehub.core.model.Review
 import io.github.busybin.gitrehub.core.model.ReviewComment
 import io.github.busybin.gitrehub.core.model.SearchCode
@@ -31,6 +33,7 @@ import io.github.busybin.gitrehub.core.model.StatsOutcome
 import io.github.busybin.gitrehub.core.model.Tag
 import io.github.busybin.gitrehub.core.model.ThreadSubscription
 import io.github.busybin.gitrehub.core.model.User
+import io.github.busybin.gitrehub.core.model.WatchLevel
 import io.github.busybin.gitrehub.core.model.WatchersPage
 import io.github.busybin.gitrehub.core.model.WeekActivity
 import io.github.busybin.gitrehub.core.model.Workflow
@@ -90,6 +93,28 @@ object GitHubApi {
         GitHubClient.sendNoContent(
             if (following) "PUT" else "DELETE",
             "/user/following/$login",
+        )
+
+    // ---------------------------------------------------------------- gists
+
+    /** `GET /gists`: the signed-in account's gists, newest first. Includes secret gists. */
+    suspend fun myGists(page: Int): ApiResponse<List<Gist>> = gists("/gists", page)
+
+    /** `GET /users/{login}/gists`: the public gists of any account. */
+    suspend fun userGists(login: String, page: Int): ApiResponse<List<Gist>> =
+        gists("/users/$login/gists", page)
+
+    /** One gist with its files; the list endpoint already has them, this is for direct links. */
+    suspend fun gist(id: String): Gist =
+        GitHubClient.get("/gists/$id", Gist.serializer()).value
+
+    suspend fun deleteGist(id: String) = GitHubClient.sendNoContent("DELETE", "/gists/$id")
+
+    private suspend fun gists(path: String, page: Int): ApiResponse<List<Gist>> =
+        GitHubClient.get(
+            path,
+            ListSerializer(Gist.serializer()),
+            query = mapOf("page" to "$page", "per_page" to "$PAGE_SIZE"),
         )
 
     // ---------------------------------------------------------------- repos
@@ -210,20 +235,25 @@ object GitHubApi {
             "/user/starred/$owner/$repo",
         )
 
-    /** A 200 on the subscription resource means "watching"; a 404 means "not watching". */
-    suspend fun isWatching(owner: String, repo: String): Boolean =
-        GitHubClient.exists("/repos/$owner/$repo/subscription")
+    /** `GET /repos/{o}/{r}/subscription`: a 404 (→ exception) means "not watching". */
+    suspend fun repoSubscription(owner: String, repo: String): RepoSubscription =
+        GitHubClient.get(
+            "/repos/$owner/$repo/subscription",
+            RepoSubscription.serializer(),
+        ).value
 
-    suspend fun setWatching(owner: String, repo: String, watching: Boolean) =
-        if (watching) {
-            GitHubClient.sendNoContent(
-                "PUT",
-                "/repos/$owner/$repo/subscription",
-                buildJsonObject { put("subscribed", JsonPrimitive(true)) },
-            )
-        } else {
+    /** `null` unwatches; otherwise PUT the level (all notifications, or ignored). */
+    suspend fun setWatchLevel(owner: String, repo: String, level: WatchLevel?) {
+        if (level == null) {
             GitHubClient.sendNoContent("DELETE", "/repos/$owner/$repo/subscription")
+            return
         }
+        GitHubClient.sendNoContent(
+            "PUT",
+            "/repos/$owner/$repo/subscription",
+            watchSubscriptionBody(level),
+        )
+    }
 
     suspend fun forkRepo(
         owner: String,
@@ -1165,6 +1195,12 @@ fun ApiResponse<List<Event>>.hasMoreEvents(): Boolean =
 /** Same rule for every other paginated list. */
 fun <T> ApiResponse<List<T>>.hasMore(pageSize: Int = GitHubApi.PAGE_SIZE): Boolean =
     links.next != null || value.size >= pageSize
+
+/** Request body for `PUT /repos/{o}/{r}/subscription`; the API exposes only these two booleans. */
+internal fun watchSubscriptionBody(level: WatchLevel): JsonObject = buildJsonObject {
+    put("subscribed", JsonPrimitive(level == WatchLevel.ALL))
+    put("ignored", JsonPrimitive(level == WatchLevel.IGNORED))
+}
 
 /** Search asks for `per_page=PAGE_SIZE` too, so the same full-page guess works. */
 fun <T> ApiResponse<SearchResult<T>>.hasMoreSearch(pageSize: Int = GitHubApi.PAGE_SIZE): Boolean =

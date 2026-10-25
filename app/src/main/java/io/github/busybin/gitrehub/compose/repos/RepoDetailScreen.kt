@@ -50,6 +50,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -90,6 +91,7 @@ import io.github.busybin.gitrehub.compose.common.render
 import io.github.busybin.gitrehub.compose.common.ToggleActionButton
 import io.github.busybin.gitrehub.compose.common.repoBlobBaseUrl
 import io.github.busybin.gitrehub.compose.common.repoRawBaseUrl
+import io.github.busybin.gitrehub.core.model.WatchLevel
 import io.github.busybin.gitrehub.helper.BrowserLauncher
 import io.github.busybin.gitrehub.provider.colors.ColorsProvider
 import kotlinx.coroutines.launch
@@ -146,7 +148,7 @@ fun RepoDetailScreen(
     }
     var linkToCopy by remember { mutableStateOf<String?>(null) }
     var confirmStar by remember { mutableStateOf(false) }
-    var confirmWatch by remember { mutableStateOf(false) }
+    var showWatch by remember { mutableStateOf(false) }
     var showForkDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(owner, name) { vm.load(owner, name) }
@@ -190,21 +192,16 @@ fun RepoDetailScreen(
                 onDismiss = { showForkDialog = false },
             )
         }
-        if (confirmWatch) {
-            ConfirmDialog(
-                title = stringResource(
-                    if (detail.watching) R.string.m3_unwatch_confirm_title else R.string.m3_watch_confirm_title,
-                    repo.fullName.ifBlank { "$owner/$name" },
-                ),
-                message = stringResource(
-                    if (detail.watching) R.string.m3_unwatch_confirm_message else R.string.m3_watch_confirm_message
-                ),
-                confirmLabel = stringResource(if (detail.watching) R.string.m3_unwatch else R.string.m3_watch),
-                onConfirm = {
-                    confirmWatch = false
-                    vm.toggleWatch()
+        if (showWatch) {
+            WatchLevelDialog(
+                repoName = repo.fullName.ifBlank { "$owner/$name" },
+                watching = detail.watching,
+                ignored = detail.watchIgnored,
+                onPick = { level ->
+                    showWatch = false
+                    vm.setWatch(level)
                 },
-                onDismiss = { confirmWatch = false },
+                onDismiss = { showWatch = false },
             )
         }
 
@@ -345,8 +342,14 @@ fun RepoDetailScreen(
                         active = detail.watching,
                         enabled = !watchBusy,
                         icon = if (detail.watching) Icons.Filled.Notifications else Icons.Outlined.Notifications,
-                        label = stringResource(if (detail.watching) R.string.m3_watching else R.string.m3_watch),
-                        onClick = { confirmWatch = true },
+                        label = stringResource(
+                            when {
+                                !detail.watching -> R.string.m3_watch
+                                detail.watchIgnored -> R.string.m3_watching_ignored
+                                else -> R.string.m3_watching
+                            }
+                        ),
+                        onClick = { showWatch = true },
                     )
                 }
 
@@ -744,6 +747,74 @@ private fun ForkDialog(
             ) { Text(stringResource(R.string.m3_fork_confirm)) }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.m3_cancel)) } },
+    )
+}
+
+/**
+ * Notification level for a repository. GitHub has no "participating" level on repositories (that is
+ * per issue/PR), so the API's two booleans give exactly these three choices.
+ */
+@Composable
+private fun WatchLevelDialog(
+    repoName: String,
+    watching: Boolean,
+    ignored: Boolean,
+    onPick: (WatchLevel?) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    data class Option(val level: WatchLevel?, val label: Int, val description: Int, val selected: Boolean)
+    val options = listOf(
+        Option(
+            level = WatchLevel.ALL,
+            label = R.string.m3_watch_all,
+            description = R.string.m3_watch_all_desc,
+            selected = watching && !ignored,
+        ),
+        Option(
+            level = WatchLevel.IGNORED,
+            label = R.string.m3_watch_ignored,
+            description = R.string.m3_watch_ignored_desc,
+            selected = watching && ignored,
+        ),
+        Option(
+            level = null,
+            label = R.string.m3_watch_none,
+            description = R.string.m3_watch_none_desc,
+            selected = !watching,
+        ),
+    )
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.m3_watch_level_title, repoName)) },
+        text = {
+            Column {
+                options.forEach { option ->
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onPick(option.level) }
+                            .padding(vertical = 6.dp),
+                    ) {
+                        RadioButton(selected = option.selected, onClick = { onPick(option.level) })
+                        Column {
+                            Text(
+                                text = stringResource(option.label),
+                                style = MaterialTheme.typography.bodyLarge,
+                            )
+                            Text(
+                                text = stringResource(option.description),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.m3_cancel)) }
+        },
     )
 }
 

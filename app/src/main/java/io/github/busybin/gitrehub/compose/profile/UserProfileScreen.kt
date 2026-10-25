@@ -43,7 +43,9 @@ import io.github.busybin.gitrehub.compose.common.LoadState
 import io.github.busybin.gitrehub.compose.common.MetaText
 import io.github.busybin.gitrehub.compose.common.ToggleActionButton
 import io.github.busybin.gitrehub.compose.common.render
+import io.github.busybin.gitrehub.compose.gists.GistCard
 import io.github.busybin.gitrehub.compose.repos.RepoCard
+import io.github.busybin.gitrehub.core.model.Gist
 import io.github.busybin.gitrehub.core.model.User
 
 /**
@@ -57,6 +59,7 @@ fun UserProfileScreen(
     login: String,
     onOpenRepo: (String) -> Unit,
     onOpenUser: (String) -> Unit = {},
+    onOpenGist: (Gist) -> Unit = {},
 ) {
     val vm: UserProfileViewModel = viewModel(key = "user-$login")
     val state by vm.state.collectAsStateWithLifecycle()
@@ -64,6 +67,7 @@ fun UserProfileScreen(
     val starred by vm.starred.collectAsStateWithLifecycle()
     val following by vm.following.collectAsStateWithLifecycle()
     val followers by vm.followers.collectAsStateWithLifecycle()
+    val gists by vm.gists.collectAsStateWithLifecycle()
     val members by vm.members.collectAsStateWithLifecycle()
     val followBusy by vm.followBusy.collectAsStateWithLifecycle()
     val message by vm.message.collectAsStateWithLifecycle()
@@ -86,6 +90,7 @@ fun UserProfileScreen(
         val noFollowers = stringResource(R.string.m3_no_followers)
         val noRepos = stringResource(R.string.m3_no_public_repos)
         val noMembers = stringResource(R.string.m3_no_members)
+        val noGists = stringResource(R.string.m3_no_gists)
         LazyColumn(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -146,6 +151,16 @@ fun UserProfileScreen(
                     empty = noStarred,
                 ) { repos ->
                     items(repos, key = { it.id }) { repo -> RepoCard(repo, onOpenRepo) }
+                }
+
+                UserTab.GISTS -> ListSection(
+                    state = gists,
+                    onRetry = { vm.selectTab(login, UserTab.GISTS, force = true) },
+                    empty = noGists,
+                ) { list ->
+                    items(list, key = { it.id }) { gist ->
+                        GistCard(gist) { onOpenGist(gist) }
+                    }
                 }
 
                 UserTab.FOLLOWING -> UserSection(

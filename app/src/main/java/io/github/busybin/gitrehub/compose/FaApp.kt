@@ -72,6 +72,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
@@ -119,6 +120,8 @@ import io.github.busybin.gitrehub.compose.discussions.DiscussionsScreen
 import io.github.busybin.gitrehub.compose.feed.FeedFilterAction
 import io.github.busybin.gitrehub.compose.feed.FeedFilterSheet
 import io.github.busybin.gitrehub.compose.feed.FeedScreen
+import io.github.busybin.gitrehub.compose.gists.GistDetailScreen
+import io.github.busybin.gitrehub.compose.gists.GistsScreen
 import io.github.busybin.gitrehub.compose.issues.IssueKind
 import io.github.busybin.gitrehub.compose.issues.IssueDetailScreen
 import io.github.busybin.gitrehub.compose.issues.PullRequestFilesScreen
@@ -165,6 +168,8 @@ object Routes {
     const val PROFILE = "profile"
     const val USER = "user/{login}"
     const val SEARCH = "search"
+    const val GISTS = "gists?login={login}"
+    const val GIST = "gist/{id}"
     const val DRAFTS = "drafts"
     const val SETTINGS = "settings"
     const val REPO = "repo/{owner}/{name}"
@@ -195,6 +200,11 @@ object Routes {
     fun repo(owner: String, name: String) = "repo/$owner/$name"
 
     fun user(login: String) = "user/${Uri.encode(login)}"
+
+    /** `null` opens the signed-in account's own gists (secret ones included). */
+    fun gists(login: String? = null) = "gists?login=${Uri.encode(login.orEmpty())}"
+
+    fun gist(id: String) = "gist/${Uri.encode(id)}"
 
     fun releases(owner: String, repo: String) = "releases/$owner/$repo"
 
@@ -481,6 +491,18 @@ fun FaApp(routeRequest: MutableState<String?>? = null) {
                                 modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
                             )
                             NavigationDrawerItem(
+                                label = { Text(stringResource(R.string.m3_gists)) },
+                                icon = {
+                                    Icon(painterResource(R.drawable.ic_gists), contentDescription = null)
+                                },
+                                selected = current == Routes.GISTS || current == Routes.GIST,
+                                onClick = {
+                                    scope.launch { drawerState.close() }
+                                    nav.navigateSingleTop(Routes.gists())
+                                },
+                                modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
+                            )
+                            NavigationDrawerItem(
                                 label = { Text(stringResource(R.string.m3_drawer_search)) },
                                 icon = { Icon(Icons.Filled.Search, contentDescription = null) },
                                 selected = current == Routes.SEARCH,
@@ -703,6 +725,32 @@ fun FaApp(routeRequest: MutableState<String?>? = null) {
                             )
                         }
                         composable(Routes.SETTINGS) { SettingsScreen() }
+                        composable(
+                            route = Routes.GISTS,
+                            arguments = listOf(
+                                navArgument("login") {
+                                    type = NavType.StringType
+                                    defaultValue = ""
+                                },
+                            ),
+                        ) { entry ->
+                            GistsScreen(
+                                login = entry.arguments?.getString("login").orEmpty()
+                                    .ifBlank { null },
+                                onOpenGist = { gist -> nav.navigate(Routes.gist(gist.id)) },
+                            )
+                        }
+                        composable(
+                            route = Routes.GIST,
+                            arguments = listOf(
+                                navArgument("id") { type = NavType.StringType },
+                            ),
+                        ) { entry ->
+                            GistDetailScreen(
+                                id = entry.arguments?.getString("id").orEmpty(),
+                                onDeleted = { nav.popBackStack() },
+                            )
+                        }
                         composable(Routes.DRAFTS) {
                             DraftsScreen(
                                 onOpenIssue = { owner, repo, number ->
@@ -720,6 +768,7 @@ fun FaApp(routeRequest: MutableState<String?>? = null) {
                                 login = entry.arguments?.getString("login").orEmpty(),
                                 onOpenRepo = { nav.openRepo(it) },
                                 onOpenUser = { nav.navigate(Routes.user(it)) },
+                                onOpenGist = { gist -> nav.navigate(Routes.gist(gist.id)) },
                             )
                         }
                         composable(
@@ -1240,6 +1289,8 @@ private fun FaTopBar(
         Routes.DEVICE_LOGIN_ADD -> stringResource(R.string.m3_title_add_account)
         Routes.ACCOUNTS -> stringResource(R.string.m3_title_accounts)
         Routes.SEARCH -> stringResource(R.string.m3_title_search)
+        Routes.GISTS -> stringResource(R.string.m3_gists)
+        Routes.GIST -> stringResource(R.string.m3_gist)
         Routes.DRAFTS -> stringResource(R.string.m3_drafts)
         Routes.SETTINGS -> stringResource(R.string.m3_title_settings)
         Routes.REPO -> entry?.arguments?.getString("name")
@@ -1323,6 +1374,10 @@ private fun shareUrlFor(route: String?, entry: androidx.navigation.NavBackStackE
     val repo = args.getString("repo") ?: args.getString("name")
     if (route == Routes.USER) {
         return args.getString("login")?.takeIf { it.isNotBlank() }?.let { "https://github.com/$it" }
+    }
+    if (route == Routes.GIST) {
+        return args.getString("id")?.takeIf { it.isNotBlank() }
+            ?.let { "https://gist.github.com/$it" }
     }
     if (owner.isNullOrBlank() || repo.isNullOrBlank()) return null
     val base = "https://github.com/$owner/$repo"

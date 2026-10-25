@@ -11,6 +11,7 @@ import io.github.busybin.gitrehub.compose.data.RepoStats
 import io.github.busybin.gitrehub.core.auth.Session
 import io.github.busybin.gitrehub.core.model.Repo
 import io.github.busybin.gitrehub.core.model.User
+import io.github.busybin.gitrehub.core.model.WatchLevel
 import io.github.busybin.gitrehub.core.net.GitHubApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -24,6 +25,8 @@ data class RepoDetail(
     val readmeHtml: String?,
     val starring: Boolean,
     val watching: Boolean = false,
+    /** Watching with every notification blocked ("ignore"). */
+    val watchIgnored: Boolean = false,
     val languages: List<LanguageSlice> = emptyList(),
     val contributors: List<User> = emptyList(),
     val counts: RepoStats.RepoCounts = RepoStats.RepoCounts(),
@@ -69,9 +72,9 @@ class RepoDetailViewModel : ViewModel() {
             val starringDeferred = async {
                 runCatching { GitHubApi.isStarred(owner, name) }.getOrDefault(false)
             }
-            // A 200 means subscribed, 404 means "not watching"; any failure is treated as not watching.
-            val watchingDeferred = async {
-                runCatching { GitHubApi.isWatching(owner, name) }.getOrDefault(false)
+            // No subscription resource (404) means "not watching"; any failure reads the same way.
+            val subscriptionDeferred = async {
+                runCatching { GitHubApi.repoSubscription(owner, name) }.getOrNull()
             }
             val languagesDeferred = async {
                 runCatching { RepoStats.languages(owner, name) }.getOrDefault(emptyList())
@@ -86,11 +89,14 @@ class RepoDetailViewModel : ViewModel() {
             // One's own repos cannot be forked again, so the button is greyed out instead of toggled.
             val currentLogin = runCatching { Session.currentAccount()?.login }.getOrNull()
             _forkOwned.value = currentLogin != null && repo.owner?.login == currentLogin
+            val subscription = subscriptionDeferred.await()
             RepoDetail(
                 repo = repo,
                 readmeHtml = readmeDeferred.await(),
                 starring = starringDeferred.await(),
-                watching = watchingDeferred.await(),
+                // `ignored` alone still means "subscribed but muted", which the button must show.
+                watching = subscription != null && (subscription.subscribed || subscription.ignored),
+                watchIgnored = subscription?.ignored == true,
                 languages = languagesDeferred.await(),
                 contributors = contributorsDeferred.await(),
                 counts = countsDeferred.await(),
@@ -153,16 +159,23 @@ class RepoDetailViewModel : ViewModel() {
         }
     }
 
-    /** Watch / unwatch: the button follows the subscription state and toggles both ways. */
-    fun toggleWatch() {
+    /**
+     * Set the subscription: [WatchLevel.ALL] for everything, [WatchLevel.IGNORED] for "block all
+     * notifications", `null` to unwatch. The button follows the returned state.
+     */
+    fun setWatch(level: WatchLevel?) {
         val current = (_state.value as? LoadState.Ready)?.value ?: return
         if (_watchBusy.value) return
         _watchBusy.value = true
         viewModelScope.launch {
-            val target = !current.watching
-            val ok = runCatching { GitHubApi.setWatching(owner, name, target) }.isSuccess
+            val ok = runCatching { GitHubApi.setWatchLevel(owner, name, level) }.isSuccess
             if (ok) {
-                _state.value = LoadState.Ready(current.copy(watching = target))
+                _state.value = LoadState.Ready(
+                    current.copy(
+                        watching = level != null,
+                        watchIgnored = level == WatchLevel.IGNORED,
+                    )
+                )
             } else {
                 _message.value = UiText.res(R.string.m3_action_failed)
             }

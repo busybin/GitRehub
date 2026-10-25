@@ -139,6 +139,11 @@ object GitHubClient {
         execute(builder.build(), token = null, cacheOnly = cacheOnly).first
     }
 
+    /** Plain text behind an absolute URL on another host (gist raw links); no token is sent. */
+    suspend fun getTextAbsolute(url: String): String = withContext(Dispatchers.IO) {
+        execute(Request.Builder().url(url).get().build(), token = null, cacheOnly = false).first
+    }
+
     /**
      * Status plus body, for answers that are not always the same shape: `202`/empty for stats,
      * array-or-object for the contents endpoint.

@@ -8,6 +8,7 @@ import io.github.busybin.gitrehub.compose.common.LoadState
 import io.github.busybin.gitrehub.compose.common.UiText
 import io.github.busybin.gitrehub.compose.common.launchLoad
 import io.github.busybin.gitrehub.compose.common.toUiText
+import io.github.busybin.gitrehub.core.model.Gist
 import io.github.busybin.gitrehub.core.model.Repo
 import io.github.busybin.gitrehub.core.model.User
 import io.github.busybin.gitrehub.core.auth.Session
@@ -30,6 +31,7 @@ data class UserPage(
 enum class UserTab(@StringRes val labelRes: Int) {
     REPOS(R.string.m3_profile_repos),
     STARRED(R.string.m3_starred),
+    GISTS(R.string.m3_gists),
     FOLLOWING(R.string.m3_following),
     FOLLOWERS(R.string.m3_followers),
     MEMBERS(R.string.m3_members),
@@ -51,6 +53,9 @@ class UserProfileViewModel : ViewModel() {
 
     private val _starred = MutableStateFlow<LoadState<List<Repo>>?>(null)
     val starred: StateFlow<LoadState<List<Repo>>?> = _starred.asStateFlow()
+
+    private val _gists = MutableStateFlow<LoadState<List<Gist>>?>(null)
+    val gists: StateFlow<LoadState<List<Gist>>?> = _gists.asStateFlow()
 
     private val _following = MutableStateFlow<LoadState<List<User>>?>(null)
     val following: StateFlow<LoadState<List<User>>?> = _following.asStateFlow()
@@ -78,6 +83,10 @@ class UserProfileViewModel : ViewModel() {
             UserTab.REPOS -> Unit
             UserTab.STARRED -> if (force || _starred.value == null) {
                 load(login, _starred) { GitHubApi.starredRepos(login, 1).value }
+            }
+
+            UserTab.GISTS -> if (force || _gists.value == null) {
+                load(login, _gists) { GitHubApi.userGists(login, 1).value }
             }
 
             UserTab.FOLLOWING -> if (force || _following.value == null) {

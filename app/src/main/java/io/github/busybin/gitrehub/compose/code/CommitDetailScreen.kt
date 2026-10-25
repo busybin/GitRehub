@@ -13,7 +13,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ContentCopy
@@ -23,9 +24,13 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -46,28 +51,48 @@ import io.github.busybin.gitrehub.compose.common.relativeTime
 import io.github.busybin.gitrehub.core.model.Commit
 import io.github.busybin.gitrehub.core.model.CommitFile
 import io.github.busybin.gitrehub.helper.AppHelper
+import kotlinx.coroutines.launch
+
+/** Diffs longer than this start collapsed: a huge commit used to lay out every line at once. */
+private const val AUTO_COLLAPSE_LINES = 80
 
 /**
  * Commit detail plus diff.
  *
- * All data arrives at once: `files[].patch` in the `commits/{sha}` response is the unified diff, so it
- * just gets coloured line by line; no need to parse the `Accept: ...diff` plain text.
+ * All data arrives at once: `files[].patch` in the `commits/{sha}` response is the unified diff, so
+ * it just gets coloured line by line; no need to parse the `Accept: ...diff` plain text.
+ *
+ * Large commits get a file index at the top (tap a path to jump to it) and each diff starts
+ * collapsed past [AUTO_COLLAPSE_LINES] lines.
  */
 @Composable
 fun CommitDetailScreen(owner: String, repo: String, sha: String) {
     val vm: CommitDetailViewModel = viewModel()
     val state by vm.state.collectAsStateWithLifecycle()
+    val listState = rememberLazyListState()
+    val scope = rememberCoroutineScope()
+    // Explicit user choice per file path; absent means "use the default for its size".
+    val expandedOverrides = remember { mutableStateMapOf<String, Boolean>() }
 
     LaunchedEffect(owner, repo, sha) { vm.load(owner, repo, sha) }
 
     AsyncContent(state = state, onRetry = { vm.load(owner, repo, sha, force = true) }) { commit ->
+        val files = commit.files
+        val hasIndex = files.size > 1
         LazyColumn(
+            state = listState,
             modifier = Modifier.fillMaxWidth(),
             contentPadding = PaddingValues(14.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             item { CommitHeader(commit) }
-            val files = commit.files
+            if (hasIndex) {
+                item {
+                    FileIndex(files) { index ->
+                        scope.launch { listState.animateScrollToItem(index + 2) }
+                    }
+                }
+            }
             if (files.isEmpty()) {
                 item {
                     Text(
@@ -77,13 +102,68 @@ fun CommitDetailScreen(owner: String, repo: String, sha: String) {
                     )
                 }
             } else {
-                items(files, key = { it.filename ?: it.sha ?: "file" }) { file ->                    FileDiff(file)
+                itemsIndexed(files, key = { _, file -> file.filename ?: file.sha ?: "file" }) { _, file ->
+                    val path = file.filename.orEmpty()
+                    val lines = remember(file.patch) { file.patch?.lineSequence()?.count() ?: 0 }
+                    val expanded = expandedOverrides[path] ?: (lines <= AUTO_COLLAPSE_LINES)
+                    FileDiff(
+                        file = file,
+                        lineCount = lines,
+                        expanded = expanded,
+                        onToggle = { expandedOverrides[path] = !expanded },
+                    )
                 }
                 item {
                     Text(
                         text = stringResource(R.string.m3_commit_diff_note),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** Compact list of the changed paths; tapping one scrolls to that diff card. */
+@Composable
+private fun FileIndex(files: List<CommitFile>, onJump: (Int) -> Unit) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        shape = RoundedCornerShape(14.dp),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(Modifier.padding(vertical = 8.dp)) {
+            Text(
+                text = stringResource(R.string.m3_commit_jump_files, files.size),
+                style = MaterialTheme.typography.titleSmall,
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+            )
+            files.forEachIndexed { index, file ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onJump(index) }
+                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                ) {
+                    Text(
+                        text = file.filename.orEmpty(),
+                        style = MaterialTheme.typography.bodySmall,
+                        fontFamily = FontFamily.Monospace,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = "+${file.additions}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color(0xFF7EE787),
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        text = "−${file.deletions}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color(0xFFFFA198),
                     )
                 }
             }
@@ -171,7 +251,14 @@ private fun CommitHeader(commit: Commit) {
 
 /** One file's change: header (path + added/removed counts) plus the patch coloured line by line. */
 @Composable
-private fun FileDiff(file: CommitFile) {
+private fun FileDiff(
+    file: CommitFile,
+    lineCount: Int,
+    expanded: Boolean,
+    onToggle: () -> Unit,
+) {
+    val patch = file.patch
+    val canCollapse = !patch.isNullOrBlank() && lineCount > AUTO_COLLAPSE_LINES
     Card(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
         shape = RoundedCornerShape(14.dp),
@@ -203,19 +290,33 @@ private fun FileDiff(file: CommitFile) {
                     color = Color(0xFFFFA198),
                 )
             }
-            val patch = file.patch
-            if (patch.isNullOrBlank()) {
-                Spacer(Modifier.height(8.dp))
-                HorizontalDivider()
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    text = stringResource(R.string.m3_commit_patch_too_big),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            } else {
-                Spacer(Modifier.height(8.dp))
-                DiffLines(patch)
+            when {
+                patch.isNullOrBlank() -> {
+                    Spacer(Modifier.height(8.dp))
+                    HorizontalDivider()
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = stringResource(R.string.m3_commit_patch_too_big),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+
+                canCollapse && !expanded -> {
+                    TextButton(onClick = onToggle) {
+                        Text(stringResource(R.string.m3_commit_show_diff, lineCount))
+                    }
+                }
+
+                else -> {
+                    Spacer(Modifier.height(8.dp))
+                    DiffLines(patch)
+                    if (canCollapse) {
+                        TextButton(onClick = onToggle) {
+                            Text(stringResource(R.string.m3_commit_hide_diff))
+                        }
+                    }
+                }
             }
         }
     }
