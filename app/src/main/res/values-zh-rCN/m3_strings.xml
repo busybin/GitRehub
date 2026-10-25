@@ -753,4 +753,18 @@ github 不给第三方客户端推送通道，所以这是真的轮询：最短 
     <string name="m3_more">更多</string>
     <string name="m3_notif_mute">静音此线程</string>
     <string name="m3_notif_unmute">取消静音</string>
+    <string name="m3_drafts">草稿</string>
+    <string name="m3_drafts_hint">离线时保存的评论会在这里发送。</string>
+    <string name="m3_drafts_send_all">全部发送</string>
+    <string name="m3_drafts_empty">没有草稿。</string>
+    <string name="m3_draft_send">发送</string>
+    <string name="m3_draft_delete">删除</string>
+    <string name="m3_draft_saved">离线：评论已保存为草稿。</string>
+    <string name="m3_notif_rules">静音规则</string>
+    <string name="m3_notif_rules_note">匹配的通知会自动标为已读，规则只存在本机。</string>
+    <string name="m3_notif_rule_repo">仓库</string>
+    <string name="m3_notif_rule_keyword">关键词</string>
+    <string name="m3_notif_rule_value">owner/repo 或文本</string>
+    <string name="m3_notif_rule_add">添加</string>
+    <string name="m3_notif_rule_remove">删除规则</string>
 </resources>

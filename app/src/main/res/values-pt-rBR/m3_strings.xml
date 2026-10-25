@@ -755,4 +755,18 @@ O GitHub não tem canal de push para clientes de terceiros, então isto é uma c
     <string name="m3_more">Mais</string>
     <string name="m3_notif_mute">Silenciar este tópico</string>
     <string name="m3_notif_unmute">Reativar este tópico</string>
+    <string name="m3_drafts">Rascunhos</string>
+    <string name="m3_drafts_hint">Os comentários salvos offline são enviados daqui.</string>
+    <string name="m3_drafts_send_all">Enviar tudo</string>
+    <string name="m3_drafts_empty">Nenhum rascunho.</string>
+    <string name="m3_draft_send">Enviar</string>
+    <string name="m3_draft_delete">Excluir</string>
+    <string name="m3_draft_saved">Offline: o comentário foi salvo como rascunho.</string>
+    <string name="m3_notif_rules">Regras de silêncio</string>
+    <string name="m3_notif_rules_note">Notificações correspondentes são marcadas como lidas. Regras locais.</string>
+    <string name="m3_notif_rule_repo">Repositório</string>
+    <string name="m3_notif_rule_keyword">Palavra-chave</string>
+    <string name="m3_notif_rule_value">owner/repo ou texto</string>
+    <string name="m3_notif_rule_add">Adicionar</string>
+    <string name="m3_notif_rule_remove">Remover regra</string>
 </resources>

@@ -756,4 +756,18 @@ GitHub has no push channel for third-party clients, so this is real polling: the
     <string name="m3_more">More</string>
     <string name="m3_notif_mute">Mute this thread</string>
     <string name="m3_notif_unmute">Unmute this thread</string>
+    <string name="m3_drafts">Drafts</string>
+    <string name="m3_drafts_hint">Comments saved while offline are sent from here.</string>
+    <string name="m3_drafts_send_all">Send all</string>
+    <string name="m3_drafts_empty">No saved drafts.</string>
+    <string name="m3_draft_send">Send</string>
+    <string name="m3_draft_delete">Delete</string>
+    <string name="m3_draft_saved">Offline: the comment is saved as a draft.</string>
+    <string name="m3_notif_rules">Mute rules</string>
+    <string name="m3_notif_rules_note">Matching notifications are marked read automatically. Rules stay on this device.</string>
+    <string name="m3_notif_rule_repo">Repository</string>
+    <string name="m3_notif_rule_keyword">Keyword</string>
+    <string name="m3_notif_rule_value">owner/repo or text</string>
+    <string name="m3_notif_rule_add">Add</string>
+    <string name="m3_notif_rule_remove">Remove rule</string>
 </resources>

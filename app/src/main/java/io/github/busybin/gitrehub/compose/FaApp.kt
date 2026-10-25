@@ -31,6 +31,7 @@ import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Assignment
+import androidx.compose.material.icons.outlined.Drafts
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.SwitchAccount
@@ -102,6 +103,8 @@ import io.github.busybin.gitrehub.compose.code.RefKind
 import io.github.busybin.gitrehub.compose.common.Avatar
 import io.github.busybin.gitrehub.compose.common.AvatarVersions
 import io.github.busybin.gitrehub.compose.common.ConfirmDialog
+import io.github.busybin.gitrehub.compose.common.DraftQueue
+import io.github.busybin.gitrehub.compose.common.DraftsScreen
 import io.github.busybin.gitrehub.compose.common.OfflineBanner
 import io.github.busybin.gitrehub.compose.common.TabBadges
 import io.github.busybin.gitrehub.compose.common.UpdatePromptHost
@@ -160,6 +163,7 @@ object Routes {
     const val PROFILE = "profile"
     const val USER = "user/{login}"
     const val SEARCH = "search"
+    const val DRAFTS = "drafts"
     const val SETTINGS = "settings"
     const val REPO = "repo/{owner}/{name}"
     const val ISSUES = "issues/{owner}/{repo}?kind={kind}"
@@ -324,6 +328,9 @@ fun FaApp(routeRequest: MutableState<String?>? = null) {
 
         LaunchedEffect(loggedIn) {
             if (loggedIn) {
+                scope.launch {
+                    withContext(Dispatchers.IO) { DraftQueue.flushAll() }
+                }
                 NotificationPrefs.ensureService(context)
                 // Warm the repo / starred caches so offline users still see their own repos
                 CacheWarmer.warm()
@@ -472,6 +479,16 @@ fun FaApp(routeRequest: MutableState<String?>? = null) {
                                 onClick = {
                                     scope.launch { drawerState.close() }
                                     nav.navigateSingleTop(Routes.SEARCH)
+                                },
+                                modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
+                            )
+                            NavigationDrawerItem(
+                                label = { Text(stringResource(R.string.m3_drafts)) },
+                                icon = { Icon(Icons.Outlined.Drafts, contentDescription = null) },
+                                selected = current == Routes.DRAFTS,
+                                onClick = {
+                                    scope.launch { drawerState.close() }
+                                    nav.navigateSingleTop(Routes.DRAFTS)
                                 },
                                 modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
                             )
@@ -676,6 +693,13 @@ fun FaApp(routeRequest: MutableState<String?>? = null) {
                             )
                         }
                         composable(Routes.SETTINGS) { SettingsScreen() }
+                        composable(Routes.DRAFTS) {
+                            DraftsScreen(
+                                onOpenIssue = { owner, repo, number ->
+                                    nav.navigate(Routes.issue(owner, repo, number))
+                                },
+                            )
+                        }
                         composable(
                             route = Routes.USER,
                             arguments = listOf(
@@ -1180,6 +1204,7 @@ private fun FaTopBar(
         Routes.DEVICE_LOGIN_ADD -> stringResource(R.string.m3_title_add_account)
         Routes.ACCOUNTS -> stringResource(R.string.m3_title_accounts)
         Routes.SEARCH -> stringResource(R.string.m3_title_search)
+        Routes.DRAFTS -> stringResource(R.string.m3_drafts)
         Routes.SETTINGS -> stringResource(R.string.m3_title_settings)
         Routes.REPO -> entry?.arguments?.getString("name")
             ?: stringResource(R.string.m3_title_repo)

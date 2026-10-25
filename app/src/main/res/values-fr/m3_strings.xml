@@ -755,4 +755,18 @@ GitHub n\'a pas de canal push pour les clients tiers, il s\'agit donc d\'une vé
     <string name="m3_more">Plus</string>
     <string name="m3_notif_mute">Mettre ce fil en sourdine</string>
     <string name="m3_notif_unmute">Réactiver ce fil</string>
+    <string name="m3_drafts">Brouillons</string>
+    <string name="m3_drafts_hint">Les commentaires enregistrés hors ligne sont envoyés ici.</string>
+    <string name="m3_drafts_send_all">Tout envoyer</string>
+    <string name="m3_drafts_empty">Aucun brouillon.</string>
+    <string name="m3_draft_send">Envoyer</string>
+    <string name="m3_draft_delete">Supprimer</string>
+    <string name="m3_draft_saved">Hors ligne : le commentaire est enregistré comme brouillon.</string>
+    <string name="m3_notif_rules">Règles de sourdine</string>
+    <string name="m3_notif_rules_note">Les notifications correspondantes sont marquées comme lues. Règles locales.</string>
+    <string name="m3_notif_rule_repo">Dépôt</string>
+    <string name="m3_notif_rule_keyword">Mot-clé</string>
+    <string name="m3_notif_rule_value">owner/repo ou texte</string>
+    <string name="m3_notif_rule_add">Ajouter</string>
+    <string name="m3_notif_rule_remove">Retirer la règle</string>
 </resources>

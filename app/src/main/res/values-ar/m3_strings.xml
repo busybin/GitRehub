@@ -755,4 +755,18 @@
     <string name="m3_more">المزيد</string>
     <string name="m3_notif_mute">كتم هذا الموضوع</string>
     <string name="m3_notif_unmute">إلغاء كتم هذا الموضوع</string>
+    <string name="m3_drafts">المسودات</string>
+    <string name="m3_drafts_hint">تُرسل التعليقات المحفوظة دون اتصال من هنا.</string>
+    <string name="m3_drafts_send_all">إرسال الكل</string>
+    <string name="m3_drafts_empty">لا توجد مسودات.</string>
+    <string name="m3_draft_send">إرسال</string>
+    <string name="m3_draft_delete">حذف</string>
+    <string name="m3_draft_saved">دون اتصال: تم حفظ التعليق كمسودة.</string>
+    <string name="m3_notif_rules">قواعد الكتم</string>
+    <string name="m3_notif_rules_note">تُعلَّم الإشعارات المطابقة كمقروءة تلقائيًا. القواعد على هذا الجهاز.</string>
+    <string name="m3_notif_rule_repo">المستودع</string>
+    <string name="m3_notif_rule_keyword">كلمة مفتاحية</string>
+    <string name="m3_notif_rule_value">owner/repo أو نص</string>
+    <string name="m3_notif_rule_add">إضافة</string>
+    <string name="m3_notif_rule_remove">إزالة القاعدة</string>
 </resources>

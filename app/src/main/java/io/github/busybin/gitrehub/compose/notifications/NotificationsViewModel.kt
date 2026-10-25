@@ -22,8 +22,19 @@ class NotificationsViewModel : PagedViewModel<Notification>() {
     private val _busy = MutableStateFlow(false)
     val busy: StateFlow<Boolean> = _busy.asStateFlow()
 
-    override suspend fun fetch(page: Int): PageResult<Notification> =
-        toPage(GitHubApi.notifications(all = true))
+    /**
+     * Local rules archive matching threads: they are marked read on the server (once) and shown as
+     * read here, without touching the subscription.
+     */
+    override suspend fun fetch(page: Int): PageResult<Notification> {
+        val response = GitHubApi.notifications(all = true)
+        val matched = response.value.filter { NotificationRules.matches(it) }
+        matched.filter { it.unread }.forEach { item ->
+            runCatching { withContext(Dispatchers.IO) { GitHubApi.markThreadRead(item.id) } }
+        }
+        val items = response.value.map { if (it in matched) it.copy(unread = false) else it }
+        return toPage(ApiResponse(items, response.links, response.scopes))
+    }
 
     override suspend fun fetchCached(page: Int): PageResult<Notification>? =
         runCatching { GitHubApi.notifications(all = true, cacheOnly = true) }

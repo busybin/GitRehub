@@ -4,6 +4,7 @@ import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.busybin.gitrehub.R
+import io.github.busybin.gitrehub.compose.common.DraftQueue
 import io.github.busybin.gitrehub.compose.common.LoadState
 import io.github.busybin.gitrehub.compose.common.UiText
 import io.github.busybin.gitrehub.compose.common.launchLoad
@@ -150,12 +151,31 @@ class IssueDetailViewModel : ViewModel() {
         }
     }
 
-    /** Post a comment (issues and PRs share the same endpoint). */
+    /**
+     * Post a comment (issues and PRs share the same endpoint). A network-level failure keeps the
+     * text in the offline queue instead of throwing it away; a 4xx/5xx is reported and not queued.
+     */
     fun postComment(owner: String, repo: String, number: Int, body: String) {
         val text = body.trim()
-        if (text.isEmpty()) return
-        write(owner, repo, number, UiText.res(R.string.m3_write_comment_done)) {
-            GitHubApi.createComment(owner, repo, number, text)
+        if (text.isEmpty() || _busy.value) return
+        _busy.value = true
+        viewModelScope.launch {
+            val result = runCatching {
+                withContext(Dispatchers.IO) { GitHubApi.createComment(owner, repo, number, text) }
+            }
+            _busy.value = false
+            result.onSuccess {
+                _message.value = WriteMessage(UiText.res(R.string.m3_write_comment_done), error = false)
+                refresh(owner, repo, number)
+            }.onFailure {
+                val status = (it as? ApiException)?.error?.status ?: 0
+                if (status == 0) {
+                    DraftQueue.add(owner, repo, number, text)
+                    _message.value = WriteMessage(UiText.res(R.string.m3_draft_saved), error = true)
+                } else {
+                    _message.value = WriteMessage(writeError(it), error = true)
+                }
+            }
         }
     }
 

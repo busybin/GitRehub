@@ -755,4 +755,18 @@ GitHub にはサードパーティ製クライアント向けのプッシュチ�
     <string name="m3_more">その他</string>
     <string name="m3_notif_mute">このスレッドをミュート</string>
     <string name="m3_notif_unmute">このスレッドのミュートを解除</string>
+    <string name="m3_drafts">下書き</string>
+    <string name="m3_drafts_hint">オフラインで保存したコメントはここから送信します。</string>
+    <string name="m3_drafts_send_all">すべて送信</string>
+    <string name="m3_drafts_empty">下書きはありません。</string>
+    <string name="m3_draft_send">送信</string>
+    <string name="m3_draft_delete">削除</string>
+    <string name="m3_draft_saved">オフライン: コメントを下書きとして保存しました。</string>
+    <string name="m3_notif_rules">ミュート規則</string>
+    <string name="m3_notif_rules_note">一致する通知は自動的に既読になります。規則は端末内のみです。</string>
+    <string name="m3_notif_rule_repo">リポジトリ</string>
+    <string name="m3_notif_rule_keyword">キーワード</string>
+    <string name="m3_notif_rule_value">owner/repo またはテキスト</string>
+    <string name="m3_notif_rule_add">追加</string>
+    <string name="m3_notif_rule_remove">規則を削除</string>
 </resources>

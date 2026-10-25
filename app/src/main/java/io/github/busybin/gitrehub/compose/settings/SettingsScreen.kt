@@ -269,6 +269,14 @@ fun SettingsScreen() {
                 NotificationSettings()
             }
         }
+        Spacer(Modifier.height(10.dp))
+        Card(
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+            ),
+        ) {
+            NotificationRuleSettings()
+        }
 
         Spacer(Modifier.height(20.dp))
         HorizontalDivider()

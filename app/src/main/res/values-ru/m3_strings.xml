@@ -753,4 +753,18 @@
     <string name="m3_more">Ещё</string>
     <string name="m3_notif_mute">Отключить уведомления по теме</string>
     <string name="m3_notif_unmute">Включить уведомления по теме</string>
+    <string name="m3_drafts">Черновики</string>
+    <string name="m3_drafts_hint">Комментарии, сохранённые офлайн, отправляются отсюда.</string>
+    <string name="m3_drafts_send_all">Отправить все</string>
+    <string name="m3_drafts_empty">Черновиков нет.</string>
+    <string name="m3_draft_send">Отправить</string>
+    <string name="m3_draft_delete">Удалить</string>
+    <string name="m3_draft_saved">Офлайн: комментарий сохранён как черновик.</string>
+    <string name="m3_notif_rules">Правила отключения</string>
+    <string name="m3_notif_rules_note">Подходящие уведомления помечаются прочитанными. Правила хранятся локально.</string>
+    <string name="m3_notif_rule_repo">Репозиторий</string>
+    <string name="m3_notif_rule_keyword">Ключевое слово</string>
+    <string name="m3_notif_rule_value">owner/repo или текст</string>
+    <string name="m3_notif_rule_add">Добавить</string>
+    <string name="m3_notif_rule_remove">Удалить правило</string>
 </resources>

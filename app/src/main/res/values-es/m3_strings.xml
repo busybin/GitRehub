@@ -755,4 +755,18 @@ GitHub no tiene canal de notificaciones push para los clientes de terceros, así
     <string name="m3_more">Más</string>
     <string name="m3_notif_mute">Silenciar este hilo</string>
     <string name="m3_notif_unmute">Reactivar este hilo</string>
+    <string name="m3_drafts">Borradores</string>
+    <string name="m3_drafts_hint">Los comentarios guardados sin conexión se envían desde aquí.</string>
+    <string name="m3_drafts_send_all">Enviar todo</string>
+    <string name="m3_drafts_empty">No hay borradores.</string>
+    <string name="m3_draft_send">Enviar</string>
+    <string name="m3_draft_delete">Eliminar</string>
+    <string name="m3_draft_saved">Sin conexión: el comentario se guardó como borrador.</string>
+    <string name="m3_notif_rules">Reglas de silencio</string>
+    <string name="m3_notif_rules_note">Las notificaciones coincidentes se marcan como leídas. Las reglas son locales.</string>
+    <string name="m3_notif_rule_repo">Repositorio</string>
+    <string name="m3_notif_rule_keyword">Palabra clave</string>
+    <string name="m3_notif_rule_value">owner/repo o texto</string>
+    <string name="m3_notif_rule_add">Añadir</string>
+    <string name="m3_notif_rule_remove">Quitar regla</string>
 </resources>
