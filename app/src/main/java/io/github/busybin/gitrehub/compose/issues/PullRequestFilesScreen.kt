@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
@@ -26,6 +27,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -39,6 +41,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -65,6 +68,7 @@ import io.github.busybin.gitrehub.core.model.CommitFile
 import io.github.busybin.gitrehub.core.model.ReviewComment
 import io.github.busybin.gitrehub.core.model.Review
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /** Where an inline comment would be attached: the file, the side of the diff and the file line. */
 private data class CommentTarget(val path: String, val line: DiffLine)
@@ -81,13 +85,16 @@ fun PullRequestFilesScreen(owner: String, repo: String, number: Int) {
     val busy by vm.busy.collectAsStateWithLifecycle()
     val message by vm.message.collectAsStateWithLifecycle()
     val draft by vm.draft.collectAsStateWithLifecycle()
+    val viewed by vm.viewed.collectAsStateWithLifecycle()
     // Server-side reviews need write access; read-only visitors get a view-only diff instead.
     val canReview = ((state as? LoadState.Ready)?.value)?.permissions?.canWrite == true
 
     var expanded by remember { mutableStateOf(emptyList<String>()) }
-    var viewed by remember { mutableStateOf(emptyList<String>()) }
     var commentTarget by remember { mutableStateOf<CommentTarget?>(null) }
     var showReview by rememberSaveable { mutableStateOf(false) }
+    var onlyUnviewed by rememberSaveable { mutableStateOf(false) }
+    val listState = rememberLazyListState()
+    val scope = rememberCoroutineScope()
 
     LaunchedEffect(owner, repo, number) { vm.load(owner, repo, number) }
     LaunchedEffect(message) {
@@ -107,7 +114,20 @@ fun PullRequestFilesScreen(owner: String, repo: String, number: Int) {
                 onRetry = { vm.load(owner, repo, number, force = true) },
             ) { data ->
                 val commentsByAnchor = remember(data.comments) { groupComments(data.comments) }
+                val viewedPaths = data.files.map { it.filename.orEmpty() }
+                val viewedCount = viewedPaths.count { it in viewed }
+                val shownFiles = if (onlyUnviewed) {
+                    data.files.filter { it.filename.orEmpty() !in viewed }
+                } else {
+                    data.files
+                }
+                // Item slots before the first diff: summary, checks, review status, truncation note,
+                // file toolbar. The jump target depends on that count.
+                val headerItems = 3 +
+                    (if (data.checks.isNotEmpty()) 1 else 0) +
+                    (if (data.truncated) 1 else 0)
                 LazyColumn(
+                    state = listState,
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(14.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -133,10 +153,38 @@ fun PullRequestFilesScreen(owner: String, repo: String, number: Int) {
                             )
                         }
                     }
+                    if (data.files.isNotEmpty()) {
+                        item {
+                            FilesToolbar(
+                                viewedCount = viewedCount,
+                                total = data.files.size,
+                                onlyUnviewed = onlyUnviewed,
+                                onToggleFilter = { onlyUnviewed = !onlyUnviewed },
+                                onMarkAll = { vm.markAllViewed(viewedPaths) },
+                                onClear = { vm.clearViewed() },
+                                onNextUnviewed = if (onlyUnviewed) {
+                                    null
+                                } else {
+                                    {
+                                        val index = data.files.indexOfFirst {
+                                            it.filename.orEmpty() !in viewed
+                                        }
+                                        if (index >= 0) {
+                                            scope.launch {
+                                                listState.animateScrollToItem(headerItems + index)
+                                            }
+                                        }
+                                    }
+                                },
+                            )
+                        }
+                    }
                     if (data.files.isEmpty()) {
                         item { EmptyView(stringResource(R.string.m3_pr_files_empty)) }
+                    } else if (shownFiles.isEmpty()) {
+                        item { EmptyView(stringResource(R.string.m3_pr_all_viewed)) }
                     } else {
-                        items(data.files, key = { it.filename ?: it.sha ?: "file" }) { file ->
+                        items(shownFiles, key = { it.filename ?: it.sha ?: "file" }) { file ->
                             val path = file.filename.orEmpty()
                             FileDiffCard(
                                 file = file,
@@ -145,9 +193,7 @@ fun PullRequestFilesScreen(owner: String, repo: String, number: Int) {
                                 canComment = canReview,
                                 comments = commentsByAnchor,
                                 draft = draft.withIndex().filter { it.value.path == path },
-                                onToggleViewed = {
-                                    viewed = if (viewed.contains(path)) viewed - path else viewed + path
-                                },
+                                onToggleViewed = { vm.toggleViewed(path) },
                                 onToggleExpand = {
                                     expanded = if (expanded.contains(path)) {
                                         expanded - path
@@ -371,6 +417,54 @@ private fun ReviewStatus(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.align(Alignment.Start),
                 )
+            }
+        }
+    }
+}
+
+/** Viewed progress plus the filters that make a 40-file pull request reviewable. */
+@Composable
+private fun FilesToolbar(
+    viewedCount: Int,
+    total: Int,
+    onlyUnviewed: Boolean,
+    onToggleFilter: () -> Unit,
+    onMarkAll: () -> Unit,
+    onClear: () -> Unit,
+    onNextUnviewed: (() -> Unit)?,
+) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        shape = RoundedCornerShape(14.dp),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(Modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = stringResource(R.string.m3_pr_viewed_progress, viewedCount, total),
+                    style = MaterialTheme.typography.labelLarge,
+                    modifier = Modifier.weight(1f),
+                )
+                if (viewedCount > 0) {
+                    TextButton(onClick = onClear) {
+                        Text(stringResource(R.string.m3_pr_clear_viewed))
+                    }
+                }
+                TextButton(onClick = onMarkAll, enabled = viewedCount < total) {
+                    Text(stringResource(R.string.m3_pr_mark_all_viewed))
+                }
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                FilterChip(
+                    selected = onlyUnviewed,
+                    onClick = onToggleFilter,
+                    label = { Text(stringResource(R.string.m3_pr_only_unviewed)) },
+                )
+                if (onNextUnviewed != null) {
+                    TextButton(onClick = onNextUnviewed, enabled = viewedCount < total) {
+                        Text(stringResource(R.string.m3_pr_next_unviewed))
+                    }
+                }
             }
         }
     }

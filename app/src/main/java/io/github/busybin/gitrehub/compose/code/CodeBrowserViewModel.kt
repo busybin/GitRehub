@@ -5,9 +5,11 @@ import androidx.lifecycle.viewModelScope
 import io.github.busybin.gitrehub.compose.common.LoadState
 import io.github.busybin.gitrehub.compose.common.launchLoad
 import io.github.busybin.gitrehub.core.model.CodeEntry
+import io.github.busybin.gitrehub.core.model.GitTree
 import io.github.busybin.gitrehub.compose.data.RepoContent
 import io.github.busybin.gitrehub.compose.data.RepoStats
 import io.github.busybin.gitrehub.core.model.Commit
+import io.github.busybin.gitrehub.core.net.GitHubApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -34,6 +36,10 @@ class CodeBrowserViewModel : ViewModel() {
     private val _state = MutableStateFlow<LoadState<CodeListing>>(LoadState.Loading)
     val state: StateFlow<LoadState<CodeListing>> = _state.asStateFlow()
 
+    /** The whole file list of the current ref, loaded on demand by the file finder. */
+    private val _fileIndex = MutableStateFlow<LoadState<GitTree>?>(null)
+    val fileIndex: StateFlow<LoadState<GitTree>?> = _fileIndex.asStateFlow()
+
     private var owner: String = ""
     private var repo: String = ""
     private var ref: String? = null
@@ -44,8 +50,22 @@ class CodeBrowserViewModel : ViewModel() {
         this.owner = owner
         this.repo = repo
         this.ref = ref
+        if (!same) _fileIndex.value = null
         if (same && _state.value is LoadState.Ready) return
         load("")
+    }
+
+    /** Fetch the recursive tree once; the finder filters it locally afterwards. */
+    fun loadFileIndex(force: Boolean = false) {
+        if (!force && (_fileIndex.value is LoadState.Ready || _fileIndex.value is LoadState.Loading)) {
+            return
+        }
+        val owner = owner
+        val repo = repo
+        val ref = ref
+        viewModelScope.launchLoad({ _fileIndex.value = it }) {
+            GitHubApi.gitTree(owner, repo, ref)
+        }
     }
 
     fun open(path: String) = load(path)

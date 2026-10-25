@@ -815,4 +815,17 @@ GitHub にはサードパーティ製クライアント向けのプッシュチ�
     <string name="m3_commit_jump_files">ファイル (%1$d)</string>
     <string name="m3_commit_show_diff">diff を表示 (%1$d 行)</string>
     <string name="m3_commit_hide_diff">diff を隠す</string>
+    <string name="m3_pr_viewed_progress">%1$d / %2$d 確認済み</string>
+    <string name="m3_pr_clear_viewed">クリア</string>
+    <string name="m3_pr_mark_all_viewed">すべて確認済みにする</string>
+    <string name="m3_pr_only_unviewed">未確認のみ</string>
+    <string name="m3_pr_next_unviewed">次の未確認ファイル</string>
+    <string name="m3_pr_all_viewed">すべてのファイルが確認済みです</string>
+    <string name="m3_find_file">ファイルを検索</string>
+    <string name="m3_find_file_hint">パスの一部を入力</string>
+    <string name="m3_find_file_index">このブランチに %1$d ファイル</string>
+    <string name="m3_find_file_matches">%1$d 件一致</string>
+    <string name="m3_find_file_empty">一致するファイルがありません</string>
+    <string name="m3_find_file_truncated">ファイル一覧が大きすぎるため GitHub が切り詰めました</string>
+    <string name="m3_find_file_refine">先頭 100 件のみ表示 — 入力を増やして絞り込んでください</string>
 </resources>

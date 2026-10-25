@@ -815,4 +815,17 @@ O GitHub não tem canal de push para clientes de terceiros, então isto é uma c
     <string name="m3_commit_jump_files">Arquivos (%1$d)</string>
     <string name="m3_commit_show_diff">Mostrar diff (%1$d linhas)</string>
     <string name="m3_commit_hide_diff">Ocultar diff</string>
+    <string name="m3_pr_viewed_progress">%1$d de %2$d vistos</string>
+    <string name="m3_pr_clear_viewed">Limpar</string>
+    <string name="m3_pr_mark_all_viewed">Marcar todos como vistos</string>
+    <string name="m3_pr_only_unviewed">Somente não vistos</string>
+    <string name="m3_pr_next_unviewed">Próximo não visto</string>
+    <string name="m3_pr_all_viewed">Todos os arquivos estão marcados como vistos</string>
+    <string name="m3_find_file">Buscar arquivo</string>
+    <string name="m3_find_file_hint">Digite parte de um caminho</string>
+    <string name="m3_find_file_index">%1$d arquivos nesta branch</string>
+    <string name="m3_find_file_matches">%1$d resultados</string>
+    <string name="m3_find_file_empty">Nenhum arquivo corresponde</string>
+    <string name="m3_find_file_truncated">O GitHub truncou a lista de arquivos deste repositório</string>
+    <string name="m3_find_file_refine">Mostrando os primeiros 100 — digite mais para refinar</string>
 </resources>

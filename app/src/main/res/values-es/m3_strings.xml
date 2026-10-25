@@ -815,4 +815,17 @@ GitHub no tiene canal de notificaciones push para los clientes de terceros, así
     <string name="m3_commit_jump_files">Archivos (%1$d)</string>
     <string name="m3_commit_show_diff">Mostrar diff (%1$d líneas)</string>
     <string name="m3_commit_hide_diff">Ocultar diff</string>
+    <string name="m3_pr_viewed_progress">%1$d de %2$d vistos</string>
+    <string name="m3_pr_clear_viewed">Borrar</string>
+    <string name="m3_pr_mark_all_viewed">Marcar todo como visto</string>
+    <string name="m3_pr_only_unviewed">Solo no vistos</string>
+    <string name="m3_pr_next_unviewed">Siguiente no visto</string>
+    <string name="m3_pr_all_viewed">Todos los archivos están marcados como vistos</string>
+    <string name="m3_find_file">Buscar archivo</string>
+    <string name="m3_find_file_hint">Escribe parte de una ruta</string>
+    <string name="m3_find_file_index">%1$d archivos en esta rama</string>
+    <string name="m3_find_file_matches">%1$d coincidencias</string>
+    <string name="m3_find_file_empty">Ningún archivo coincide</string>
+    <string name="m3_find_file_truncated">GitHub truncó la lista de archivos de este repositorio</string>
+    <string name="m3_find_file_refine">Se muestran los primeros 100; escribe más para acotar</string>
 </resources>

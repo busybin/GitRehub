@@ -14,6 +14,7 @@ import io.github.busybin.gitrehub.core.model.Discussion
 import io.github.busybin.gitrehub.core.model.DiscussionComment
 import io.github.busybin.gitrehub.core.model.Event
 import io.github.busybin.gitrehub.core.model.Gist
+import io.github.busybin.gitrehub.core.model.GitTree
 import io.github.busybin.gitrehub.core.model.Issue
 import io.github.busybin.gitrehub.core.model.Label
 import io.github.busybin.gitrehub.core.model.MergeResult
@@ -831,6 +832,14 @@ object GitHubApi {
             "/repos/$owner/$repo/contents/${encodePath(path)}",
             query = if (ref.isNullOrBlank()) emptyMap() else mapOf("ref" to ref),
         )
+
+    /** Whole file list of one ref in one call; used by the code browser's file finder. */
+    suspend fun gitTree(owner: String, repo: String, ref: String?): GitTree =
+        GitHubClient.get(
+            "/repos/$owner/$repo/git/trees/${encodePath(ref.orEmpty().ifBlank { "HEAD" })}",
+            GitTree.serializer(),
+            query = mapOf("recursive" to "1"),
+        ).value
 
     /** Raw file text, fetched from the entry's own URL (works for private repositories too). */
     suspend fun fileText(url: String): String =

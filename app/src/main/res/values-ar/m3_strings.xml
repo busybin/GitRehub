@@ -815,4 +815,17 @@
     <string name="m3_commit_jump_files">الملفات (%1$d)</string>
     <string name="m3_commit_show_diff">إظهار diff (%1$d سطرًا)</string>
     <string name="m3_commit_hide_diff">إخفاء diff</string>
+    <string name="m3_pr_viewed_progress">تمت مراجعة %1$d من %2$d</string>
+    <string name="m3_pr_clear_viewed">مسح</string>
+    <string name="m3_pr_mark_all_viewed">تعليم الكل كمراجَع</string>
+    <string name="m3_pr_only_unviewed">غير المراجَعة فقط</string>
+    <string name="m3_pr_next_unviewed">التالي غير المراجَع</string>
+    <string name="m3_pr_all_viewed">كل الملفات معلّمة كمراجَعة</string>
+    <string name="m3_find_file">بحث عن ملف</string>
+    <string name="m3_find_file_hint">اكتب جزءًا من المسار</string>
+    <string name="m3_find_file_index">%1$d ملفًا في هذا الفرع</string>
+    <string name="m3_find_file_matches">%1$d نتيجة</string>
+    <string name="m3_find_file_empty">لا يوجد ملف مطابق</string>
+    <string name="m3_find_file_truncated">اختصر GitHub قائمة ملفات هذا المستودع</string>
+    <string name="m3_find_file_refine">تُعرض أول 100 نتيجة — اكتب المزيد لتضييق البحث</string>
 </resources>

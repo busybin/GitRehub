@@ -815,4 +815,17 @@ GitHub has no push channel for third-party clients, so this is real polling: the
     <string name="m3_commit_jump_files">Files (%1$d)</string>
     <string name="m3_commit_show_diff">Show diff (%1$d lines)</string>
     <string name="m3_commit_hide_diff">Hide diff</string>
+    <string name="m3_pr_viewed_progress">%1$d of %2$d viewed</string>
+    <string name="m3_pr_clear_viewed">Clear</string>
+    <string name="m3_pr_mark_all_viewed">Mark all viewed</string>
+    <string name="m3_pr_only_unviewed">Unviewed only</string>
+    <string name="m3_pr_next_unviewed">Next unviewed</string>
+    <string name="m3_pr_all_viewed">Every file is marked as viewed</string>
+    <string name="m3_find_file">Find file</string>
+    <string name="m3_find_file_hint">Type part of a path</string>
+    <string name="m3_find_file_index">%1$d files in this branch</string>
+    <string name="m3_find_file_matches">%1$d matches</string>
+    <string name="m3_find_file_empty">No matching file</string>
+    <string name="m3_find_file_truncated">GitHub truncated the file list for this repository</string>
+    <string name="m3_find_file_refine">Showing the first 100 — type more to narrow it down</string>
 </resources>

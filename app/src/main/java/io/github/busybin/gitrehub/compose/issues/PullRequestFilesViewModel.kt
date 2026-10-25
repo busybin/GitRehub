@@ -18,6 +18,7 @@ import io.github.busybin.gitrehub.core.net.ApiException
 import io.github.busybin.gitrehub.core.net.GitHubApi
 import io.github.busybin.gitrehub.core.net.WriteBodies
 import io.github.busybin.gitrehub.core.net.hasMore
+import io.github.busybin.gitrehub.helper.PrefHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -68,12 +69,20 @@ class PullRequestFilesViewModel : ViewModel() {
     private val _draft = MutableStateFlow<List<DraftComment>>(emptyList())
     val draft: StateFlow<List<DraftComment>> = _draft.asStateFlow()
 
+    /** Paths marked as viewed; local-only and kept per pull request across visits. */
+    private val _viewed = MutableStateFlow<Set<String>>(emptySet())
+    val viewed: StateFlow<Set<String>> = _viewed.asStateFlow()
+
     private var key: String = ""
+
+    private fun viewedKey(): String = "m3_pr_viewed_$key"
 
     fun load(owner: String, repo: String, number: Int, force: Boolean = false) {
         val newKey = "$owner/$repo#$number"
         if (!force && key == newKey && _state.value is LoadState.Ready) return
         key = newKey
+        _viewed.value = runCatching { PrefHelper.getStringSet(viewedKey()) }
+            .getOrDefault(emptySet())
         viewModelScope.launchLoad({ _state.value = it }) { fetch(owner, repo, number) }
     }
 
@@ -112,6 +121,28 @@ class PullRequestFilesViewModel : ViewModel() {
             myLogin = myLogin,
             permissions = permissions,
         )
+    }
+
+    // ------------------------------------------------------------------ viewed files
+
+    fun toggleViewed(path: String) {
+        if (path.isBlank()) return
+        val next = _viewed.value.toMutableSet()
+        if (!next.add(path)) next.remove(path)
+        persistViewed(next)
+    }
+
+    fun markAllViewed(paths: Collection<String>) {
+        persistViewed(_viewed.value + paths.filter { it.isNotBlank() })
+    }
+
+    fun clearViewed() = persistViewed(emptySet())
+
+    private fun persistViewed(next: Set<String>) {
+        if (key.isNotBlank()) {
+            runCatching { PrefHelper.putStringSet(viewedKey(), next) }
+        }
+        _viewed.value = next
     }
 
     // ------------------------------------------------------------------ pending review

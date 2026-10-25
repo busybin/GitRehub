@@ -23,6 +23,8 @@ import io.github.busybin.gitrehub.compose.common.MarkdownText
 import io.github.busybin.gitrehub.compose.discussions.DiscussionDetailScreen
 import io.github.busybin.gitrehub.compose.discussions.DiscussionsScreen
 import io.github.busybin.gitrehub.compose.feed.FeedScreen
+import io.github.busybin.gitrehub.compose.gists.GistDetailScreen
+import io.github.busybin.gitrehub.compose.gists.GistsScreen
 import io.github.busybin.gitrehub.compose.issues.IssueDetailScreen
 import io.github.busybin.gitrehub.compose.issues.IssueKind
 import io.github.busybin.gitrehub.compose.issues.IssuesScreen
@@ -339,6 +341,20 @@ class ScreensSmokeTest {
         rule.setContent {
             FaTheme { CodeBrowserScreen(owner = "octocat", repo = "Hello-World") }
         }
+        rule.waitForIdle()
+    }
+
+    @Test
+    fun gistsScreenComposes() {
+        rule.mainClock.autoAdvance = false
+        rule.setContent { FaTheme { GistsScreen(onOpenGist = {}) } }
+        rule.waitForIdle()
+    }
+
+    @Test
+    fun gistDetailScreenComposes() {
+        rule.mainClock.autoAdvance = false
+        rule.setContent { FaTheme { GistDetailScreen(id = "aa5a315d61ae9438b18d", onDeleted = {}) } }
         rule.waitForIdle()
     }
 

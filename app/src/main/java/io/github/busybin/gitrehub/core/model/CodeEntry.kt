@@ -32,3 +32,29 @@ data class CodeEntry(
         )
     }
 }
+
+/**
+ * `GET /repos/{o}/{r}/git/trees/{ref}?recursive=1`: every path of one ref in a single answer.
+ *
+ * [truncated] means GitHub capped the list (very large repositories), so a file finder built on it
+ * may be missing paths; the UI says so instead of pretending the file does not exist.
+ */
+@Serializable
+data class GitTree(
+    val sha: String = "",
+    val tree: List<GitTreeEntry> = emptyList(),
+    val truncated: Boolean = false,
+) {
+    /** Blob paths only (trees are directories) — what a file finder should offer. */
+    val files: List<String>
+        get() = tree.filter { it.type == "blob" && it.path.isNotBlank() }.map { it.path }
+}
+
+@Serializable
+data class GitTreeEntry(
+    val path: String = "",
+    val mode: String? = null,
+    val type: String? = null,
+    val sha: String? = null,
+    val size: Long = 0,
+)

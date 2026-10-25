@@ -813,4 +813,17 @@
     <string name="m3_commit_jump_files">Файлы (%1$d)</string>
     <string name="m3_commit_show_diff">Показать diff (%1$d строк)</string>
     <string name="m3_commit_hide_diff">Скрыть diff</string>
+    <string name="m3_pr_viewed_progress">Просмотрено %1$d из %2$d</string>
+    <string name="m3_pr_clear_viewed">Сбросить</string>
+    <string name="m3_pr_mark_all_viewed">Отметить все как просмотренные</string>
+    <string name="m3_pr_only_unviewed">Только непросмотренные</string>
+    <string name="m3_pr_next_unviewed">Следующий непросмотренный</string>
+    <string name="m3_pr_all_viewed">Все файлы отмечены как просмотренные</string>
+    <string name="m3_find_file">Найти файл</string>
+    <string name="m3_find_file_hint">Введите часть пути</string>
+    <string name="m3_find_file_index">Файлов в ветке: %1$d</string>
+    <string name="m3_find_file_matches">Совпадений: %1$d</string>
+    <string name="m3_find_file_empty">Подходящих файлов нет</string>
+    <string name="m3_find_file_truncated">GitHub сократил список файлов этого репозитория</string>
+    <string name="m3_find_file_refine">Показаны первые 100 — уточните запрос</string>
 </resources>

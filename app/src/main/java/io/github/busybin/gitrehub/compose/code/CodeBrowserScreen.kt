@@ -1,6 +1,7 @@
 package io.github.busybin.gitrehub.compose.code
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -27,20 +28,28 @@ import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.InsertDriveFile
 import androidx.compose.material.icons.outlined.OpenInNew
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -55,11 +64,17 @@ import io.github.busybin.gitrehub.compose.common.Avatar
 import io.github.busybin.gitrehub.compose.common.LocalTokens
 import io.github.busybin.gitrehub.compose.common.EmptyView
 import io.github.busybin.gitrehub.compose.common.MetaText
+import io.github.busybin.gitrehub.compose.common.LoadState
+import io.github.busybin.gitrehub.compose.common.render
 import io.github.busybin.gitrehub.compose.common.Pill
 import io.github.busybin.gitrehub.compose.common.relativeTime
 import io.github.busybin.gitrehub.core.model.CodeEntry
+import io.github.busybin.gitrehub.core.model.GitTree
 import io.github.busybin.gitrehub.helper.BrowserLauncher
 import java.util.Locale
+
+/** The finder renders at most this many rows; typing one more character narrows it down. */
+private const val MAX_FINDER_RESULTS = 100
 
 /**
  * Repository file tree ("code browsing") — the biggest thing the official mobile client cannot do:
@@ -82,8 +97,18 @@ fun CodeBrowserScreen(
     val state by vm.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val tokens = LocalTokens.current
+    val fileIndex by vm.fileIndex.collectAsStateWithLifecycle()
+    var showFinder by rememberSaveable { mutableStateOf(false) }
+    var query by rememberSaveable { mutableStateOf("") }
+    val focus = remember { FocusRequester() }
 
     LaunchedEffect(owner, repo, ref) { vm.setup(owner, repo, ref) }
+    LaunchedEffect(showFinder) {
+        if (showFinder) {
+            vm.loadFileIndex()
+            runCatching { focus.requestFocus() }
+        }
+    }
 
     AsyncContent(state = state, onRetry = { vm.refresh() }) { listing ->
             Column(Modifier.fillMaxWidth()) {
@@ -126,6 +151,16 @@ fun CodeBrowserScreen(
                             val target = segments.take(index + 1).joinToString("/")
                             Crumb(segment) { vm.open(target) }
                         }
+                    }
+                    IconButton(onClick = {
+                        showFinder = !showFinder
+                        if (!showFinder) query = ""
+                    }) {
+                        Icon(
+                            Icons.Outlined.Search,
+                            contentDescription = stringResource(R.string.m3_find_file),
+                            modifier = Modifier.size(18.dp),
+                        )
                     }
                     TextButton(
                         onClick = {
@@ -183,6 +218,17 @@ fun CodeBrowserScreen(
                     }
                 }
 
+                if (showFinder) {
+                    FileFinder(
+                        index = fileIndex,
+                        query = query,
+                        onQueryChange = { query = it },
+                        focus = focus,
+                        onRetry = { vm.loadFileIndex(force = true) },
+                        onOpenFile = { path -> onOpenFile(path) },
+                    )
+                    return@AsyncContent
+                }
                 if (listing.entries.isEmpty()) {
                     EmptyView(text = stringResource(R.string.m3_dir_empty), icon = Icons.Outlined.FolderOpen)
                     return@AsyncContent
@@ -213,6 +259,119 @@ private fun Crumb(text: String, onClick: () -> Unit) {
             .clickable(enabled = text != "/") { onClick() }
             .padding(horizontal = 4.dp, vertical = 6.dp),
     )
+}
+
+/** File finder: filters the recursive tree locally, which keeps typing instant. */
+@Composable
+private fun FileFinder(
+    index: LoadState<GitTree>?,
+    query: String,
+    onQueryChange: (String) -> Unit,
+    focus: FocusRequester,
+    onRetry: () -> Unit,
+    onOpenFile: (String) -> Unit,
+) {
+    Column(Modifier.fillMaxWidth()) {
+        OutlinedTextField(
+            value = query,
+            onValueChange = onQueryChange,
+            placeholder = { Text(stringResource(R.string.m3_find_file_hint)) },
+            leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
+            singleLine = true,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 6.dp)
+                .focusRequester(focus),
+        )
+        when (index) {
+            null, LoadState.Loading -> Box(
+                Modifier.fillMaxWidth().padding(24.dp),
+                contentAlignment = Alignment.Center,
+            ) { CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp) }
+
+            is LoadState.Failure -> Row(
+                Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = index.message.render(),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.weight(1f),
+                )
+                TextButton(onClick = onRetry) { Text(stringResource(R.string.m3_retry)) }
+            }
+
+            is LoadState.Ready -> {
+                val tree = index.value
+                val all = tree.files
+                val matches = remember(all, query) {
+                    val needle = query.trim()
+                    if (needle.isEmpty()) emptyList()
+                    else all.filter { it.contains(needle, ignoreCase = true) }
+                }
+                Text(
+                    text = if (query.isBlank()) {
+                        stringResource(R.string.m3_find_file_index, all.size)
+                    } else {
+                        stringResource(R.string.m3_find_file_matches, matches.size)
+                    },
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 4.dp),
+                )
+                if (tree.truncated) {
+                    Text(
+                        text = stringResource(R.string.m3_find_file_truncated),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 14.dp),
+                    )
+                }
+                when {
+                    query.isBlank() -> Unit
+                    matches.isEmpty() -> EmptyView(stringResource(R.string.m3_find_file_empty))
+                    else -> Column {
+                        LazyColumn(
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                        ) {
+                            items(matches.take(MAX_FINDER_RESULTS), key = { it }) { path ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable { onOpenFile(path) }
+                                        .padding(horizontal = 6.dp, vertical = 10.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Icon(
+                                        Icons.Outlined.Description,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.size(18.dp),
+                                    )
+                                    Spacer(Modifier.width(10.dp))
+                                    Text(
+                                        text = path,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                                    )
+                                }
+                            }
+                        }
+                        if (matches.size > MAX_FINDER_RESULTS) {
+                            Text(
+                                text = stringResource(R.string.m3_find_file_refine),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 @Composable
