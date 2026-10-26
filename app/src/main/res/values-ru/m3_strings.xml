@@ -378,7 +378,11 @@
     <string name="m3_update_available">Доступна новая версия: %1$s</string>
     <string name="m3_update_check">Проверить</string>
     <string name="m3_update_auto_check">Проверять обновления автоматически</string>
-    <string name="m3_update_auto_check_detail">По умолчанию отключено. Пока эта функция выключена, GitRehub проверяет обновления только при нажатии кнопки «Проверить» — сама она ничего не отправляет.</string>
+    <string name="m3_update_auto_check_detail">Спрашивается один раз при первом запуске. Пока включено, GitRehub проверяет обновления при каждом открытии и сообщает о новой версии.</string>
+    <string name="m3_update_consent_title">Проверять обновления автоматически?</string>
+    <string name="m3_update_consent_message">Разрешить GitRehub при каждом запуске смотреть на GitHub, не вышла ли новая версия, и сообщать вам об этом. Он читает только номер версии, ничего о вас не отправляет и ничего не устанавливает сам.</string>
+    <string name="m3_update_consent_allow">Разрешить</string>
+    <string name="m3_update_consent_deny">Не сейчас</string>
     <string name="m3_update_check_failed">Не удалось проверить обновления</string>
     <string name="m3_update_rate_limited">GitHub ограничил частоту запросов, попробуйте позже</string>
     <string name="m3_update_http_error">GitHub вернул %1$d</string>

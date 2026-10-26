@@ -380,7 +380,11 @@ GitHub にはサードパーティ製クライアント向けのプッシュチ�
     <string name="m3_update_available">新しいバージョンがあります：%1$s</string>
     <string name="m3_update_check">確認</string>
     <string name="m3_update_auto_check">自動的にアップデートを確認</string>
-    <string name="m3_update_auto_check_detail">既定ではオフです。オフの間、GitRehub は「確認」をタップしたときだけチェックします。自動で何かを送信することはありません。</string>
+    <string name="m3_update_auto_check_detail">初回起動時に一度だけ確認します。オンの間は、GitRehub を開くたびに確認し、新しいバージョンがあればお知らせします。</string>
+    <string name="m3_update_consent_title">更新を自動で確認しますか？</string>
+    <string name="m3_update_consent_message">GitRehub を起動するたびに GitHub で新しいバージョンが出ていないか確認し、あればお知らせします。読み取るのはバージョン番号だけで、あなたに関する情報は送信せず、自動でインストールすることもありません。</string>
+    <string name="m3_update_consent_allow">許可</string>
+    <string name="m3_update_consent_deny">今はしない</string>
     <string name="m3_update_check_failed">アップデートの確認に失敗しました</string>
     <string name="m3_update_rate_limited">GitHub のレート制限に達しました。しばらくしてから再試行してください</string>
     <string name="m3_update_http_error">GitHub が %1$d を返しました</string>

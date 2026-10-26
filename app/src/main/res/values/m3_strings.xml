@@ -381,7 +381,11 @@ GitHub has no push channel for third-party clients, so this is real polling: the
     <string name="m3_update_available">New version available: %1$s</string>
     <string name="m3_update_check">Check</string>
     <string name="m3_update_auto_check">Check for updates automatically</string>
-    <string name="m3_update_auto_check_detail">Off by default. While it is off, GitRehub only checks when you tap Check — nothing is sent on its own.</string>
+    <string name="m3_update_auto_check_detail">Asked once on first launch. While it is on, GitRehub checks every time it opens and tells you when a new version is out.</string>
+    <string name="m3_update_consent_title">Check for updates automatically?</string>
+    <string name="m3_update_consent_message">Allow GitRehub to look at GitHub every time it starts and tell you when a new release is out. It only reads the version number, sends nothing about you, and never installs anything unless you say so.</string>
+    <string name="m3_update_consent_allow">Allow</string>
+    <string name="m3_update_consent_deny">Not now</string>
     <string name="m3_update_check_failed">Update check failed</string>
     <string name="m3_update_rate_limited">GitHub rate-limited us, try again later</string>
     <string name="m3_update_http_error">GitHub returned %1$d</string>

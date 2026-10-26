@@ -378,7 +378,11 @@ github 不给第三方客户端推送通道，所以这是真的轮询：最短 
     <string name="m3_update_available">发现新版本：%1$s</string>
     <string name="m3_update_check">检查</string>
     <string name="m3_update_auto_check">自动检查更新</string>
-    <string name="m3_update_auto_check_detail">默认关闭。关着的时候，只有你点「检查」才会去查——不会自己往外发请求。</string>
+    <string name="m3_update_auto_check_detail">首次启动时问一次。开着的时候，每次打开 GitRehub 都会查一次，有新版本就提醒你。</string>
+    <string name="m3_update_consent_title">自动检查更新？</string>
+    <string name="m3_update_consent_message">允许 GitRehub 每次启动时到 GitHub 看一眼有没有新版本，有就提醒你。它只读取版本号，不会发送关于你的任何信息，也不会自己装任何东西。</string>
+    <string name="m3_update_consent_allow">允许</string>
+    <string name="m3_update_consent_deny">暂不</string>
     <string name="m3_update_check_failed">检查更新失败</string>
     <string name="m3_update_rate_limited">GitHub 限流了，稍后再试</string>
     <string name="m3_update_http_error">GitHub 返回 %1$d</string>

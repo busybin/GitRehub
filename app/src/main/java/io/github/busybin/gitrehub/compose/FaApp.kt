@@ -453,7 +453,8 @@ fun FaApp(routeRequest: MutableState<String?>? = null) {
             )
         }
 
-        UpdatePromptHost(enabled = loggedIn && selfUpdateAvailable)
+        // Asked on the first launch, before signing in: the check needs no account.
+        UpdatePromptHost(enabled = selfUpdateAvailable)
 
         ModalNavigationDrawer(
             drawerState = drawerState,

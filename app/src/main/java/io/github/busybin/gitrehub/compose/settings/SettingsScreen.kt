@@ -77,6 +77,7 @@ import io.github.busybin.gitrehub.compose.common.render
 import io.github.busybin.gitrehub.compose.common.restartModernUi
 import io.github.busybin.gitrehub.compose.common.formatBytes
 import io.github.busybin.gitrehub.compose.data.UpdateChecker
+import io.github.busybin.gitrehub.compose.data.UpdateConsent
 import io.github.busybin.gitrehub.compose.data.UpdatePrefs
 import io.github.busybin.gitrehub.compose.feed.FeedPrefs
 import io.github.busybin.gitrehub.compose.feed.FeedReadFilter
@@ -372,7 +373,8 @@ private fun UpdateRow() {
     val scope = rememberCoroutineScope()
     var result by remember { mutableStateOf<UpdateChecker.Result?>(null) }
     var downloading by remember { mutableStateOf(false) }
-    val auto by UpdatePrefs.auto.collectAsStateWithLifecycle()
+    val consent by UpdatePrefs.consent.collectAsStateWithLifecycle()
+    val auto = consent == UpdateConsent.ALLOWED
 
     fun checkNow() {
         scope.launch {
@@ -381,9 +383,8 @@ private fun UpdateRow() {
         }
     }
 
-    // Automatic checks are off by default (see UpdatePrefs.auto): requests sent without asking count
-    // as tracking under a third-party store's definition, so the user must opt in; the "check" action above always
-    // works because the user tapped it.
+    // Nothing is requested until the first-launch question is answered (see UpdateConsent): an
+    // unsolicited request counts as tracking under a third-party store's definition. The tap above always works.
     LaunchedEffect(auto) { if (auto) checkNow() }
 
     val available = result as? UpdateChecker.Result.Available

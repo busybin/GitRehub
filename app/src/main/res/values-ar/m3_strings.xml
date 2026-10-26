@@ -380,7 +380,11 @@
     <string name="m3_update_available">يتوفر إصدار جديد: %1$s</string>
     <string name="m3_update_check">تحقق</string>
     <string name="m3_update_auto_check">التحقق من التحديثات تلقائيًا</string>
-    <string name="m3_update_auto_check_detail">معطَّل افتراضيًا. وأثناء تعطيله، لا يتحقق GitRehub إلا عند ضغطك على «تحقق» — ولا يُرسل أي شيء من تلقاء نفسه.</string>
+    <string name="m3_update_auto_check_detail">يُسأل مرة واحدة عند أول تشغيل. وعند تفعيله، يتحقق GitRehub في كل مرة يُفتح فيها ويخبرك عند توفر إصدار جديد.</string>
+    <string name="m3_update_consent_title">التحقق من التحديثات تلقائيًا؟</string>
+    <string name="m3_update_consent_message">اسمح لـ GitRehub بالاطلاع على GitHub في كل مرة يبدأ فيها لمعرفة إن كان هناك إصدار جديد وإخبارك. يقرأ رقم الإصدار فقط، ولا يرسل أي معلومات عنك، ولا يثبّت شيئًا من تلقاء نفسه.</string>
+    <string name="m3_update_consent_allow">السماح</string>
+    <string name="m3_update_consent_deny">ليس الآن</string>
     <string name="m3_update_check_failed">فشل التحقق من التحديثات</string>
     <string name="m3_update_rate_limited">فرض GitHub حدًّا على الطلبات، أعد المحاولة لاحقًا</string>
     <string name="m3_update_http_error">أعاد GitHub الرمز %1$d</string>

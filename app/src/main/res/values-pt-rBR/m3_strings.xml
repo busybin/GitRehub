@@ -380,7 +380,11 @@ O GitHub não tem canal de push para clientes de terceiros, então isto é uma c
     <string name="m3_update_available">Nova versão disponível: %1$s</string>
     <string name="m3_update_check">Verificar</string>
     <string name="m3_update_auto_check">Verificar atualizações automaticamente</string>
-    <string name="m3_update_auto_check_detail">Desativado por padrão. Enquanto estiver desativado, o GitRehub só verifica quando você toca em Verificar — nada é enviado por conta própria.</string>
+    <string name="m3_update_auto_check_detail">Perguntado uma vez na primeira abertura. Enquanto estiver ativado, o GitRehub verifica sempre que é aberto e avisa quando há uma versão nova.</string>
+    <string name="m3_update_consent_title">Verificar atualizações automaticamente?</string>
+    <string name="m3_update_consent_message">Permitir que o GitRehub consulte o GitHub toda vez que for aberto para ver se há uma versão nova e avisar você. Ele lê apenas o número da versão, não envia nada sobre você e nunca instala nada por conta própria.</string>
+    <string name="m3_update_consent_allow">Permitir</string>
+    <string name="m3_update_consent_deny">Agora não</string>
     <string name="m3_update_check_failed">Falha ao verificar atualizações</string>
     <string name="m3_update_rate_limited">O GitHub limitou nossas requisições, tente mais tarde</string>
     <string name="m3_update_http_error">O GitHub retornou %1$d</string>

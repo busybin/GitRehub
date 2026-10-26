@@ -26,8 +26,9 @@ import kotlinx.serialization.json.jsonPrimitive
  * Update check against our GitHub releases.
  *
  * Calls `GET releases/latest`, compares `tag_name` against `versionCode`, and hands the release page
- * or the APK asset to the UI. Nothing is sent unless the user asks for it (the automatic check is
- * opt-in, see [UpdatePrefs.auto]), and no device or user data goes with the request.
+ * or the APK asset to the UI. Nothing is sent unless the user asks for it or answered the
+ * first-launch question with "allow" (see [UpdateConsent]), and no device or user data goes with
+ * the request.
  *
  * The APK can only be installed by builds signed with the release key; see
  * [io.github.busybin.gitrehub.compose.common.UpdateSupport].
@@ -147,34 +148,49 @@ object UpdateChecker {
 }
 
 /**
- * Remembers the last version seen and the last one prompted; the dialog shows once, when `known`
- * is newer than both the running version and `prompted`.
+ * The answer to "may this app check for updates on its own?", asked once on first launch.
+ * [UNASKED] is the only state that shows the question, and nothing is requested from the release
+ * page until it is answered.
+ */
+enum class UpdateConsent { UNASKED, ALLOWED, DENIED }
+
+/**
+ * What the user answered, plus the newest version a check has seen. The update dialog shows on
+ * every launch while it is newer than the running build; the consent question itself is asked once.
  */
 object UpdatePrefs {
 
+    private const val KEY_CONSENT = "m3_update_consent"
     private const val KEY_KNOWN = "m3_update_known_version"
-    private const val KEY_PROMPTED = "m3_update_prompted_version"
-    private const val KEY_AUTO = "m3_update_auto_check"
 
-    /**
-     * Opt-in automatic check (off by default; the manual button always works). Off by default
-     * because an unsolicited request counts as tracking on a third-party store (see the build docs).
-     */
-    private val _auto = MutableStateFlow(PrefHelper.getBoolean(KEY_AUTO))
-    val auto: StateFlow<Boolean> = _auto.asStateFlow()
+    /** The old opt-in switch; kept only to migrate builds from before the first-launch question. */
+    private const val KEY_AUTO_LEGACY = "m3_update_auto_check"
 
-    fun setAuto(value: Boolean) {
-        PrefHelper.putAny(KEY_AUTO, value)
-        _auto.value = value
+    private fun loadConsent(): UpdateConsent = when {
+        PrefHelper.isExist<Int>(KEY_CONSENT) ->
+            UpdateConsent.entries.getOrElse(PrefHelper.getInt(KEY_CONSENT)) { UpdateConsent.UNASKED }
+        // Upgraded from the switch: it was only ever turned on by the user, so that answer stands.
+        PrefHelper.getBoolean(KEY_AUTO_LEGACY) -> UpdateConsent.ALLOWED
+        else -> UpdateConsent.UNASKED
     }
 
-    private val _known = MutableStateFlow(if (PrefHelper.isExist<Int>(KEY_KNOWN)) PrefHelper.getInt(KEY_KNOWN) else 0)
-    val known: StateFlow<Int> = _known.asStateFlow()
+    private val _consent = MutableStateFlow(loadConsent())
+    val consent: StateFlow<UpdateConsent> = _consent.asStateFlow()
 
-    private val _prompted = MutableStateFlow(
-        if (PrefHelper.isExist<Int>(KEY_PROMPTED)) PrefHelper.getInt(KEY_PROMPTED) else 0
+    fun setConsent(value: UpdateConsent) {
+        PrefHelper.putAny(KEY_CONSENT, value.ordinal)
+        _consent.value = value
+    }
+
+    /** The settings switch: on means "allowed", off means "asked and declined". */
+    fun setAuto(enabled: Boolean) {
+        setConsent(if (enabled) UpdateConsent.ALLOWED else UpdateConsent.DENIED)
+    }
+
+    private val _known = MutableStateFlow(
+        if (PrefHelper.isExist<Int>(KEY_KNOWN)) PrefHelper.getInt(KEY_KNOWN) else 0
     )
-    val prompted: StateFlow<Int> = _prompted.asStateFlow()
+    val known: StateFlow<Int> = _known.asStateFlow()
 
     /** Stores the version if it is newer than the recorded one. */
     fun recordKnown(version: Int) {
@@ -182,18 +198,4 @@ object UpdatePrefs {
         PrefHelper.putAny(KEY_KNOWN, version)
         _known.value = version
     }
-
-    /** Remembers a version as already prompted, so it is not shown again. */
-    fun markPrompted(version: Int) {
-        if (version <= _prompted.value) return
-        PrefHelper.putAny(KEY_PROMPTED, version)
-        _prompted.value = version
-    }
-
-    /** Version to show a one-shot dialog for, or null. */
-    fun shouldPrompt(currentVersion: Int): Int? {
-        val known = _known.value
-        return if (known > currentVersion && known > _prompted.value) known else null
-    }
 }
-
