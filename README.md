@@ -19,8 +19,7 @@ GitHub artwork or logo is bundled.
 | ![Activity feed](docs/screenshots/feed.png) | ![Repositories](docs/screenshots/repositories.png) | ![Repository overview](docs/screenshots/repository.png) |
 | ![Rendered README](docs/screenshots/readme.png) | ![Code browser](docs/screenshots/code.png) | ![Settings and themes](docs/screenshots/settings.png) |
 
-Taken on an Android 14 emulator at 1080×2400. More in
-[`fastlane/metadata/android/en-US/images/phoneScreenshots`](fastlane/metadata/android/en-US/images/phoneScreenshots).
+Taken on an Android 14 emulator at 1080×2400.
 
 ## Features
 
