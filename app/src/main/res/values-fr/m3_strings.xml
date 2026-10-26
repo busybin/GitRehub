@@ -236,6 +236,7 @@
     <string name="m3_repos_updated_ago">Dernière poussée %1$s</string>
     <string name="m3_trending_today">Aujourd\'hui</string>
     <string name="m3_trending_week">Cette semaine</string>
+    <string name="m3_trending_any_language">Toutes les langues</string>
     <string name="m3_trending_month">Ce mois-ci</string>
     <string name="m3_trending_empty">Aucun dépôt trouvé sur cette période</string>
     <string name="m3_starred_pill">Étoile</string>

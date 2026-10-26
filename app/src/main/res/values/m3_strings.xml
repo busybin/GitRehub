@@ -237,6 +237,7 @@
     <string name="m3_repos_updated_ago">Last push %1$s</string>
     <string name="m3_trending_today">Today</string>
     <string name="m3_trending_week">This week</string>
+    <string name="m3_trending_any_language">Any language</string>
     <string name="m3_trending_month">This month</string>
     <string name="m3_trending_empty">No repositories found in this time window</string>
     <string name="m3_starred_pill">Starred</string>

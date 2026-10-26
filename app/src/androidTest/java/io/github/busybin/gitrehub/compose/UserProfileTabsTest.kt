@@ -30,7 +30,7 @@ class UserProfileTabsTest {
     @Test
     fun everyTabLoadsInsteadOfFailing() = runBlocking {
         val vm = UserProfileViewModel()
-        val tabs = listOf(UserTab.STARRED, UserTab.FOLLOWING, UserTab.FOLLOWERS)
+        val tabs = listOf(UserTab.STARRED, UserTab.GISTS, UserTab.FOLLOWING, UserTab.FOLLOWERS)
 
         for (tab in tabs) {
             vm.selectTab(login, tab)
@@ -59,6 +59,7 @@ class UserProfileTabsTest {
                     UserTab.FOLLOWING -> vm.following.value
                     UserTab.FOLLOWERS -> vm.followers.value
                     UserTab.MEMBERS -> vm.members.value
+                    UserTab.GISTS -> vm.gists.value
                     UserTab.REPOS -> null
                 }
                 if (state != null && state !is LoadState.Loading) return@withTimeout state

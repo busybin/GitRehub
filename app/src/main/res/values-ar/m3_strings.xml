@@ -236,6 +236,7 @@
     <string name="m3_repos_updated_ago">آخر دفع %1$s</string>
     <string name="m3_trending_today">اليوم</string>
     <string name="m3_trending_week">هذا الأسبوع</string>
+    <string name="m3_trending_any_language">أي لغة</string>
     <string name="m3_trending_month">هذا الشهر</string>
     <string name="m3_trending_empty">لم يُعثر على مستودعات في هذه الفترة</string>
     <string name="m3_starred_pill">مميّز بنجمة</string>

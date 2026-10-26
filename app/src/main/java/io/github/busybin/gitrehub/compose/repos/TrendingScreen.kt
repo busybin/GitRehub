@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -45,6 +47,7 @@ fun TrendingScreen(onOpenRepo: (String) -> Unit) {
     val loadingMore by vm.loadingMore.collectAsStateWithLifecycle()
     val hasMore by vm.hasMore.collectAsStateWithLifecycle()
     val period by vm.period.collectAsStateWithLifecycle()
+    val language by vm.language.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
     val tokens = LocalTokens.current
 
@@ -71,6 +74,26 @@ fun TrendingScreen(onOpenRepo: (String) -> Unit) {
                     selected = period == entry,
                     onClick = { vm.setPeriod(entry) },
                     label = { Text(stringResource(entry.labelRes)) },
+                )
+            }
+        }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState())
+                .padding(start = 12.dp, end = 12.dp, bottom = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            FilterChip(
+                selected = language == null,
+                onClick = { vm.setLanguage(null) },
+                label = { Text(stringResource(R.string.m3_trending_any_language)) },
+            )
+            TrendingViewModel.LANGUAGES.forEach { name ->
+                FilterChip(
+                    selected = language == name,
+                    onClick = { vm.setLanguage(name) },
+                    label = { Text(name) },
                 )
             }
         }

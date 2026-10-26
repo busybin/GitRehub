@@ -31,6 +31,10 @@ enum class TrendingPeriod(@StringRes val labelRes: Int, val days: Int) {
  */
 class TrendingViewModel : PagedViewModel<Repo>() {
 
+    /** `null` = every language. Language names are proper nouns, so they stay untranslated. */
+    private val _language = MutableStateFlow<String?>(null)
+    val language: StateFlow<String?> = _language.asStateFlow()
+
     private val _period = MutableStateFlow(TrendingPeriod.WEEK)
     val period: StateFlow<TrendingPeriod> = _period.asStateFlow()
 
@@ -40,13 +44,26 @@ class TrendingViewModel : PagedViewModel<Repo>() {
         refresh()
     }
 
+    fun setLanguage(language: String?) {
+        if (_language.value == language) return
+        _language.value = language
+        refresh()
+    }
+
     override suspend fun fetch(page: Int): PageResult<Repo> {
         // stars:>3 just filters out freshly created repos nobody cares about, less noise.
-        val query = "created:>${sinceDate(_period.value)} stars:>3"
+        val language = _language.value?.let { " language:\"$it\"" }.orEmpty()
+        val query = "created:>${sinceDate(_period.value)} stars:>3$language"
         return GitHubApi.searchRepos(query, page = page, sort = "stars", order = "desc").toPage()
     }
 
     companion object {
+        /** Languages offered in the filter; the search API matches them case-insensitively. */
+        val LANGUAGES = listOf(
+            "Kotlin", "Java", "Python", "JavaScript", "TypeScript", "Go", "Rust",
+            "C++", "C#", "Swift", "Dart", "Ruby", "PHP", "Shell",
+        )
+
         /** GitHub's search syntax only accepts `YYYY-MM-DD` (UTC). */
         fun sinceDate(period: TrendingPeriod, now: Long = System.currentTimeMillis()): String {
             val calendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"), Locale.US)

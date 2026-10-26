@@ -235,6 +235,7 @@
     <string name="m3_repos_updated_ago">最近提交：%1$s</string>
     <string name="m3_trending_today">今天</string>
     <string name="m3_trending_week">本周</string>
+    <string name="m3_trending_any_language">所有语言</string>
     <string name="m3_trending_month">本月</string>
     <string name="m3_trending_empty">这个时间窗里没有找到仓库</string>
     <string name="m3_starred_pill">已加星</string>

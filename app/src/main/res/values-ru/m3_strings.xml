@@ -236,6 +236,7 @@
     <string name="m3_repos_updated_ago">Последняя отправка %1$s</string>
     <string name="m3_trending_today">Сегодня</string>
     <string name="m3_trending_week">На этой неделе</string>
+    <string name="m3_trending_any_language">Любой язык</string>
     <string name="m3_trending_month">В этом месяце</string>
     <string name="m3_trending_empty">За этот период репозитории не найдены</string>
     <string name="m3_starred_pill">Со звездой</string>

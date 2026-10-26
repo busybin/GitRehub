@@ -1,7 +1,6 @@
 package io.github.busybin.gitrehub
 
 import android.app.Application
-import android.content.pm.ShortcutManager
 import android.os.Build
 import androidx.annotation.RequiresApi
 import coil.ImageLoader
@@ -9,6 +8,7 @@ import coil.ImageLoaderFactory
 import coil.decode.GifDecoder
 import coil.disk.DiskCache
 import coil.memory.MemoryCache
+import io.github.busybin.gitrehub.compose.common.AppShortcuts
 import io.github.busybin.gitrehub.core.auth.TokenStore
 import io.github.busybin.gitrehub.helper.DeviceNameGetter
 import io.github.busybin.gitrehub.helper.OfflineStatus
@@ -65,10 +65,7 @@ class App : Application(), ImageLoaderFactory {
 
     @RequiresApi(Build.VERSION_CODES.N_MR1)
     private fun initShortcut() {
-        val shortcutManager = this.applicationContext.getSystemService(
-            ShortcutManager::class.java
-        )
-        shortcutManager.removeAllDynamicShortcuts()
+        AppShortcuts.publish(this)
     }
 
     private fun init() {
@@ -82,10 +79,9 @@ class App : Application(), ImageLoaderFactory {
         OfflineStatus.init(this)
         generateTypeface(this)
         NotificationSchedulerJobTask.scheduleJob(this)
-        if (BuildConfig.DEBUG) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
-                initShortcut()
-            }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
+            // A binder round trip; keep it off the startup thread.
+            Thread { initShortcut() }.start()
         }
         EmojiStore.load(this)
         ColorsProvider.load()

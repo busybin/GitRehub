@@ -236,6 +236,7 @@
     <string name="m3_repos_updated_ago">最終プッシュ %1$s</string>
     <string name="m3_trending_today">今日</string>
     <string name="m3_trending_week">今週</string>
+    <string name="m3_trending_any_language">すべての言語</string>
     <string name="m3_trending_month">今月</string>
     <string name="m3_trending_empty">この期間にリポジトリが見つかりません</string>
     <string name="m3_starred_pill">スター付き</string>

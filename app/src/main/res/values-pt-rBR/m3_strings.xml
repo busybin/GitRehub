@@ -236,6 +236,7 @@
     <string name="m3_repos_updated_ago">Último envio %1$s</string>
     <string name="m3_trending_today">Hoje</string>
     <string name="m3_trending_week">Esta semana</string>
+    <string name="m3_trending_any_language">Qualquer idioma</string>
     <string name="m3_trending_month">Este mês</string>
     <string name="m3_trending_empty">Nenhum repositório encontrado neste período</string>
     <string name="m3_starred_pill">Favorito</string>

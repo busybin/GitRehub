@@ -81,7 +81,11 @@ class RealReadmeTest {
     }
 
     private fun inspect(expectedImages: Int): String {
-        val tv: TextView = textViews(rule.activity.window.decorView).firstOrNull()
+        // The first TextView in the hierarchy is not always the README (toolbars/placeholders are
+        // TextViews too): pick the one that actually carries the image spans.
+        val tv = textViews(rule.activity.window.decorView)
+            .filter { it.text is Spanned && (it.text as Spanned).getSpans(0, it.text.length, ImageSpan::class.java).isNotEmpty() }
+            .maxByOrNull { it.text.length }
             ?: return "no TextView"
         val text = tv.text as? Spanned ?: return "not Spanned"
         val images = text.getSpans(0, text.length, ImageSpan::class.java)
@@ -105,8 +109,18 @@ class RealReadmeTest {
         // Images with no separator at all means they were crammed into a single span-less line.
         if (flat.contains("##")) bad += "images are crammed without separators"
         if (images.any { text.getSpanStart(it) < 0 }) bad += "an ImageSpan starts outside the text"
-        // Each image is capped at one column of the table.
-        if (widths.any { it > tv.width / 4 + 2 }) bad += "an image is wider than one column: $widths"
+        // Table images are capped at one column; standalone ones (the README's coffee badge) only at
+        // the view width. The table begins at its first header cell.
+        val headerAt = text.toString().indexOf("App freezing")
+        if (headerAt < 0) bad += "table header not found"
+        val tableStart = images.indexOfFirst { text.getSpanStart(it) > headerAt }
+            .takeIf { it >= 0 } ?: images.size
+        val inTable = widths.drop(tableStart)
+        if (headerAt >= 0 && inTable.isEmpty()) bad += "no table images"
+        if (inTable.any { it > tv.width / 4 + 2 }) bad += "an image is wider than one column: $inTable"
+        if (widths.take(tableStart).any { it > tv.width }) {
+            bad += "a standalone image is wider than the view: ${widths.take(tableStart)}"
+        }
 
         val shape = "tvW=${tv.width} loaded=$loaded/$loaded widths=$widths table=[$table]"
         return if (bad.isEmpty()) "OK $shape" else "BAD ${bad.joinToString("; ")} :: $shape"

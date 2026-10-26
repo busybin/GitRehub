@@ -4,17 +4,21 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.busybin.gitrehub.compose.common.LoadState
 import io.github.busybin.gitrehub.compose.common.launchLoad
+import io.github.busybin.gitrehub.compose.common.toUiText
 import io.github.busybin.gitrehub.core.model.CodeEntry
 import io.github.busybin.gitrehub.core.model.GitTree
 import io.github.busybin.gitrehub.compose.data.RepoContent
 import io.github.busybin.gitrehub.compose.data.RepoStats
 import io.github.busybin.gitrehub.core.model.Commit
 import io.github.busybin.gitrehub.core.net.GitHubApi
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 data class CodeListing(
     /** null = the repository's default branch. */
@@ -29,7 +33,8 @@ data class CodeListing(
  * Navigation state of the code browser: which directory of which ref is on screen.
  *
  * Only one directory is requested at a time, so browsing a huge repository stays cheap (no full
- * recursive tree download).
+ * recursive tree download). Listings are kept in a small LRU, so walking back up a tree (or
+ * re-entering a directory you just left) does not hit the network again; [refresh] always does.
  */
 class CodeBrowserViewModel : ViewModel() {
 
@@ -45,14 +50,26 @@ class CodeBrowserViewModel : ViewModel() {
     private var ref: String? = null
     private var path: String = ""
 
+    /** Load generation; an answer for a directory the user already left is dropped. */
+    private var generation = 0
+
+    /** `ref|path` → listing; browsing rarely needs more than the current branch. */
+    private val listings = object : LinkedHashMap<String, CodeListing>(16, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, CodeListing>) =
+            size > MAX_CACHED_LISTINGS
+    }
+
     fun setup(owner: String, repo: String, ref: String?) {
         val same = this.owner == owner && this.repo == repo && this.ref == ref
         this.owner = owner
         this.repo = repo
         this.ref = ref
-        if (!same) _fileIndex.value = null
+        if (!same) {
+            listings.clear()
+            _fileIndex.value = null
+        }
         if (same && _state.value is LoadState.Ready) return
-        load("")
+        load("", force = false)
     }
 
     /** Fetch the recursive tree once; the finder filters it locally afterwards. */
@@ -68,22 +85,47 @@ class CodeBrowserViewModel : ViewModel() {
         }
     }
 
-    fun open(path: String) = load(path)
+    fun open(path: String) = load(path, force = false)
 
-    fun refresh() = load(path)
+    fun refresh() = load(path, force = true)
 
-    private fun load(newPath: String) {
+    private fun load(newPath: String, force: Boolean) {
         path = newPath
+        val generation = ++generation
+        val key = cacheKey(newPath)
+        if (!force) {
+            listings[key]?.let {
+                _state.value = LoadState.Ready(it)
+                return
+            }
+        }
         val owner = owner
         val repo = repo
         val ref = ref
-        val path = path
-        viewModelScope.launchLoad({ _state.value = it }) {
-            coroutineScope {
-                val entries = async { RepoContent.list(owner, repo, path, ref) }
-                val lastCommit = async { RepoStats.lastCommit(owner, repo, path, ref) }
-                CodeListing(ref, path, entries.await(), lastCommit.await())
+        viewModelScope.launch {
+            _state.value = LoadState.Loading
+            val result = runCatching {
+                withContext(Dispatchers.IO) {
+                    coroutineScope {
+                        val entries = async { RepoContent.list(owner, repo, newPath, ref) }
+                        val lastCommit = async { RepoStats.lastCommit(owner, repo, newPath, ref) }
+                        CodeListing(ref, newPath, entries.await(), lastCommit.await())
+                    }
+                }
+            }
+            if (generation != this@CodeBrowserViewModel.generation) return@launch
+            result.onSuccess { listing ->
+                listings[key] = listing
+                _state.value = LoadState.Ready(listing)
+            }.onFailure { error ->
+                _state.value = LoadState.Failure(error.toUiText(), error)
             }
         }
+    }
+
+    private fun cacheKey(p: String) = "${ref.orEmpty()}|$p"
+
+    private companion object {
+        const val MAX_CACHED_LISTINGS = 24
     }
 }
