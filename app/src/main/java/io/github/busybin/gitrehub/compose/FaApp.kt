@@ -281,7 +281,7 @@ fun FaApp(routeRequest: MutableState<String?>? = null) {
         val drawerState = rememberDrawerState(DrawerValue.Closed)
         val scope = rememberCoroutineScope()
         val context = LocalContext.current
-        // a third-party store / re-signed builds cannot install our APK, so they never prompt for updates.
+        // Re-signed builds cannot install our APK, so they never prompt for updates.
         val selfUpdateAvailable = remember { UpdateSupport.isAvailable(context) }
 
         val backStack by nav.currentBackStackEntryAsState()

@@ -358,7 +358,7 @@ fun SettingsScreen() {
 private fun UpdateRow() {
     val context = LocalContext.current
     if (!remember { UpdateSupport.isAvailable(context) }) {
-        // a third-party store (and any other re-signed build): the store owns updates, our APK cannot replace it.
+        // Any re-signed build: the store owns updates, our APK cannot replace it.
         Column {
             Text(stringResource(R.string.m3_update_title), style = MaterialTheme.typography.bodyLarge)
             Text(

@@ -9,6 +9,9 @@
 
 An open-source GitHub client for Android with a modern **Material 3 / Jetpack Compose** interface.
 
+Not affiliated with GitHub, Inc. GitRehub is an independent client for the public GitHub API; no
+GitHub artwork or logo is bundled.
+
 ## Screenshots
 
 | Activity | Repositories | Repository |

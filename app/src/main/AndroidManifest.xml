@@ -13,8 +13,8 @@
     <uses-permission
         android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="28" />
-    <!-- In-app updates (developer-signed builds only): the from-source build compiles the updater out
-         and the runtime check hides it whenever the APK is not signed with the release key. -->
+    <!-- In-app updates (developer-signed builds only): a from-source build compiles the updater
+         out and the runtime check hides it whenever the APK is not signed with the release key. -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <!-- persistent foreground service (Android 14+ needs the dataSync type declared) -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />

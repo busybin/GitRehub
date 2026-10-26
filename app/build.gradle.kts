@@ -34,9 +34,9 @@ val config = loadConfig()
 // given base URL and allow cleartext HTTP so the release build can be exercised on an emulator.
 val mockApi = (project.findProperty("gitrehub.mockApi") as String?)?.takeIf { it.isNotBlank() }
 
-// Builds made for a third-party store pass -Pgitrehub.store=external, which compiles the in-app
-// self-updater out (that store re-signs the APK, so our packages cannot be installed over it).
-val storeBuild = (project.findProperty("gitrehub.store") as String?) == "store"
+// Store builds pass -Pgitrehub.store=external, which compiles the in-app self-updater out: a
+// store re-signs the APK, so a package signed by us can never be installed over it.
+val storeBuild = (project.findProperty("gitrehub.store") as String?) == "external"
 
 // The release key is not in the repo, so only attach the signing config when the key is present.
 val releaseKeystore = rootProject.file("app/keys_release.jks")
@@ -51,7 +51,7 @@ android {
         // Baseline pins targetSdk to 36 while compileSdk tracks 37.
         targetSdk = (rootProject.findProperty("baseline.targetSdk") as String).toInt()
         versionCode = 4
-        // Plain number, no "V" prefix, so third-party stores can compare it directly; the release
+        // Plain number, no "V" prefix, so stores and update checkers compare it directly; the release
         // tag equals the versionCode.
         versionName = "4"
         buildConfigField("String", "GITHUB_APP_ID", "\"io.github.busybin.gitrehub\"")
@@ -68,11 +68,6 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     signingConfigs {
-        // The repo ships its own debug keystore on purpose (stable, shared signature across
-        // machines); keep using it so `adb install -r` works against existing installs.
-        getByName("debug") {
-            storeFile = rootProject.file("app/keys_debug.jks")
-        }
         // Release: app/keys_release.jks is NOT in the repo (.gitignore) — provide your own, or set
         // PASSWORD / KEY_ALIAS in app/secrets.properties before building a release.
         create("release") {
@@ -95,7 +90,7 @@ android {
                 // AGP 9: getDefaultProguardFile only accepts the optimize variant.
                 getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
             )
-            // Unsigned when the key is absent (a third-party store); never fall back to the debug key.
+            // Unsigned when the key is absent; never fall back to the debug key.
             if (releaseKeystore.exists()) signingConfig = signingConfigs.getByName("release")
         }
         debug {

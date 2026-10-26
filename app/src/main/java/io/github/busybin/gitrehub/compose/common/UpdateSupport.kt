@@ -7,14 +7,14 @@ import io.github.busybin.gitrehub.BuildConfig
 import java.security.MessageDigest
 
 /**
- * In-app updates only work when the installed APK carries the release certificate. a third-party store and any
- * other store that re-signs produce an APK with a different key, and an APK signed by us can never be
- * installed over it. The from-source build also builds with `-Pgitrehub.store=external`, which switches
+ * In-app updates only work when the installed APK carries the release certificate. A store or a
+ * from-source build re-signs the APK with a different key, and a package signed by us can never be
+ * installed over it. Those builds pass `-Pgitrehub.store=external`, which switches
  * [BuildConfig.SELF_UPDATE] off.
  */
 object UpdateSupport {
 
-    /** SHA-256 of the release certificate (the key used for GitHub and a third-party store builds). */
+    /** SHA-256 of the release certificate; builds signed with any other key hide the updater. */
     private const val RELEASE_CERT_SHA256 =
         "c42c7adc15075ed7349ef5600dd03ddb45177cf82f615534d8309bc0633f53bc"
 
