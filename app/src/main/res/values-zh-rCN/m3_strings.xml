@@ -288,6 +288,7 @@
     <string name="m3_forked">已 Fork</string>
 
     <!-- profile -->
+    <string name="m3_pinned_repos">置顶仓库</string>
     <string name="m3_profile_repos">仓库</string>
     <string name="m3_profile_followers">关注者</string>
     <string name="m3_profile_following">在关注</string>

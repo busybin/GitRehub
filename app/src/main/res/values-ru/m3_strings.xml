@@ -289,6 +289,7 @@
     <string name="m3_forked">Форк создан</string>
 
     <!-- profile -->
+    <string name="m3_pinned_repos">Закреплённые</string>
     <string name="m3_profile_repos">Репозитории</string>
     <string name="m3_profile_followers">Подписчики</string>
     <string name="m3_profile_following">Подписки</string>

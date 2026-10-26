@@ -290,6 +290,7 @@
     <string name="m3_forked">Forked</string>
 
     <!-- profile -->
+    <string name="m3_pinned_repos">Pinned</string>
     <string name="m3_profile_repos">Repositories</string>
     <string name="m3_profile_followers">Followers</string>
     <string name="m3_profile_following">Following</string>

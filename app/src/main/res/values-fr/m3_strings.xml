@@ -289,6 +289,7 @@
     <string name="m3_forked">Forké</string>
 
     <!-- profile -->
+    <string name="m3_pinned_repos">Épinglés</string>
     <string name="m3_profile_repos">Dépôts</string>
     <string name="m3_profile_followers">Abonnés</string>
     <string name="m3_profile_following">Abonnements</string>

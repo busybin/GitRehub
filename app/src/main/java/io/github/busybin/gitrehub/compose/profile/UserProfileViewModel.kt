@@ -8,6 +8,8 @@ import io.github.busybin.gitrehub.compose.common.LoadState
 import io.github.busybin.gitrehub.compose.common.UiText
 import io.github.busybin.gitrehub.compose.common.launchLoad
 import io.github.busybin.gitrehub.compose.common.toUiText
+import io.github.busybin.gitrehub.compose.data.PinnedRepo
+import io.github.busybin.gitrehub.compose.data.PinnedRepos
 import io.github.busybin.gitrehub.core.model.Gist
 import io.github.busybin.gitrehub.core.model.Repo
 import io.github.busybin.gitrehub.core.model.User
@@ -25,6 +27,8 @@ data class UserPage(
     val following: Boolean = false,
     val isSelf: Boolean = false,
     val isOrg: Boolean = false,
+    /** Pinned repositories; empty for organizations (they pin through a different GraphQL root). */
+    val pinned: List<PinnedRepo> = emptyList(),
 )
 
 /** The four user-page tabs (loaded on demand). */
@@ -131,12 +135,17 @@ class UserProfileViewModel : ViewModel() {
             val isSelf = me != null && me.equals(login, ignoreCase = true)
             val following = !isSelf && runCatching { GitHubApi.isFollowing(login) }
                 .getOrDefault(false)
+            val isOrg = user.type.equals("Organization", ignoreCase = true)
+            val pinned = if (isOrg) emptyList() else {
+                runCatching { PinnedRepos.load(login) }.getOrDefault(emptyList())
+            }
             UserPage(
                 user = user,
                 repos = repos,
                 following = following,
                 isSelf = isSelf,
-                isOrg = user.type.equals("Organization", ignoreCase = true),
+                isOrg = isOrg,
+                pinned = pinned,
             )
         }
     }

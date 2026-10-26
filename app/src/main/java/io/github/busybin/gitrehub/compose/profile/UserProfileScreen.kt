@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -16,14 +17,17 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.PersonAdd
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -45,6 +49,7 @@ import io.github.busybin.gitrehub.compose.common.LoadState
 import io.github.busybin.gitrehub.compose.common.MetaText
 import io.github.busybin.gitrehub.compose.common.ToggleActionButton
 import io.github.busybin.gitrehub.compose.common.render
+import io.github.busybin.gitrehub.compose.data.PinnedRepo
 import io.github.busybin.gitrehub.compose.gists.GistCard
 import io.github.busybin.gitrehub.compose.repos.RepoCard
 import io.github.busybin.gitrehub.core.model.Gist
@@ -117,6 +122,24 @@ fun UserProfileScreen(
                         }
                     },
                 )
+            }
+
+            if (page.pinned.isNotEmpty()) {
+                item {
+                    Text(
+                        text = stringResource(R.string.m3_pinned_repos),
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 4.dp),
+                    )
+                }
+                item {
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        items(page.pinned, key = { it.nameWithOwner }) { repo ->
+                            PinnedRepoCard(repo) { onOpenRepo(repo.nameWithOwner) }
+                        }
+                    }
+                }
             }
 
             item {
@@ -279,4 +302,61 @@ private fun EmptyNote(text: String) {
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(vertical = 8.dp),
     )
+}
+
+/** One pinned repository: name, description, stars and language, in a fixed-width card. */
+@Composable
+private fun PinnedRepoCard(repo: PinnedRepo, onClick: () -> Unit) {
+    Card(
+        modifier = Modifier.width(230.dp).clickable(onClick = onClick),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        ),
+    ) {
+        Column(Modifier.padding(10.dp)) {
+            Text(
+                text = repo.nameWithOwner,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+            )
+            val description = repo.description
+            if (!description.isNullOrBlank()) {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                )
+            }
+            Spacer(Modifier.height(6.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Filled.Star,
+                    contentDescription = null,
+                    modifier = Modifier.size(12.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.width(3.dp))
+                Text(
+                    text = "${repo.stars}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                val language = repo.language
+                if (!language.isNullOrBlank()) {
+                    Spacer(Modifier.width(10.dp))
+                    Text(
+                        text = language,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                    )
+                }
+            }
+        }
+    }
 }

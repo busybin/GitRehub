@@ -289,6 +289,7 @@
     <string name="m3_forked">フォーク済み</string>
 
     <!-- profile -->
+    <string name="m3_pinned_repos">ピン留め</string>
     <string name="m3_profile_repos">リポジトリ</string>
     <string name="m3_profile_followers">フォロワー</string>
     <string name="m3_profile_following">フォロー中</string>
