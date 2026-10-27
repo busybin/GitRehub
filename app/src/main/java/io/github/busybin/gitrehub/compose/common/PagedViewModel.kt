@@ -121,7 +121,9 @@ abstract class PagedViewModel<T> : ViewModel() {
                 val next = page + 1
                 val result = withContext(Dispatchers.IO) { fetch(next) }
                 if (result.items.isEmpty()) {
-                    _hasMore.value = false
+                    // Advance anyway so a retry asks for the following page; keep the flag honest.
+                    page = next
+                    _hasMore.value = result.hasMore
                 } else {
                     accumulated.addAll(result.items)
                     page = next

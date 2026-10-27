@@ -201,6 +201,7 @@ private fun LabelDialog(
                     onValueChange = { color = it },
                     label = { Text(stringResource(R.string.m3_label_color)) },
                     singleLine = true,
+                    isError = normalizeHexColor(color) == null,
                 )
                 Spacer(Modifier.height(8.dp))
                 OutlinedTextField(
@@ -222,17 +223,27 @@ private fun LabelDialog(
         confirmButton = {
             TextButton(
                 onClick = {
-                    if (name.isNotBlank() && color.trim().removePrefix("#").length >= 3) {
-                        onSave(name.trim(), color.trim(), description.trim().takeIf { it.isNotEmpty() })
-                    }
+                    val hex = normalizeHexColor(color) ?: return@TextButton
+                    onSave(name.trim(), hex, description.trim().takeIf { it.isNotEmpty() })
                 },
-                enabled = name.isNotBlank(),
+                enabled = name.isNotBlank() && normalizeHexColor(color) != null,
             ) { Text(stringResource(R.string.m3_save)) }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.m3_cancel)) }
         },
     )
+}
+
+/** GitHub takes exactly six hex digits; the CSS three-digit shorthand is expanded. */
+internal fun normalizeHexColor(raw: String): String? {
+    val hex = raw.trim().removePrefix("#")
+    val valid = hex.all { it.digitToIntOrNull(16) != null }
+    return when {
+        hex.length == 6 && valid -> hex.uppercase()
+        hex.length == 3 && valid -> hex.map { "$it$it" }.joinToString("").uppercase()
+        else -> null
+    }
 }
 
 /** `#RRGGBB` (or bare `RRGGBB`) to a colour; unparsable values fall back to grey. */

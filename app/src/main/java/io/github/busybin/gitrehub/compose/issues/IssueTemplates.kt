@@ -39,8 +39,13 @@ object IssueTemplates {
             }
             .forEach { entry ->
                 val text = runCatching { RepoContent.text(entry) }.getOrNull() ?: return@forEach
-                val fallback = entry.name.orEmpty().substringBeforeLast('.')
-                out += parse(text, fallback)
+                val entryName = entry.name.orEmpty().lowercase()
+                val fallback = entryName.substringBeforeLast('.')
+                out += parse(
+                    raw = text,
+                    fallbackName = fallback,
+                    isYaml = entryName.endsWith(".yml") || entryName.endsWith(".yaml"),
+                )
             }
         if (out.isEmpty()) {
             ROOT_FILES.forEach { path ->
@@ -53,9 +58,9 @@ object IssueTemplates {
         return out
     }
 
-    private fun parse(raw: String, fallbackName: String): IssueTemplate {
-        val isForm = raw.trimStart().startsWith("name:", ignoreCase = false) ||
-            raw.lineSequence().take(4).any { it.trimStart().startsWith("- type:") }
+    /** Forms are YAML only; a Markdown template that happens to start with `name:` is plain text. */
+    private fun parse(raw: String, fallbackName: String, isYaml: Boolean = false): IssueTemplate {
+        val isForm = isYaml || raw.lineSequence().take(4).any { it.trimStart().startsWith("- type:") }
         return if (isForm) parseForm(raw, fallbackName) else parseMarkdown(raw, fallbackName)
     }
 

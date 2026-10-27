@@ -153,9 +153,12 @@ class IssuesViewModel : PagedViewModel<Issue>() {
         var more = false
         // A refresh restarts upstream; loadMore continues where the last successful fetch stopped.
         var cursor = if (page <= 1) 0 else upstreamPage
-        // Page upstream at most 5 times per fetch.
         var guard = 0
-        while (out.size < GitHubApi.PAGE_SIZE && guard < 5) {
+        while (out.size < GitHubApi.PAGE_SIZE) {
+            // The issues endpoint returns pull requests too and the split is client-side, so an
+            // "issues" page can come back empty while upstream still has rows. Scan further in
+            // that case (up to EMPTY_SCAN_PAGES) instead of showing an empty tab.
+            if (guard >= if (out.isEmpty()) EMPTY_SCAN_PAGES else MAX_PAGES) break
             guard++
             cursor++
             val response = GitHubApi.repoIssues(
@@ -176,9 +179,19 @@ class IssuesViewModel : PagedViewModel<Issue>() {
         }
         // Only a fetch that came back commits the cursor, so a failed page is retried, not skipped.
         upstreamPage = cursor
-        return PageResult(out, more)
+        // An empty page must not advertise more rows: there is nothing to scroll, so the screen
+        // would never ask for the next page.
+        return PageResult(out, more && out.isNotEmpty())
     }
 
     private fun Issue.matchesKind(): Boolean =
         if (kind == IssueKind.PULL) isPullRequest else !isPullRequest
+
+    private companion object {
+        /** Upstream pages per fetch when rows are being found (fills one page of rows). */
+        const val MAX_PAGES = 5
+
+        /** Extra scan while every upstream row belongs to the other kind. */
+        const val EMPTY_SCAN_PAGES = 20
+    }
 }

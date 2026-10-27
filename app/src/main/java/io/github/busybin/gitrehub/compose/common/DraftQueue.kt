@@ -28,8 +28,9 @@ data class DraftComment(
  * Offline queue for comments: a network failure keeps the text locally instead of losing it, and
  * the drafts screen (or the next app launch) retries it.
  *
- * Only network-level failures are queued: a 4xx/5xx answer means GitHub saw the request, so
- * retrying it could post the same comment twice.
+ * A draft is kept on network failures and on answers that prove the comment was never created
+ * (401/403/429). Any other answer means GitHub saw the request and may have applied it, so the
+ * draft is dropped rather than risk posting the same comment twice.
  */
 object DraftQueue {
 
@@ -60,7 +61,9 @@ object DraftQueue {
             GitHubApi.createComment(draft.owner, draft.repo, draft.number, draft.body)
         }
         val status = (result.exceptionOrNull() as? ApiException)?.error?.status ?: 0
-        if (result.isSuccess || status != 0) {
+        // These three never create the comment, and an expired token is the common case here.
+        val notCreated = status == 401 || status == 403 || status == 429
+        if (result.isSuccess || (status != 0 && !notCreated)) {
             remove(draft.id)
             true
         } else {
