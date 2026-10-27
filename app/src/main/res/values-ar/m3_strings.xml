@@ -834,4 +834,6 @@
     <string name="m3_find_file_empty">لا يوجد ملف مطابق</string>
     <string name="m3_find_file_truncated">اختصر GitHub قائمة ملفات هذا المستودع</string>
     <string name="m3_find_file_refine">تُعرض أول 100 نتيجة — اكتب المزيد لتضييق البحث</string>
+    <string name="m3_delete_confirm_title">حذف %1$s؟</string>
+    <string name="m3_delete_confirm_message">لا يمكن التراجع عن هذا الإجراء.</string>
 </resources>

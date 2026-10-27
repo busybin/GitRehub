@@ -11,10 +11,15 @@ import io.github.busybin.gitrehub.core.model.Notification
 import io.github.busybin.gitrehub.core.net.ApiResponse
 import io.github.busybin.gitrehub.core.net.GitHubApi
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 
 class NotificationsViewModel : PagedViewModel<Notification>() {
@@ -29,8 +34,20 @@ class NotificationsViewModel : PagedViewModel<Notification>() {
     override suspend fun fetch(page: Int): PageResult<Notification> {
         val response = GitHubApi.notifications(all = true)
         val matched = response.value.filter { NotificationRules.matches(it) }
-        matched.filter { it.unread }.forEach { item ->
-            runCatching { withContext(Dispatchers.IO) { GitHubApi.markThreadRead(item.id) } }
+        val unread = matched.filter { it.unread }
+        if (unread.isNotEmpty()) {
+            // Archive in small parallel batches: one PATCH per matched thread, but a long rule
+            // list would otherwise hold the refresh for one round trip each.
+            val permits = Semaphore(4)
+            coroutineScope {
+                unread.map { item ->
+                    async(Dispatchers.IO) {
+                        permits.withPermit {
+                            runCatching { GitHubApi.markThreadRead(item.id) }
+                        }
+                    }
+                }.awaitAll()
+            }
         }
         val items = response.value.map { if (it in matched) it.copy(unread = false) else it }
         return toPage(ApiResponse(items, response.links, response.scopes))

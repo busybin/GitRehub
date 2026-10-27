@@ -13,6 +13,8 @@ import io.github.busybin.gitrehub.core.net.hasMore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 
 enum class RepoFilter(@StringRes val labelRes: Int) {
@@ -66,12 +68,16 @@ private suspend fun favoritePage(page: Int): PageResult<Repo> {
     val names = SavedPrefs.favorites.value.take(60)
     if (names.isEmpty()) return PageResult(emptyList(), false)
     val repos = withContext(Dispatchers.IO) {
+        // A user can keep 60 favourites; fetch a few at a time instead of bursting the API.
+        val permits = Semaphore(6)
         names.map { name ->
             async {
-                val owner = name.substringBefore('/')
-                val repo = name.substringAfter('/', "")
-                if (owner.isBlank() || repo.isBlank()) null
-                else runCatching { GitHubApi.repo(owner, repo) }.getOrNull()
+                permits.withPermit {
+                    val owner = name.substringBefore('/')
+                    val repo = name.substringAfter('/', "")
+                    if (owner.isBlank() || repo.isBlank()) null
+                    else runCatching { GitHubApi.repo(owner, repo) }.getOrNull()
+                }
             }
         }.awaitAll()
     }

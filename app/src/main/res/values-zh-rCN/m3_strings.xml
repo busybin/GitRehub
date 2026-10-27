@@ -831,4 +831,6 @@ github 不给第三方客户端推送通道，所以这是真的轮询：最短 
     <string name="m3_find_file_empty">没有匹配的文件</string>
     <string name="m3_find_file_truncated">该仓库文件太多，GitHub 截断了文件列表</string>
     <string name="m3_find_file_refine">只显示前 100 个，再输入几个字缩小范围</string>
+    <string name="m3_delete_confirm_title">删除 %1$s？</string>
+    <string name="m3_delete_confirm_message">此操作无法撤销。</string>
 </resources>

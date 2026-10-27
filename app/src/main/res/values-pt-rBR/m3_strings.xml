@@ -834,4 +834,6 @@ O GitHub não tem canal de push para clientes de terceiros, então isto é uma c
     <string name="m3_find_file_empty">Nenhum arquivo corresponde</string>
     <string name="m3_find_file_truncated">O GitHub truncou a lista de arquivos deste repositório</string>
     <string name="m3_find_file_refine">Mostrando os primeiros 100 — digite mais para refinar</string>
+    <string name="m3_delete_confirm_title">Excluir %1$s?</string>
+    <string name="m3_delete_confirm_message">Isso não pode ser desfeito.</string>
 </resources>

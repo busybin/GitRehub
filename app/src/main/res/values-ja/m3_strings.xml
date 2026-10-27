@@ -834,4 +834,6 @@ GitHub にはサードパーティ製クライアント向けのプッシュチ�
     <string name="m3_find_file_empty">一致するファイルがありません</string>
     <string name="m3_find_file_truncated">ファイル一覧が大きすぎるため GitHub が切り詰めました</string>
     <string name="m3_find_file_refine">先頭 100 件のみ表示 — 入力を増やして絞り込んでください</string>
+    <string name="m3_delete_confirm_title">%1$s を削除しますか？</string>
+    <string name="m3_delete_confirm_message">この操作は元に戻せません。</string>
 </resources>

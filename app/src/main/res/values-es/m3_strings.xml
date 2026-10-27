@@ -834,4 +834,6 @@ GitHub no tiene canal de notificaciones push para los clientes de terceros, así
     <string name="m3_find_file_empty">Ningún archivo coincide</string>
     <string name="m3_find_file_truncated">GitHub truncó la lista de archivos de este repositorio</string>
     <string name="m3_find_file_refine">Se muestran los primeros 100; escribe más para acotar</string>
+    <string name="m3_delete_confirm_title">¿Eliminar %1$s?</string>
+    <string name="m3_delete_confirm_message">Esta acción no se puede deshacer.</string>
 </resources>

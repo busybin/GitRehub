@@ -38,6 +38,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import io.github.busybin.gitrehub.R
+import io.github.busybin.gitrehub.compose.common.ConfirmDeleteDialog
 import io.github.busybin.gitrehub.compose.common.EmptyView
 import io.github.busybin.gitrehub.compose.common.FailureView
 import io.github.busybin.gitrehub.compose.common.LoadingView
@@ -170,6 +171,20 @@ private fun MilestoneDialog(
     var title by remember { mutableStateOf(initial?.title.orEmpty()) }
     var description by remember { mutableStateOf(initial?.description.orEmpty()) }
     var closed by remember { mutableStateOf(initial?.state == "closed") }
+    var confirmDelete by remember { mutableStateOf(false) }
+
+    if (confirmDelete) {
+        ConfirmDeleteDialog(
+            name = initial?.title.orEmpty(),
+            confirmLabel = stringResource(R.string.m3_milestone_delete),
+            onDismiss = { confirmDelete = false },
+            onConfirm = {
+                confirmDelete = false
+                onDelete()
+            },
+        )
+        return
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -205,7 +220,7 @@ private fun MilestoneDialog(
                     )
                 }
                 if (initial != null) {
-                    TextButton(onClick = onDelete) {
+                    TextButton(onClick = { confirmDelete = true }) {
                         Text(stringResource(R.string.m3_milestone_delete), color = MaterialTheme.colorScheme.error)
                     }
                 }

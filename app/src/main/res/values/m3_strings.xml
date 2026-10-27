@@ -834,4 +834,6 @@ GitHub has no push channel for third-party clients, so this is real polling: the
     <string name="m3_find_file_empty">No matching file</string>
     <string name="m3_find_file_truncated">GitHub truncated the file list for this repository</string>
     <string name="m3_find_file_refine">Showing the first 100 — type more to narrow it down</string>
+    <string name="m3_delete_confirm_title">Delete %1$s?</string>
+    <string name="m3_delete_confirm_message">This can\'t be undone.</string>
 </resources>

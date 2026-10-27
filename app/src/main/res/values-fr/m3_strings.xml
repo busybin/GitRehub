@@ -834,4 +834,6 @@ GitHub n\'a pas de canal push pour les clients tiers, il s\'agit donc d\'une vé
     <string name="m3_find_file_empty">Aucun fichier correspondant</string>
     <string name="m3_find_file_truncated">GitHub a tronqué la liste des fichiers de ce dépôt</string>
     <string name="m3_find_file_refine">Les 100 premiers seulement — précisez la recherche</string>
+    <string name="m3_delete_confirm_title">Supprimer %1$s ?</string>
+    <string name="m3_delete_confirm_message">Cette action est irréversible.</string>
 </resources>

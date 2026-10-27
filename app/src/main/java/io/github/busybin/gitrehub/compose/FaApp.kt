@@ -151,6 +151,7 @@ import io.github.busybin.gitrehub.helper.GithubConfigHelper
 import io.github.busybin.gitrehub.helper.LinkHandling
 import io.github.busybin.gitrehub.helper.LinkHandlingPrefs
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -1131,6 +1132,7 @@ fun FaApp(routeRequest: MutableState<String?>? = null) {
                                 onOpenFiles = { o, r, n ->
                                     nav.navigate(Routes.prFiles(o, r, n))
                                 },
+                                onPullDetected = { entry.savedStateHandle["is_pull"] = it },
                             )
                         }
                         composable(
@@ -1351,7 +1353,13 @@ private fun FaTopBar(
         actions = {
             actions()
             val context = LocalContext.current
-            val shareUrl = remember(route, entry) { shareUrlFor(route, entry) }
+            // The issue screen reports whether the thread is a PR once it loads; the share link
+            // uses /pull/N then instead of /issues/N.
+            val pullFlow = remember(entry) {
+                entry?.savedStateHandle?.getStateFlow("is_pull", false) ?: MutableStateFlow(false)
+            }
+            val isPull by pullFlow.collectAsStateWithLifecycle()
+            val shareUrl = remember(route, entry, isPull) { shareUrlFor(route, entry, isPull) }
             if (shareUrl != null) {
                 IconButton(onClick = { shareText(context, shareUrl) }) {
                     Icon(
@@ -1369,7 +1377,11 @@ private fun FaTopBar(
 
 
 /** Canonical github.com URL of the screen on top, for the share action in the top bar. */
-private fun shareUrlFor(route: String?, entry: androidx.navigation.NavBackStackEntry?): String? {
+private fun shareUrlFor(
+    route: String?,
+    entry: androidx.navigation.NavBackStackEntry?,
+    isPull: Boolean = false,
+): String? {
     val args = entry?.arguments ?: return null
     val owner = args.getString("owner")
     val repo = args.getString("repo") ?: args.getString("name")
@@ -1390,7 +1402,7 @@ private fun shareUrlFor(route: String?, entry: androidx.navigation.NavBackStackE
     return when (route) {
         Routes.REPO -> base
         Routes.ISSUES -> if (args.getString("kind") == "pull") "$base/pulls" else "$base/issues"
-        Routes.ISSUE -> "$base/issues/$number"
+        Routes.ISSUE -> if (isPull) "$base/pull/$number" else "$base/issues/$number"
         Routes.PR_FILES -> "$base/pull/$number/files"
         Routes.COMMIT -> "$base/commit/$sha"
         Routes.COMMITS -> "$base/commits/$ref"

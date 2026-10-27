@@ -44,6 +44,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import io.github.busybin.gitrehub.R
+import io.github.busybin.gitrehub.compose.common.ConfirmDeleteDialog
 import io.github.busybin.gitrehub.compose.common.EmptyView
 import io.github.busybin.gitrehub.compose.common.FailureView
 import io.github.busybin.gitrehub.compose.common.LoadingView
@@ -177,6 +178,20 @@ private fun LabelDialog(
     var name by remember { mutableStateOf(initial?.name.orEmpty()) }
     var color by remember { mutableStateOf(initial?.color?.let { "#$it" } ?: "#1F6FEB") }
     var description by remember { mutableStateOf(initial?.description.orEmpty()) }
+    var confirmDelete by remember { mutableStateOf(false) }
+
+    if (confirmDelete) {
+        ConfirmDeleteDialog(
+            name = initial?.name.orEmpty(),
+            confirmLabel = stringResource(R.string.m3_label_delete),
+            onDismiss = { confirmDelete = false },
+            onConfirm = {
+                confirmDelete = false
+                onDelete()
+            },
+        )
+        return
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -211,7 +226,7 @@ private fun LabelDialog(
                     minLines = 2,
                 )
                 if (initial != null) {
-                    TextButton(onClick = onDelete) {
+                    TextButton(onClick = { confirmDelete = true }) {
                         Text(
                             stringResource(R.string.m3_label_delete),
                             color = MaterialTheme.colorScheme.error,

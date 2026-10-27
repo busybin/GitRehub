@@ -106,6 +106,8 @@ fun IssueDetailScreen(
     onOpenCommit: ((String, String, String) -> Unit)? = null,
     /** When set, the PR's "files changed" line opens the review screen. */
     onOpenFiles: ((String, String, Int) -> Unit)? = null,
+    /** Reports whether the loaded thread is a pull request, for the canonical share URL. */
+    onPullDetected: ((Boolean) -> Unit)? = null,
 ) {
     val vm: IssueDetailViewModel = viewModel()
     val state by vm.state.collectAsStateWithLifecycle()
@@ -126,6 +128,9 @@ fun IssueDetailScreen(
     var linkToCopy by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(owner, repo, number) { vm.load(owner, repo, number) }
+
+    val isPull = (state as? LoadState.Ready)?.value?.pullRequest != null
+    LaunchedEffect(isPull) { onPullDetected?.invoke(isPull) }
 
     // Fetch manage candidates only when the drawer opens.
     LaunchedEffect(showManage) {
