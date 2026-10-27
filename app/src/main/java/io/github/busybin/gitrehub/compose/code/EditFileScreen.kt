@@ -49,7 +49,7 @@ fun EditFileScreen(
     val state by vm.state.collectAsStateWithLifecycle()
     val submitting by vm.submitting.collectAsStateWithLifecycle()
     val error by vm.error.collectAsStateWithLifecycle()
-    val prNumber by vm.prNumber.collectAsStateWithLifecycle()
+    val finished by vm.finished.collectAsStateWithLifecycle()
 
     var content by remember { mutableStateOf<String?>(null) }
     var message by remember { mutableStateOf("") }
@@ -62,7 +62,8 @@ fun EditFileScreen(
     LaunchedEffect(state.text, state.loading) {
         if (!state.loading && content == null) content = state.text
     }
-    LaunchedEffect(prNumber) { prNumber?.let(onDone) }
+    // Both outcomes end the screen: a direct commit has no PR to open, so it just goes back.
+    LaunchedEffect(finished) { if (finished) onDone(vm.prNumber.value) }
 
     when {
         state.loading -> LoadingView()
@@ -79,8 +80,10 @@ fun EditFileScreen(
             Text(path, style = MaterialTheme.typography.titleSmall)
             Spacer(Modifier.height(2.dp))
             MetaText(
-                stringResource(R.string.m3_edit_file_target, state.defaultBranch) +
-                    if (state.canWrite) "" else " · " + stringResource(R.string.m3_edit_file_readonly)
+                stringResource(
+                    R.string.m3_edit_file_target,
+                    state.ref ?: state.defaultBranch,
+                ) + if (state.canWrite) "" else " · " + stringResource(R.string.m3_edit_file_readonly)
             )
             Spacer(Modifier.height(8.dp))
             OutlinedTextField(

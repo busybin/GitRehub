@@ -36,6 +36,9 @@ abstract class PagedViewModel<T> : ViewModel() {
     private var page = 0
     private var inFlight = false
 
+    /** A refresh asked for while one was running (a filter tap, for instance) runs right after it. */
+    private var refreshQueued = false
+
     protected abstract suspend fun fetch(page: Int): PageResult<T>
 
     /**
@@ -55,7 +58,10 @@ abstract class PagedViewModel<T> : ViewModel() {
     protected open fun errorText(t: Throwable): UiText = t.toUiText()
 
     fun refresh() {
-        if (inFlight) return
+        if (inFlight) {
+            refreshQueued = true
+            return
+        }
         inFlight = true
         viewModelScope.launch {
             val hadContent = _state.value is LoadState.Ready
@@ -80,8 +86,16 @@ abstract class PagedViewModel<T> : ViewModel() {
             } finally {
                 _refreshing.value = false
                 inFlight = false
+                drainQueuedRefresh()
             }
         }
+    }
+
+    /** Runs a refresh that was requested while another fetch held [inFlight]. */
+    private fun drainQueuedRefresh() {
+        if (!refreshQueued) return
+        refreshQueued = false
+        refresh()
     }
 
     /** Paints [fetchCached] when it has something; the caller keeps the network pass going. */
@@ -119,6 +133,7 @@ abstract class PagedViewModel<T> : ViewModel() {
             } finally {
                 _loadingMore.value = false
                 inFlight = false
+                drainQueuedRefresh()
             }
         }
     }

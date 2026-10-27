@@ -54,14 +54,14 @@ internal object WriteBodies {
     fun reaction(content: String): JsonObject =
         buildJsonObject { put("content", JsonPrimitive(content)) }
 
-    /** `POST/PATCH /labels`: colour is six hex digits without `#`. */
+    /** `POST/PATCH /labels`: colour is six hex digits without `#`; an empty description clears it. */
     fun label(name: String, color: String, description: String?): JsonObject = buildJsonObject {
         put("name", JsonPrimitive(name))
         put("color", JsonPrimitive(color.removePrefix("#")))
-        if (!description.isNullOrBlank()) put("description", JsonPrimitive(description))
+        put("description", JsonPrimitive(description.orEmpty()))
     }
 
-    /** `POST/PATCH /milestones`: `due_on` is an ISO-8601 instant. */
+    /** `POST/PATCH /milestones`: `due_on` is an ISO-8601 instant; an empty description clears it. */
     fun milestone(
         title: String,
         state: String,
@@ -70,7 +70,7 @@ internal object WriteBodies {
     ): JsonObject = buildJsonObject {
         put("title", JsonPrimitive(title))
         put("state", JsonPrimitive(state))
-        if (!description.isNullOrBlank()) put("description", JsonPrimitive(description))
+        put("description", JsonPrimitive(description.orEmpty()))
         if (!dueOn.isNullOrBlank()) put("due_on", JsonPrimitive(dueOn))
     }
 

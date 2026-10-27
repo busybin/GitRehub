@@ -1,5 +1,6 @@
 package io.github.busybin.gitrehub.compose.repos
 
+import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -34,6 +35,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import io.github.busybin.gitrehub.R
 import io.github.busybin.gitrehub.compose.common.EmptyView
@@ -42,6 +44,7 @@ import io.github.busybin.gitrehub.compose.common.LoadingView
 import io.github.busybin.gitrehub.compose.common.MetaText
 import io.github.busybin.gitrehub.compose.common.UiText
 import io.github.busybin.gitrehub.compose.common.relativeTime
+import io.github.busybin.gitrehub.compose.common.render
 import io.github.busybin.gitrehub.compose.common.toUiText
 import io.github.busybin.gitrehub.core.model.Milestone
 import io.github.busybin.gitrehub.core.net.GitHubApi
@@ -58,6 +61,16 @@ fun RepoMilestonesScreen(owner: String, repo: String) {
     var reload by remember { mutableIntStateOf(0) }
     var editing by remember { mutableStateOf<Milestone?>(null) }
     var creating by remember { mutableStateOf(false) }
+    var message by remember { mutableStateOf<UiText?>(null) }
+    val context = LocalContext.current
+
+    message?.let {
+        val text = it.render()
+        LaunchedEffect(text) {
+            Toast.makeText(context, text, Toast.LENGTH_SHORT).show()
+            message = null
+        }
+    }
 
     LaunchedEffect(owner, repo, reload) {
         error = null
@@ -115,9 +128,10 @@ fun RepoMilestonesScreen(owner: String, repo: String) {
                 val target = editing ?: return@MilestoneDialog
                 editing = null
                 scope.launch {
-                    runCatching {
+                    val result = runCatching {
                         withContext(Dispatchers.IO) { GitHubApi.deleteMilestone(owner, repo, target.number) }
                     }
+                    message = result.exceptionOrNull()?.toUiText()
                     reload++
                 }
             },
@@ -126,7 +140,7 @@ fun RepoMilestonesScreen(owner: String, repo: String) {
                 creating = false
                 editing = null
                 scope.launch {
-                    runCatching {
+                    val result = runCatching {
                         withContext(Dispatchers.IO) {
                             val state = if (closed) "closed" else "open"
                             if (original == null) {
@@ -138,6 +152,7 @@ fun RepoMilestonesScreen(owner: String, repo: String) {
                             }
                         }
                     }
+                    message = result.exceptionOrNull()?.toUiText()
                     reload++
                 }
             },

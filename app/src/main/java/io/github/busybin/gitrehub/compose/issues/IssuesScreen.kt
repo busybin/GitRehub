@@ -149,8 +149,7 @@ private fun IssuesList(
     val loadingMore by vm.loadingMore.collectAsStateWithLifecycle()
     val hasMore by vm.hasMore.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
-    val filter = vm.currentFilter()
-    val query = vm.currentQuery()
+    val query by vm.query.collectAsStateWithLifecycle()
     val options by vm.options.collectAsStateWithLifecycle()
     var showFilters by rememberSaveable { mutableStateOf(false) }
     val tokens = LocalTokens.current
@@ -187,7 +186,7 @@ private fun IssuesList(
             ) {
                 IssueFilter.entries.forEach { entry ->
                     FilterChip(
-                        selected = filter == entry,
+                        selected = query.state == entry,
                         onClick = { vm.setFilter(entry) },
                         label = { Text(stringResource(entry.labelRes)) },
                     )

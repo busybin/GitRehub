@@ -20,6 +20,8 @@ data class EditFileState(
     val sha: String? = null,
     val text: String = "",
     val defaultBranch: String = "main",
+    /** Ref the file was opened at; commits land on it, or on the default branch when null. */
+    val ref: String? = null,
     val canWrite: Boolean = false,
 )
 
@@ -39,6 +41,10 @@ class EditFileViewModel : ViewModel() {
     private val _prNumber = MutableStateFlow<Int?>(null)
     val prNumber: StateFlow<Int?> = _prNumber.asStateFlow()
 
+    /** The commit went through; the screen navigates away (with [prNumber] when a PR was opened). */
+    private val _finished = MutableStateFlow(false)
+    val finished: StateFlow<Boolean> = _finished.asStateFlow()
+
     private var loadedKey = ""
 
     fun load(owner: String, repo: String, path: String, ref: String?, force: Boolean = false) {
@@ -56,6 +62,7 @@ class EditFileViewModel : ViewModel() {
                         sha = entry?.sha,
                         text = entry?.let { RepoContent.decode(it) }.orEmpty(),
                         defaultBranch = repoInfo?.defaultBranch?.takeIf { it.isNotBlank() } ?: "main",
+                        ref = ref?.takeIf { it.isNotBlank() },
                         canWrite = repoInfo?.permissions?.canWrite ?: true,
                     )
                 }
@@ -84,7 +91,8 @@ class EditFileViewModel : ViewModel() {
         viewModelScope.launch {
             val result = runCatching {
                 withContext(Dispatchers.IO) {
-                    val base = _state.value.defaultBranch
+                    val base = _state.value.ref ?: _state.value.defaultBranch
+                    val sha = _state.value.sha
                     val encoded = Base64.encodeToString(
                         content.toByteArray(Charsets.UTF_8),
                         Base64.NO_WRAP,
@@ -96,19 +104,22 @@ class EditFileViewModel : ViewModel() {
                             path = path,
                             message = message.trim().ifBlank { "Update $path" },
                             content = encoded,
-                            sha = _state.value.sha,
+                            sha = sha,
                             branch = base,
                         )
                         null
                     } else {
                         val head = GitHubApi.branchHeadSha(owner, repo, base)
                         GitHubApi.createBranch(owner, repo, newBranch.trim(), head)
+                        // The new branch starts at the same commit, so the file exists there and
+                        // its blob sha is the one the file was loaded with.
                         GitHubApi.putFile(
                             owner = owner,
                             repo = repo,
                             path = path,
                             message = message.trim().ifBlank { "Update $path" },
                             content = encoded,
+                            sha = sha,
                             branch = newBranch.trim(),
                         )
                         val title = prTitle?.trim()?.takeIf { it.isNotBlank() }
@@ -125,8 +136,10 @@ class EditFileViewModel : ViewModel() {
                 }
             }
             _submitting.value = false
-            result.onSuccess { _prNumber.value = it }
-                .onFailure { _error.value = it.toUiText() }
+            result.onSuccess {
+                _prNumber.value = it
+                _finished.value = true
+            }.onFailure { _error.value = it.toUiText() }
         }
     }
 }

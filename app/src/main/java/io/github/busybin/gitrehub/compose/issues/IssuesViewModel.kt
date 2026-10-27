@@ -84,8 +84,15 @@ class IssuesViewModel : PagedViewModel<Issue>() {
     private var owner: String = ""
     private var repo: String = ""
     private var kind: IssueKind = IssueKind.ISSUE
-    private var query: IssueQuery = IssueQuery()
     private var upstreamPage: Int = 0
+
+    /** Observable, so the filter chips follow a tap even before the list answers. */
+    private val _query = MutableStateFlow(IssueQuery())
+    val query: StateFlow<IssueQuery> = _query.asStateFlow()
+
+    private var currentQuery: IssueQuery
+        get() = _query.value
+        set(value) { _query.value = value }
 
     private val _options = MutableStateFlow(IssueFilterOptions())
     val options: StateFlow<IssueFilterOptions> = _options.asStateFlow()
@@ -107,24 +114,16 @@ class IssuesViewModel : PagedViewModel<Issue>() {
     }
 
     fun setFilter(value: IssueFilter) {
-        if (value == query.state) return
-        query = query.copy(state = value)
-        upstreamPage = 0
+        if (value == currentQuery.state) return
+        currentQuery = currentQuery.copy(state = value)
         refresh()
     }
 
     fun setQuery(value: IssueQuery) {
-        if (value == query) return
-        query = value
-        upstreamPage = 0
+        if (value == currentQuery) return
+        currentQuery = value
         refresh()
     }
-
-    fun currentFilter(): IssueFilter = query.state
-
-    fun currentQuery(): IssueQuery = query
-
-    fun currentKind(): IssueKind = kind
 
     /** Loaded lazily, the first time the filter sheet opens. */
     fun loadOptions() {
@@ -149,19 +148,22 @@ class IssuesViewModel : PagedViewModel<Issue>() {
 
     override suspend fun fetch(page: Int): PageResult<Issue> {
         if (owner.isBlank() || repo.isBlank()) return PageResult(emptyList(), false)
+        val query = currentQuery
         val out = mutableListOf<Issue>()
         var more = false
+        // A refresh restarts upstream; loadMore continues where the last successful fetch stopped.
+        var cursor = if (page <= 1) 0 else upstreamPage
         // Page upstream at most 5 times per fetch.
         var guard = 0
         while (out.size < GitHubApi.PAGE_SIZE && guard < 5) {
             guard++
-            upstreamPage++
+            cursor++
             val response = GitHubApi.repoIssues(
                 owner = owner,
                 repo = repo,
                 state = query.state.apiValue,
                 sort = query.sort.apiValue,
-                page = upstreamPage,
+                page = cursor,
                 direction = if (query.descending) "desc" else "asc",
                 labels = query.labels.toList(),
                 assignee = query.assignee,
@@ -172,6 +174,8 @@ class IssuesViewModel : PagedViewModel<Issue>() {
             more = response.hasMore()
             if (!more) break
         }
+        // Only a fetch that came back commits the cursor, so a failed page is retried, not skipped.
+        upstreamPage = cursor
         return PageResult(out, more)
     }
 

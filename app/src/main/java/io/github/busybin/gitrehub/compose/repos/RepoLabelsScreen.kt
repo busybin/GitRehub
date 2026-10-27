@@ -1,5 +1,6 @@
 package io.github.busybin.gitrehub.compose.repos
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -39,6 +40,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import io.github.busybin.gitrehub.R
@@ -64,7 +66,8 @@ fun RepoLabelsScreen(owner: String, repo: String) {
     var reload by remember { mutableIntStateOf(0) }
     var editing by remember { mutableStateOf<Label?>(null) }
     var creating by remember { mutableStateOf(false) }
-    var message by remember { mutableStateOf<String?>(null) }
+    var message by remember { mutableStateOf<UiText?>(null) }
+    val context = LocalContext.current
 
     LaunchedEffect(owner, repo, reload) {
         error = null
@@ -118,7 +121,11 @@ fun RepoLabelsScreen(owner: String, repo: String) {
     }
 
     message?.let {
-        LaunchedEffect(it) { message = null }
+        val text = it.render()
+        LaunchedEffect(text) {
+            Toast.makeText(context, text, Toast.LENGTH_SHORT).show()
+            message = null
+        }
     }
 
     if (creating || editing != null) {
@@ -129,12 +136,12 @@ fun RepoLabelsScreen(owner: String, repo: String) {
                 val target = editing ?: return@LabelDialog
                 editing = null
                 scope.launch {
-                    val ok = runCatching {
+                    val result = runCatching {
                         withContext(Dispatchers.IO) {
                             GitHubApi.deleteLabel(owner, repo, target.name.orEmpty())
                         }
-                    }.isSuccess
-                    message = if (ok) null else "failed"
+                    }
+                    message = result.exceptionOrNull()?.toUiText()
                     reload++
                 }
             },
@@ -143,7 +150,7 @@ fun RepoLabelsScreen(owner: String, repo: String) {
                 creating = false
                 editing = null
                 scope.launch {
-                    val ok = runCatching {
+                    val result = runCatching {
                         withContext(Dispatchers.IO) {
                             if (original == null) {
                                 GitHubApi.createLabel(owner, repo, name, color, description)
@@ -151,8 +158,8 @@ fun RepoLabelsScreen(owner: String, repo: String) {
                                 GitHubApi.editLabel(owner, repo, original, name, color, description)
                             }
                         }
-                    }.isSuccess
-                    message = if (ok) null else "failed"
+                    }
+                    message = result.exceptionOrNull()?.toUiText()
                     reload++
                 }
             },

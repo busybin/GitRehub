@@ -665,6 +665,52 @@ private fun NotificationCard(
                 ) {
                     item.subject?.type?.let { Pill(it) }
                     MetaText(relativeTime(item.updatedAt))
+                    if (ignored == true) {
+                        Icon(
+                            Icons.Outlined.VolumeOff,
+                            contentDescription = null,
+                            modifier = Modifier.size(14.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+            // Mute / unmute this thread on GitHub (PUT .../subscription {ignored}).
+            Box {
+                IconButton(
+                    onClick = {
+                        onMenuOpen()
+                        menu = true
+                    },
+                    modifier = Modifier.size(28.dp),
+                ) {
+                    Icon(
+                        Icons.Outlined.MoreVert,
+                        contentDescription = stringResource(R.string.m3_more),
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+                DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                    val muted = ignored == true
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                stringResource(
+                                    if (muted) R.string.m3_notif_unmute else R.string.m3_notif_mute
+                                )
+                            )
+                        },
+                        leadingIcon = {
+                            Icon(
+                                if (muted) Icons.Outlined.VolumeUp else Icons.Outlined.VolumeOff,
+                                contentDescription = null,
+                            )
+                        },
+                        onClick = {
+                            menu = false
+                            onSetIgnored(!muted)
+                        },
+                    )
                 }
             }
         }
