@@ -202,7 +202,20 @@ class EditFileViewModel : ViewModel() {
                         } else {
                             GitHubApi.commit(owner, repo, ref.orEmpty()).sha
                         }
-                        GitHubApi.createBranch(owner, repo, newBranch.trim(), head)
+                        runCatching { GitHubApi.createBranch(owner, repo, newBranch.trim(), head) }
+                            .onFailure { failure ->
+                                // A retry after a failed commit leaves the branch behind; reuse it
+                                // only when it points at the commit we would have created.
+                                val status = (failure as? ApiException)?.error?.status
+                                val existing = if (status == 422) {
+                                    runCatching {
+                                        GitHubApi.branchHeadSha(owner, repo, newBranch.trim())
+                                    }.getOrNull()
+                                } else {
+                                    null
+                                }
+                                if (existing != head) throw failure
+                            }
                         // The new branch starts at the same commit, so the file exists there and
                         // its blob sha is the one the file was loaded with.
                         GitHubApi.putFile(
