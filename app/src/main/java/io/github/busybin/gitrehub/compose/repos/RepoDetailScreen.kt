@@ -94,6 +94,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
@@ -244,6 +245,7 @@ fun RepoDetailScreen(
             // top Y in the window, then convert the README block's window position into a content offset.
             var containerTopInWindow by remember { mutableFloatStateOf(0f) }
             var readmeTop by remember { mutableFloatStateOf(0f) }
+            var readmeOffset by remember { mutableFloatStateOf(-1f) }
             val sections = outline.sections
             val currentSection by remember(sections) {
                 derivedStateOf {
@@ -637,20 +639,29 @@ fun RepoDetailScreen(
 
             // Only once the README has moved in: while the repo header is on screen the outline is
             // noise, and the rail would sit over content nobody is reading yet.
-            val showRail = sections.size >= 2 && containerHeight > 0 &&
-                readmeTop < containerTopInWindow + containerHeight * 0.35f
-            AnimatedVisibility(
-                visible = showRail,
-                modifier = Modifier.align(Alignment.CenterEnd),
-                enter = fadeIn(),
-                exit = fadeOut(),
-            ) {
+            // The README starts below a tall header: remember where that is in content coordinates
+            // once, then show the outline only after the user has scrolled down to it.
+            LaunchedEffect(readmeTop, containerTopInWindow) {
+                if (readmeOffset < 0f && readmeTop > 0f && containerTopInWindow > 0f) {
+                    readmeOffset = scrollState.value + (readmeTop - containerTopInWindow)
+                }
+            }
+            val viewport = if (containerHeight > 0) {
+                containerHeight.toFloat()
+            } else {
+                with(density) { LocalConfiguration.current.screenHeightDp.dp.toPx() }
+            }
+            val showRail = sections.size >= 2 &&
+                (readmeOffset < 0f || scrollState.value + viewport * 0.5f >= readmeOffset)
+            if (showRail) {
                 SectionRail(
                     sections = sections,
                     current = currentSection,
                     onSeek = { jumpTo(it, animate = false) },
                     onOpen = { showOutline = true },
-                    modifier = Modifier.height(320.dp),
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                        .height(320.dp),
                 )
             }
 
