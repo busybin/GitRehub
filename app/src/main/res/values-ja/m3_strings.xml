@@ -429,6 +429,8 @@ GitHub にはサードパーティ製クライアント向けのプッシュチ�
     <string name="m3_image_failed">画像を読み込めませんでした</string>
     <string name="m3_back_to_top">トップに戻る</string>
 
+    <string name="m3_outline">目次</string>
+
     <!-- notification filter -->
     <string name="m3_notif_filter_repo">リポジトリで絞り込む</string>
 

@@ -430,6 +430,8 @@ GitHub has no push channel for third-party clients, so this is real polling: the
     <string name="m3_image_failed">Image failed to load</string>
     <string name="m3_back_to_top">Back to top</string>
 
+    <string name="m3_outline">Contents</string>
+
     <!-- notification filter -->
     <string name="m3_notif_filter_repo">Filter by repository</string>
 

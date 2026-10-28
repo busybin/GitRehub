@@ -427,6 +427,8 @@
     <string name="m3_image_failed">Не удалось загрузить изображение</string>
     <string name="m3_back_to_top">Наверх</string>
 
+    <string name="m3_outline">Содержание</string>
+
     <!-- notification filter -->
     <string name="m3_notif_filter_repo">Фильтровать по репозиторию</string>
 

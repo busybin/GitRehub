@@ -429,6 +429,8 @@ GitHub no tiene canal de notificaciones push para los clientes de terceros, así
     <string name="m3_image_failed">No se pudo cargar la imagen</string>
     <string name="m3_back_to_top">Volver arriba</string>
 
+    <string name="m3_outline">Contenido</string>
+
     <!-- notification filter -->
     <string name="m3_notif_filter_repo">Filtrar por repositorio</string>
 

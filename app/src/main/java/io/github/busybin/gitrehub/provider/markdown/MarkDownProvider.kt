@@ -7,6 +7,7 @@ import io.github.busybin.gitrehub.provider.markdown.extension.emoji.EmojiExtensi
 import io.github.busybin.gitrehub.provider.markdown.extension.mention.MentionExtension
 import io.github.busybin.gitrehub.provider.timeline.HtmlHelper
 import io.github.busybin.gitrehub.provider.timeline.MarkdownPalette
+import io.github.busybin.gitrehub.provider.timeline.OutlineSection
 import org.commonmark.Extension
 import org.commonmark.ext.autolink.AutolinkExtension
 import org.commonmark.ext.front.matter.YamlFrontMatterExtension
@@ -44,6 +45,8 @@ object MarkDownProvider {
         linkBaseUrl: String? = null,
         onImageClick: ((String) -> Unit)? = null,
         onAnchorClick: ((String) -> Unit)? = null,
+        /** Filled with the document's headings, for a table of contents. */
+        outline: MutableList<OutlineSection>? = null,
     ) {
         if (isEmpty(markdown)) return
         // A broken document should still show something: fall back to the raw text.
@@ -57,6 +60,7 @@ object MarkDownProvider {
             linkBaseUrl,
             onImageClick,
             onAnchorClick,
+            outline,
         )
     }
 

@@ -429,6 +429,8 @@ GitHub n\'a pas de canal push pour les clients tiers, il s\'agit donc d\'une vé
     <string name="m3_image_failed">Échec du chargement de l\'image</string>
     <string name="m3_back_to_top">Retour en haut</string>
 
+    <string name="m3_outline">Sommaire</string>
+
     <!-- notification filter -->
     <string name="m3_notif_filter_repo">Filtrer par dépôt</string>
 

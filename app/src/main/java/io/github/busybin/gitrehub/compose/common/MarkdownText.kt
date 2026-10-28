@@ -26,6 +26,7 @@ import io.github.busybin.gitrehub.provider.markdown.ReferenceLinks
 import io.github.busybin.gitrehub.provider.timeline.HtmlHelper
 import io.github.busybin.gitrehub.provider.timeline.MarkdownCodeColors
 import io.github.busybin.gitrehub.provider.timeline.MarkdownPalette
+import io.github.busybin.gitrehub.provider.timeline.OutlineSection
 
 /**
  * Markdown / HTML renderer for Compose.
@@ -48,6 +49,8 @@ fun MarkdownText(
     repo: String? = null,
     /** An in-page anchor (`#xxx` in a README) was tapped: anchor name, its vertical pixel offset in the rendered TextView, and the TextView's Y in the window. */
     onAnchor: ((anchor: String, yInView: Int, viewTopInWindow: Float) -> Unit)? = null,
+    /** Receives the document's headings, for a table of contents. */
+    outline: OutlineController? = null,
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
@@ -78,6 +81,7 @@ fun MarkdownText(
             update = { view ->
                 if (!markdown.isNullOrBlank() && widthPx > 0 && rendered.needs(markdown, widthPx)) {
                     rendered.record(markdown, widthPx)
+                    val sections = ArrayList<OutlineSection>()
                     MarkDownProvider.setMdText(
                         view,
                         ReferenceLinks.expand(markdown, repo),
@@ -87,12 +91,17 @@ fun MarkdownText(
                         linkBaseUrl,
                         onImageClick = { preview = it },
                         onAnchorClick = { anchor -> anchorBridge.onAnchor(anchor) },
+                        outline = sections,
                     )
+                    view.post { outline?.bind(view, sections) }
                 }
             },
             modifier = Modifier
                 .fillMaxWidth()
-                .onGloballyPositioned { anchorBridge.topInWindow = it.positionInWindow().y }
+                .onGloballyPositioned {
+                    anchorBridge.topInWindow = it.positionInWindow().y
+                    outline?.topInWindow = it.positionInWindow().y
+                }
                 .onSizeChanged { if (it.width != measuredPx) measuredPx = it.width },
         )
     }
@@ -111,6 +120,8 @@ fun HtmlText(
     linkBaseUrl: String? = null,
     /** Same `onAnchor` as [MarkdownText]: in-page `#xxx` jumps inside a README. */
     onAnchor: ((anchor: String, yInView: Int, viewTopInWindow: Float) -> Unit)? = null,
+    /** Receives the document's headings, for a table of contents. */
+    outline: OutlineController? = null,
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
@@ -140,6 +151,7 @@ fun HtmlText(
             update = { view ->
                 if (!html.isNullOrBlank() && widthPx > 0 && rendered.needs(html, widthPx)) {
                     rendered.record(html, widthPx)
+                    val sections = ArrayList<OutlineSection>()
                     runCatching {
                         HtmlHelper.htmlIntoTextView(
                             view,
@@ -150,13 +162,18 @@ fun HtmlText(
                             linkBaseUrl,
                             onImageClick = { preview = it },
                             onAnchorClick = { anchor -> anchorBridge.onAnchor(anchor) },
+                            outline = sections,
                         )
                     }
+                    view.post { outline?.bind(view, sections) }
                 }
             },
             modifier = Modifier
                 .fillMaxWidth()
-                .onGloballyPositioned { anchorBridge.topInWindow = it.positionInWindow().y }
+                .onGloballyPositioned {
+                    anchorBridge.topInWindow = it.positionInWindow().y
+                    outline?.topInWindow = it.positionInWindow().y
+                }
                 .onSizeChanged { if (it.width != measuredPx) measuredPx = it.width },
         )
     }
@@ -219,6 +236,57 @@ private fun markdownPalette(): MarkdownPalette {
 /** Single-line "strip the markup" rendering, for list rows. */
 fun stripMarkdown(markdown: String?): String =
     if (markdown.isNullOrBlank()) "" else MarkDownProvider.stripMdText(markdown)
+
+/**
+ * Table-of-contents state for a rendered document: the heading list plus the mapping from a heading
+ * to its pixel offset inside the text view. Offsets are resolved lazily because images load after
+ * the first layout and shift everything below them.
+ */
+class OutlineController {
+    var sections: List<OutlineSection> by mutableStateOf(emptyList())
+        internal set
+
+    /** The text view's Y in the window as of the last layout pass. */
+    var topInWindow: Float = 0f
+        internal set
+
+    private var lineTop: ((Int) -> Int?)? = null
+
+    internal fun bind(view: TextView, sections: List<OutlineSection>) {
+        lineTop = { offset -> lineTopOf(view, offset) }
+        // Only h1-h3 make a usable list, and the recorded offsets may be a few characters off if the
+        // span builder trimmed whitespace, so re-anchor each title in the final text.
+        val text = view.text
+        if (text == null) {
+            this.sections = sections.filter { it.level <= 3 }
+            return
+        }
+        var cursor = 0
+        this.sections = sections.mapNotNull { section ->
+            if (section.level > 3) return@mapNotNull null
+            val offset = anchor(text, section, cursor)
+            cursor = offset + section.title.length
+            section.copy(offset = offset)
+        }
+    }
+
+    private fun anchor(text: CharSequence, section: OutlineSection, cursor: Int): Int {
+        val recorded = section.offset.coerceIn(0, text.length)
+        if (text.startsWith(section.title, recorded)) return recorded
+        val found = text.indexOf(section.title, maxOf(cursor, recorded - 64))
+        return if (found >= 0 && found <= recorded + 64) found else recorded
+    }
+
+    /** Pixel offset of [section] inside the text view, or null before the first layout. */
+    fun yOf(section: OutlineSection): Int? = lineTop?.invoke(section.offset)
+}
+
+private fun lineTopOf(view: TextView, offset: Int): Int? {
+    val layout = view.layout ?: return null
+    val text = view.text ?: return null
+    if (offset !in 0 until text.length) return null
+    return layout.getLineTop(layout.getLineForOffset(offset))
+}
 
 /** Remember which content and width were last rendered, to avoid re-injecting the HTML on every recomposition (which reloads images). */
 private class RenderedMark {

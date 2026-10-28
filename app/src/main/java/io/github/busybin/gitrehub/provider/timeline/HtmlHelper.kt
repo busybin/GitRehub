@@ -36,6 +36,8 @@ object HtmlHelper {
         onImageClick: ((String) -> Unit)? = null,
         /** In-page `#heading` anchor: scroll within the same container, not open it as a link. */
         onAnchorClick: ((String) -> Unit)? = null,
+        /** Filled with the document's headings, for a table of contents. */
+        outline: MutableList<OutlineSection>? = null,
     ) {
         registerClickEvent(textView, onAnchorClick)
         textView.setTextColor(palette.text)
@@ -43,7 +45,7 @@ object HtmlHelper {
         // Selection highlight: tint the link color instead of the system's bright blue.
         textView.highlightColor = ColorUtils.setAlphaComponent(palette.link, 0x44)
         val htmlSpanner =
-            initHtml(textView, width, palette, baseUrl, linkBaseUrl, onImageClick)
+            initHtml(textView, width, palette, baseUrl, linkBaseUrl, onImageClick, outline)
                 .fromHtml(format(html).toString())
         textView.text = htmlSpanner
     }
@@ -97,6 +99,7 @@ object HtmlHelper {
         baseUrl: String?,
         linkBaseUrl: String?,
         onImageClick: ((String) -> Unit)?,
+        outline: MutableList<OutlineSection>?,
     ): HtmlSpanner {
         val checked = ContextCompat.getDrawable(textView.context, R.drawable.ic_checkbox_small)
         val unchecked =
@@ -142,12 +145,12 @@ object HtmlHelper {
         mySpanner.registerHandler("hr", HrHandler(palette.divider, width, false))
         mySpanner.registerHandler("emoji", EmojiHandler())
         mySpanner.registerHandler("mention", LinkHandler(palette.link, linkBaseUrl))
-        mySpanner.registerHandler("h1", HeaderHandler(1.5f))
-        mySpanner.registerHandler("h2", HeaderHandler(1.4f))
-        mySpanner.registerHandler("h3", HeaderHandler(1.3f))
-        mySpanner.registerHandler("h4", HeaderHandler(1.2f))
-        mySpanner.registerHandler("h5", HeaderHandler(1.1f))
-        mySpanner.registerHandler("h6", HeaderHandler(1.0f))
+        mySpanner.registerHandler("h1", HeaderHandler(1.5f, 1, outline))
+        mySpanner.registerHandler("h2", HeaderHandler(1.4f, 2, outline))
+        mySpanner.registerHandler("h3", HeaderHandler(1.3f, 3, outline))
+        mySpanner.registerHandler("h4", HeaderHandler(1.2f, 4, outline))
+        mySpanner.registerHandler("h5", HeaderHandler(1.1f, 5, outline))
+        mySpanner.registerHandler("h6", HeaderHandler(1.0f, 6, outline))
 
         if (width > 0) {
             val tableHandler = TableHandler()

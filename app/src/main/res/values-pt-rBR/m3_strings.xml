@@ -429,6 +429,8 @@ O GitHub não tem canal de push para clientes de terceiros, então isto é uma c
     <string name="m3_image_failed">Falha ao carregar a imagem</string>
     <string name="m3_back_to_top">Voltar ao topo</string>
 
+    <string name="m3_outline">Índice</string>
+
     <!-- notification filter -->
     <string name="m3_notif_filter_repo">Filtrar por repositório</string>
 

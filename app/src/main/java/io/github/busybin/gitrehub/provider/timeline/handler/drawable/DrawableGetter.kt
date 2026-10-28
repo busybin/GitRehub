@@ -109,7 +109,6 @@ class DrawableGetter(
     ) {
         val intrinsicWidth = picture.intrinsicWidth
         val intrinsicHeight = picture.intrinsicHeight
-        android.util.Log.d("GHIMG", "success vector=$vector inline=$inline scaled=$scaled exact=$exact iw=$intrinsicWidth ih=$intrinsicHeight maxWidth=$maxWidth url=${url.takeLast(40)}")
         if (vector && !scaled && intrinsicWidth > 0 && intrinsicHeight > 0) {
             val density = textView.resources.displayMetrics.density
             val width = (intrinsicWidth * density).roundToInt().coerceIn(1, maxWidth)
@@ -150,7 +149,6 @@ class DrawableGetter(
                     (intrinsicHeight / scale / 1.3f).roundToInt(),
                 )
             }
-            android.util.Log.d("GHIMG", "rect vector=$vector exact=$exact iw=$intrinsicWidth ih=$intrinsicHeight maxWidth=$maxWidth density=${textView.resources.displayMetrics.density} -> $rect")
             picture.bounds = rect
             slot.bounds = rect
             slot.setImage(picture)

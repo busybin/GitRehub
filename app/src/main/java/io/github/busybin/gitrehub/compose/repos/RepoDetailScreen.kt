@@ -7,8 +7,11 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -21,14 +24,20 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.Toc
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.CallSplit
@@ -46,8 +55,13 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Surface
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
@@ -59,6 +73,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -66,14 +81,21 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -84,6 +106,7 @@ import io.github.busybin.gitrehub.compose.common.ConfirmDialog
 import io.github.busybin.gitrehub.compose.common.HtmlText
 import io.github.busybin.gitrehub.compose.common.LinkCopyDialog
 import io.github.busybin.gitrehub.compose.common.MetaText
+import io.github.busybin.gitrehub.compose.common.OutlineController
 import io.github.busybin.gitrehub.compose.common.compactNumber
 import io.github.busybin.gitrehub.compose.common.relativeTime
 import io.github.busybin.gitrehub.compose.common.rememberDownloader
@@ -94,7 +117,9 @@ import io.github.busybin.gitrehub.compose.common.repoRawBaseUrl
 import io.github.busybin.gitrehub.core.model.WatchLevel
 import io.github.busybin.gitrehub.helper.BrowserLauncher
 import io.github.busybin.gitrehub.provider.colors.ColorsProvider
+import io.github.busybin.gitrehub.provider.timeline.OutlineSection
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
 /**
  * Repository detail — the "do it all in the app" page.
@@ -104,7 +129,7 @@ import kotlinx.coroutines.launch
  * avatars and an activity entry. Features a repo does not have are greyed out; star, fork and watch
  * ask for confirmation first, and an active button (blue) toggles the action back off.
  */
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun RepoDetailScreen(
     owner: String,
@@ -159,6 +184,9 @@ fun RepoDetailScreen(
     ) { detail ->
         val repo = detail.repo
         val scrollState = rememberScrollState()
+        val outline = remember(owner, name) { OutlineController() }
+        var showOutline by remember(owner, name) { mutableStateOf(false) }
+        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
         val density = LocalDensity.current
         val showBackToTop by remember {
             derivedStateOf { scrollState.value > with(density) { 900.dp.toPx() } }
@@ -209,6 +237,30 @@ fun RepoDetailScreen(
             // In-page anchors (`#xxx` in a README) must scroll inside this same container: remember its
             // top Y in the window, then convert the README block's window position into a content offset.
             var containerTopInWindow by remember { mutableFloatStateOf(0f) }
+            var readmeTop by remember { mutableFloatStateOf(0f) }
+            val sections = outline.sections
+            val currentSection by remember(sections) {
+                derivedStateOf {
+                    if (sections.isEmpty()) {
+                        0
+                    } else {
+                        val viewport = scrollState.value + (containerTopInWindow - readmeTop)
+                        sections.indexOfLast { (outline.yOf(it) ?: Int.MAX_VALUE) <= viewport }
+                            .coerceAtLeast(0)
+                    }
+                }
+            }
+            fun jumpTo(index: Int, animate: Boolean) {
+                val section = sections.getOrNull(index) ?: return
+                val y = outline.yOf(section) ?: return
+                val target = scrollState.value + (readmeTop - containerTopInWindow) + y -
+                    with(density) { 8.dp.toPx() }
+                if (animate) {
+                    scope.launch { scrollState.animateScrollTo(target.toInt().coerceAtLeast(0)) }
+                } else {
+                    scope.launch { scrollState.scrollTo(target.toInt().coerceAtLeast(0)) }
+                }
+            }
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -511,7 +563,20 @@ fun RepoDetailScreen(
                 HorizontalDivider()
                 Spacer(Modifier.height(14.dp))
 
-                Text("README", style = MaterialTheme.typography.titleMedium)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("README", style = MaterialTheme.typography.titleMedium)
+                    Spacer(Modifier.weight(1f))
+                    if (sections.size >= 2) {
+                        IconButton(onClick = { showOutline = true }, modifier = Modifier.size(32.dp)) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Outlined.Toc,
+                                contentDescription = stringResource(R.string.m3_outline),
+                                modifier = Modifier.size(20.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
                 Spacer(Modifier.height(8.dp))
 
                 if (detail.readmeHtml.isNullOrBlank()) {
@@ -528,19 +593,26 @@ fun RepoDetailScreen(
                         }
                     }
                 } else {
-                    HtmlText(
-                        html = detail.readmeHtml,
-                        baseUrl = repoRawBaseUrl(owner, name, repo.defaultBranch),
-                        linkBaseUrl = repoBlobBaseUrl(owner, name, repo.defaultBranch),
-                        // Jump to that section of the same page (`#xxx` in a README).
-                        onAnchor = { _, yInView, viewTopInWindow ->
-                            val target =
-                                scrollState.value + (viewTopInWindow + yInView - containerTopInWindow)
-                            scope.launch {
-                                scrollState.animateScrollTo(target.toInt().coerceAtLeast(0))
-                            }
-                        },
-                    )
+                    Box(
+                        Modifier
+                            .fillMaxWidth()
+                            .onGloballyPositioned { readmeTop = it.positionInWindow().y },
+                    ) {
+                        HtmlText(
+                            html = detail.readmeHtml,
+                            baseUrl = repoRawBaseUrl(owner, name, repo.defaultBranch),
+                            linkBaseUrl = repoBlobBaseUrl(owner, name, repo.defaultBranch),
+                            outline = outline,
+                            // Jump to that section of the same page (`#xxx` in a README).
+                            onAnchor = { _, yInView, viewTopInWindow ->
+                                val target =
+                                    scrollState.value + (viewTopInWindow + yInView - containerTopInWindow)
+                                scope.launch {
+                                    scrollState.animateScrollTo(target.toInt().coerceAtLeast(0))
+                                }
+                            },
+                        )
+                    }
                 }
 
                 Spacer(Modifier.height(20.dp))
@@ -555,6 +627,68 @@ fun RepoDetailScreen(
                     Text(stringResource(R.string.m3_view_full_repo))
                 }
                 Spacer(Modifier.height(24.dp))
+            }
+
+            if (sections.size >= 2) {
+                SectionRail(
+                    sections = sections,
+                    current = currentSection,
+                    onSeek = { jumpTo(it, animate = false) },
+                    onOpen = { showOutline = true },
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                        .padding(top = 48.dp, bottom = 88.dp),
+                )
+            }
+
+            if (showOutline && sections.size >= 2) {
+                ModalBottomSheet(
+                    onDismissRequest = { showOutline = false },
+                    sheetState = sheetState,
+                ) {
+                    Text(
+                        text = stringResource(R.string.m3_outline),
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.padding(start = 20.dp, end = 20.dp, bottom = 4.dp),
+                    )
+                    LazyColumn(Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
+                        itemsIndexed(sections) { index, section ->
+                            val selected = index == currentSection
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        showOutline = false
+                                        jumpTo(index, animate = true)
+                                    }
+                                    .padding(
+                                        start = 20.dp + 14.dp * (section.level - 1).coerceIn(0, 2),
+                                        end = 20.dp,
+                                        top = 10.dp,
+                                        bottom = 10.dp,
+                                    ),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(
+                                    text = section.title,
+                                    style = if (section.level <= 1) {
+                                        MaterialTheme.typography.titleSmall
+                                    } else {
+                                        MaterialTheme.typography.bodyMedium
+                                    },
+                                    color = if (selected) {
+                                        MaterialTheme.colorScheme.primary
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurface
+                                    },
+                                    fontWeight = if (selected) FontWeight.SemiBold else null,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            }
+                        }
+                    }
+                }
             }
 
             AnimatedVisibility(
@@ -829,4 +963,115 @@ private fun countBadge(value: Int): String? = when {
     value <= 0 -> null
     value >= 100 -> "99+"
     else -> value.toString()
+}
+
+/** Thin table-of-contents rail on the right edge: drag to jump between sections, tap to open the list. */
+@Composable
+private fun SectionRail(
+    sections: List<OutlineSection>,
+    current: Int,
+    onSeek: (Int) -> Unit,
+    onOpen: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = MaterialTheme.colorScheme
+    val density = LocalDensity.current
+    val inset = 14.dp
+    var railHeight by remember { mutableFloatStateOf(0f) }
+    var dragIndex by remember { mutableIntStateOf(-1) }
+    var bubbleHeight by remember { mutableFloatStateOf(0f) }
+
+    fun indexAt(y: Float): Int {
+        val top = with(density) { inset.toPx() }
+        val span = railHeight - 2 * top
+        if (span <= 0f) return 0
+        val fraction = ((y - top) / span).coerceIn(0f, 1f)
+        return (fraction * (sections.size - 1)).roundToInt().coerceIn(0, sections.size - 1)
+    }
+
+    Box(
+        modifier = modifier
+            .fillMaxHeight()
+            .width(26.dp)
+            .onSizeChanged { railHeight = it.height.toFloat() }
+            .pointerInput(sections.size) {
+                detectVerticalDragGestures(
+                    onDragStart = { position ->
+                        dragIndex = indexAt(position.y)
+                        onSeek(dragIndex)
+                    },
+                    onDragEnd = { dragIndex = -1 },
+                    onDragCancel = { dragIndex = -1 },
+                ) { change, _ ->
+                    change.consume()
+                    val index = indexAt(change.position.y)
+                    if (index != dragIndex) {
+                        dragIndex = index
+                        onSeek(index)
+                    }
+                }
+            }
+            .pointerInput(sections.size) {
+                detectTapGestures { onOpen() }
+            },
+        contentAlignment = Alignment.TopEnd,
+    ) {
+        Canvas(Modifier.fillMaxSize()) {
+            val top = inset.toPx()
+            val span = size.height - 2 * top
+            val step = if (sections.size > 1) span / (sections.size - 1) else 0f
+            for (index in sections.indices) {
+                val active = index == current || index == dragIndex
+                val width = if (active) 3.dp.toPx() else 2.dp.toPx()
+                val height = if (active) 7.dp.toPx() else 3.dp.toPx()
+                drawRoundRect(
+                    color = if (active) colors.primary else colors.onSurfaceVariant.copy(alpha = 0.32f),
+                    topLeft = Offset(size.width - width, top + step * index - height / 2),
+                    size = Size(width, height),
+                    cornerRadius = CornerRadius(width / 2),
+                )
+            }
+        }
+        if (dragIndex in sections.indices) {
+            val top = with(density) { inset.toPx() }
+            val span = railHeight - 2 * top
+            val step = if (sections.size > 1) span / (sections.size - 1) else 0f
+            val tickY = top + step * dragIndex
+            Surface(
+                modifier = Modifier
+                    .wrapContentWidth(unbounded = true)
+                    .offset {
+                        IntOffset(
+                            x = -with(density) { 14.dp.roundToPx() },
+                            y = (tickY - bubbleHeight / 2).roundToInt(),
+                        )
+                    }
+                    .onSizeChanged { bubbleHeight = it.height.toFloat() },
+                shape = RoundedCornerShape(8.dp),
+                color = colors.surfaceContainerHighest,
+                shadowElevation = 4.dp,
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = "${dragIndex + 1}/${sections.size}",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = colors.primary,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        text = sections[dragIndex].title,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = colors.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.widthIn(max = 180.dp),
+                    )
+                }
+            }
+        }
+    }
 }

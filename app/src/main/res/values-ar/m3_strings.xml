@@ -429,6 +429,8 @@
     <string name="m3_image_failed">فشل تحميل الصورة</string>
     <string name="m3_back_to_top">العودة إلى الأعلى</string>
 
+    <string name="m3_outline">المحتويات</string>
+
     <!-- notification filter -->
     <string name="m3_notif_filter_repo">تصفية حسب المستودع</string>
 
