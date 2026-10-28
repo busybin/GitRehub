@@ -85,8 +85,17 @@ class DrawableGetter(
             val intrinsicWidth = picture.intrinsicWidth.coerceAtLeast(1)
             val intrinsicHeight = picture.intrinsicHeight.coerceAtLeast(1)
             val rect = if (vector) {
-                val width = intrinsicWidth.coerceAtMost(maxWidth)
-                Rect(0, 0, width, (intrinsicHeight * width.toFloat() / intrinsicWidth).roundToInt().coerceAtLeast(1))
+                // A badge is ~20 CSS px tall, but the decoded bitmap may be in CSS px or in device
+                // px depending on whether the SVG carries a viewBox. Cap the height instead of
+                // trusting the width: an oversized bitmap then shrinks back to badge size.
+                val density = textView.resources.displayMetrics.density
+                var height = intrinsicHeight.coerceAtMost((28f * density).roundToInt().coerceAtLeast(1))
+                var width = (intrinsicWidth.toFloat() * height / intrinsicHeight).roundToInt().coerceAtLeast(1)
+                if (width > maxWidth) {
+                    width = maxWidth
+                    height = (intrinsicHeight.toFloat() * width / intrinsicWidth).roundToInt().coerceAtLeast(1)
+                }
+                Rect(0, 0, width, height)
             } else {
                 val scale = if (intrinsicWidth > maxWidth) intrinsicWidth.toFloat() / maxWidth else 1f
                 // 1.3: generous enough that wide screenshots do not dominate the text.
