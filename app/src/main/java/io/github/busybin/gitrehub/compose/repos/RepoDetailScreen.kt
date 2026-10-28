@@ -10,8 +10,8 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -81,6 +81,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -92,6 +93,7 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -119,6 +121,7 @@ import io.github.busybin.gitrehub.helper.BrowserLauncher
 import io.github.busybin.gitrehub.provider.colors.ColorsProvider
 import io.github.busybin.gitrehub.provider.timeline.OutlineSection
 import kotlinx.coroutines.launch
+import kotlin.math.abs
 import kotlin.math.roundToInt
 
 /**
@@ -976,6 +979,7 @@ private fun SectionRail(
 ) {
     val colors = MaterialTheme.colorScheme
     val density = LocalDensity.current
+    val haptics = LocalHapticFeedback.current
     val inset = 14.dp
     var railHeight by remember { mutableFloatStateOf(0f) }
     var dragIndex by remember { mutableIntStateOf(-1) }
@@ -989,63 +993,77 @@ private fun SectionRail(
         return (fraction * (sections.size - 1)).roundToInt().coerceIn(0, sections.size - 1)
     }
 
-    Box(
-        modifier = modifier
-            .fillMaxHeight()
-            .width(26.dp)
-            .onSizeChanged { railHeight = it.height.toFloat() }
-            .pointerInput(sections.size) {
-                detectVerticalDragGestures(
-                    onDragStart = { position ->
-                        dragIndex = indexAt(position.y)
-                        onSeek(dragIndex)
-                    },
-                    onDragEnd = { dragIndex = -1 },
-                    onDragCancel = { dragIndex = -1 },
-                ) { change, _ ->
-                    change.consume()
-                    val index = indexAt(change.position.y)
-                    if (index != dragIndex) {
-                        dragIndex = index
-                        onSeek(index)
+    // Wide enough for the title bubble, but only the strip on the right takes touches.
+    Box(modifier.fillMaxHeight().width(200.dp)) {
+        Box(
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .fillMaxHeight()
+                .width(26.dp)
+                .onSizeChanged { railHeight = it.height.toFloat() }
+                .pointerInput(sections.size) {
+                    awaitEachGesture {
+                        val down = awaitFirstDown(requireUnconsumed = false)
+                        down.consume()
+                        var dragging = false
+                        var lastIndex = -1
+                        while (true) {
+                            val change = awaitPointerEvent().changes.firstOrNull { it.id == down.id } ?: break
+                            if (!dragging) {
+                                if (abs(change.position.y - down.position.y) > viewConfiguration.touchSlop) {
+                                    dragging = true
+                                    lastIndex = indexAt(change.position.y)
+                                    dragIndex = lastIndex
+                                    haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
+                                    onSeek(lastIndex)
+                                }
+                            } else {
+                                val index = indexAt(change.position.y)
+                                if (index != lastIndex) {
+                                    lastIndex = index
+                                    dragIndex = index
+                                    haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
+                                    onSeek(index)
+                                }
+                            }
+                            if (dragging) change.consume()
+                            if (!change.pressed) {
+                                if (!dragging) onOpen()
+                                break
+                            }
+                        }
+                        dragIndex = -1
                     }
+                },
+            contentAlignment = Alignment.TopEnd,
+        ) {
+            Canvas(Modifier.fillMaxSize()) {
+                val top = inset.toPx()
+                val span = size.height - 2 * top
+                val step = if (sections.size > 1) span / (sections.size - 1) else 0f
+                for (index in sections.indices) {
+                    val active = index == current || index == dragIndex
+                    val width = if (active) 3.dp.toPx() else 2.dp.toPx()
+                    val height = if (active) 7.dp.toPx() else 3.dp.toPx()
+                    drawRoundRect(
+                        color = if (active) colors.primary else colors.onSurfaceVariant.copy(alpha = 0.32f),
+                        topLeft = Offset(size.width - width, top + step * index - height / 2),
+                        size = Size(width, height),
+                        cornerRadius = CornerRadius(width / 2),
+                    )
                 }
             }
-            .pointerInput(sections.size) {
-                detectTapGestures { onOpen() }
-            },
-        contentAlignment = Alignment.TopEnd,
-    ) {
-        Canvas(Modifier.fillMaxSize()) {
-            val top = inset.toPx()
-            val span = size.height - 2 * top
-            val step = if (sections.size > 1) span / (sections.size - 1) else 0f
-            for (index in sections.indices) {
-                val active = index == current || index == dragIndex
-                val width = if (active) 3.dp.toPx() else 2.dp.toPx()
-                val height = if (active) 7.dp.toPx() else 3.dp.toPx()
-                drawRoundRect(
-                    color = if (active) colors.primary else colors.onSurfaceVariant.copy(alpha = 0.32f),
-                    topLeft = Offset(size.width - width, top + step * index - height / 2),
-                    size = Size(width, height),
-                    cornerRadius = CornerRadius(width / 2),
-                )
-            }
         }
+
         if (dragIndex in sections.indices) {
             val top = with(density) { inset.toPx() }
-            val span = railHeight - 2 * top
-            val step = if (sections.size > 1) span / (sections.size - 1) else 0f
+            val step = if (sections.size > 1) (railHeight - 2 * top) / (sections.size - 1) else 0f
             val tickY = top + step * dragIndex
             Surface(
                 modifier = Modifier
-                    .wrapContentWidth(unbounded = true)
-                    .offset {
-                        IntOffset(
-                            x = -with(density) { 14.dp.roundToPx() },
-                            y = (tickY - bubbleHeight / 2).roundToInt(),
-                        )
-                    }
+                    .align(Alignment.TopEnd)
+                    .offset { IntOffset(0, (tickY - bubbleHeight / 2).roundToInt()) }
+                    .padding(end = 34.dp)
                     .onSizeChanged { bubbleHeight = it.height.toFloat() },
                 shape = RoundedCornerShape(8.dp),
                 color = colors.surfaceContainerHighest,
@@ -1068,7 +1086,7 @@ private fun SectionRail(
                         color = colors.onSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.widthIn(max = 180.dp),
+                        modifier = Modifier.widthIn(max = 150.dp),
                     )
                 }
             }
