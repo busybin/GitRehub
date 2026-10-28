@@ -244,7 +244,6 @@
     <string name="m3_unstar">Quitar de destacados</string>
     <string name="m3_watch">Vigilar</string>
     <string name="m3_watching">Siguiendo</string>
-    <string name="m3_unwatch">Dejar de vigilar</string>
     <string name="m3_code">Código</string>
     <string name="m3_open_on_github">Abrir en GitHub</string>
     <string name="m3_repo_no_readme">Este repositorio no tiene README</string>
@@ -840,4 +839,5 @@ GitHub no tiene canal de notificaciones push para los clientes de terceros, así
     <string name="m3_edit_discard_message">Se perderán tus cambios en este archivo.</string>
     <string name="m3_edit_discard">Descartar</string>
     <string name="m3_edit_ref_not_branch">Esta referencia es de solo lectura. Abre una solicitud de cambios.</string>
+    <string name="m3_edit_file_not_text">Este archivo no se puede editar como texto.</string>
 </resources>

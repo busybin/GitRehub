@@ -1,7 +1,6 @@
 <resources xmlns:tools="http://schemas.android.com/tools"
            tools:ignore="MissingTranslation">
 
-    <string name="english_please">Merci de soumettre votre demande en anglais.</string>
 
     <string name="open">Ouvrir</string>
     <string name="open_new_window">Ouvrir dans une nouvelle fenêtre</string>

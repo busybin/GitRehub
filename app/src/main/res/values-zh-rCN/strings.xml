@@ -31,7 +31,6 @@ CaptainTF @ Github 提议：
 <resources xmlns:tools="http://schemas.android.com/tools"
            tools:ignore="MissingTranslation">
 
-    <string name="english_please">请使用英语描述您的问题.</string>
 
     <string name="open">打开</string>
     <string name="open_new_window">在新窗口中打开</string>

@@ -64,7 +64,7 @@ object DraftQueue {
         // Only a definitive rejection (the issue is gone or the body is invalid) makes the draft
         // useless. Network errors, auth failures, rate limits and 5xx keep it: a gateway timeout
         // may not have reached GitHub at all, and dropping the text would lose the user's work.
-        val finalRejection = status == 404 || status == 410 || status == 422
+        val finalRejection = status == 403 || status == 404 || status == 410 || status == 422
         if (result.isSuccess || finalRejection) {
             remove(draft.id)
             true

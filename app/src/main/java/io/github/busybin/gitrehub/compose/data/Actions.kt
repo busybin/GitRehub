@@ -99,7 +99,11 @@ object Actions {
     }
 
     private const val MAX_TOTAL_BYTES = 24L * 1024 * 1024
-    private const val MAX_DECOMPRESSED_BYTES = 32L * 1024 * 1024
+    // Scale with the heap the device actually gave us so a low-end phone cannot be pushed into
+    // an OOM by a large run log.
+    private val MAX_DECOMPRESSED_BYTES: Long
+        get() = (Runtime.getRuntime().maxMemory() / 8)
+            .coerceIn(4L * 1024 * 1024, 32L * 1024 * 1024)
     private const val MAX_ENTRY_BYTES = 1 * 1024 * 1024
     private const val MAX_FILES = 80
     private const val TRUNCATED = "\n… [truncated]"

@@ -244,7 +244,6 @@
     <string name="m3_unstar">Убрать звезду</string>
     <string name="m3_watch">Следить</string>
     <string name="m3_watching">Вы следите</string>
-    <string name="m3_unwatch">Не следить</string>
     <string name="m3_code">Код</string>
     <string name="m3_open_on_github">Открыть на GitHub</string>
     <string name="m3_repo_no_readme">В этом репозитории нет README</string>
@@ -838,4 +837,5 @@
     <string name="m3_edit_discard_message">Ваши правки в этом файле будут потеряны.</string>
     <string name="m3_edit_discard">Отменить</string>
     <string name="m3_edit_ref_not_branch">Эта ссылка доступна только для чтения. Откройте pull request.</string>
+    <string name="m3_edit_file_not_text">Этот файл нельзя редактировать как текст.</string>
 </resources>

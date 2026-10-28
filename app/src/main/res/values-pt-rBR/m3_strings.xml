@@ -244,7 +244,6 @@
     <string name="m3_unstar">Desfavoritar</string>
     <string name="m3_watch">Acompanhar</string>
     <string name="m3_watching">Acompanhando</string>
-    <string name="m3_unwatch">Deixar de acompanhar</string>
     <string name="m3_code">Código</string>
     <string name="m3_open_on_github">Abrir no GitHub</string>
     <string name="m3_repo_no_readme">Este repositório não tem README</string>
@@ -840,4 +839,5 @@ O GitHub não tem canal de push para clientes de terceiros, então isto é uma c
     <string name="m3_edit_discard_message">Suas edições neste arquivo serão perdidas.</string>
     <string name="m3_edit_discard">Descartar</string>
     <string name="m3_edit_ref_not_branch">Esta referência é somente leitura. Abra um pull request.</string>
+    <string name="m3_edit_file_not_text">Este arquivo não pode ser editado como texto.</string>
 </resources>

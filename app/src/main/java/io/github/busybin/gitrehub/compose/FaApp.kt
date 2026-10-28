@@ -1017,10 +1017,11 @@ fun FaApp(routeRequest: MutableState<String?>? = null) {
                                 onDone = { prNumber ->
                                     nav.previousBackStackEntry?.savedStateHandle
                                         ?.set("file_refresh", true)
+                                    // Leave the editor behind either way: a direct commit goes back
+                                    // to the file, a pull request opens on top of it.
+                                    nav.popBackStack()
                                     if (prNumber != null) {
                                         nav.navigate(Routes.issue(editOwner, editRepo, prNumber))
-                                    } else {
-                                        nav.popBackStack()
                                     }
                                 },
                             )

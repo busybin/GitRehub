@@ -245,7 +245,6 @@
     <string name="m3_unstar">Unstar</string>
     <string name="m3_watch">Watch</string>
     <string name="m3_watching">Watching</string>
-    <string name="m3_unwatch">Unwatch</string>
     <string name="m3_code">Code</string>
     <string name="m3_open_on_github">Open on GitHub</string>
     <string name="m3_repo_no_readme">This repository has no README</string>
@@ -840,4 +839,5 @@ GitHub has no push channel for third-party clients, so this is real polling: the
     <string name="m3_edit_discard_message">Your edits to this file will be lost.</string>
     <string name="m3_edit_discard">Discard</string>
     <string name="m3_edit_ref_not_branch">This ref is read-only. Open a pull request instead.</string>
+    <string name="m3_edit_file_not_text">This file cannot be edited as text.</string>
 </resources>

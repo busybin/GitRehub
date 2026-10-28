@@ -1,7 +1,6 @@
 <resources xmlns:tools="http://schemas.android.com/tools"
            tools:ignore="MissingTranslation">
 
-    <string name="english_please">Пожалуйста, при составлении тикета используйте английский язык.</string>
 
     <string name="open">Открыть</string>
     <string name="open_new_window">Открыть в новом окне</string>

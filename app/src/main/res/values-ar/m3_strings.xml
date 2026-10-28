@@ -244,7 +244,6 @@
     <string name="m3_unstar">إزالة النجمة</string>
     <string name="m3_watch">متابعة</string>
     <string name="m3_watching">متابَع</string>
-    <string name="m3_unwatch">إلغاء المتابعة</string>
     <string name="m3_code">الشيفرة</string>
     <string name="m3_open_on_github">فتح على GitHub</string>
     <string name="m3_repo_no_readme">لا يوجد ملف README في هذا المستودع</string>
@@ -840,4 +839,5 @@
     <string name="m3_edit_discard_message">ستفقد تعديلاتك على هذا الملف.</string>
     <string name="m3_edit_discard">تجاهل</string>
     <string name="m3_edit_ref_not_branch">هذا المرجع للقراءة فقط. افتح طلب سحب بدلاً من ذلك.</string>
+    <string name="m3_edit_file_not_text">لا يمكن تحرير هذا الملف كنص.</string>
 </resources>

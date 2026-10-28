@@ -2,7 +2,6 @@
            tools:ignore="MissingTranslation">
     <!--Please DO NOT translate github terms, such as Pull Request, Issues, Commits & etc.-->
 
-    <string name="english_please">Por favor submeta seu request em inglês.</string>
 
     <string name="open">Abrir</string>
     <string name="open_new_window">Abrir em nova janela</string>

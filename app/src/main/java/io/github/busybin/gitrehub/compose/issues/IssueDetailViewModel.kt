@@ -170,7 +170,8 @@ class IssueDetailViewModel : ViewModel() {
                 refresh(owner, repo, number)
             }.onFailure {
                 val status = (it as? ApiException)?.error?.status ?: 0
-                if (status == 0 || status == 401 || status == 403 || status == 429 || status >= 500) {
+                // 403 is usually a locked or archived thread, so retrying it would never work.
+                if (status == 0 || status == 401 || status == 429 || status >= 500) {
                     DraftQueue.add(owner, repo, number, text)
                     _message.value = WriteMessage(UiText.res(R.string.m3_draft_saved), error = true)
                 } else {

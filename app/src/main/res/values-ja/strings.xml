@@ -1,7 +1,6 @@
 <resources xmlns:tools="http://schemas.android.com/tools"
            tools:ignore="MissingTranslation">
 
-    <string name="english_please">リクエストを英語で送ってください。</string>
 
     <string name="open">開く</string>
     <string name="open_new_window">新しいウィンドウで開く</string>

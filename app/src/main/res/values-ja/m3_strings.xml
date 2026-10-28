@@ -244,7 +244,6 @@
     <string name="m3_unstar">スターを外す</string>
     <string name="m3_watch">ウォッチ</string>
     <string name="m3_watching">ウォッチ中</string>
-    <string name="m3_unwatch">ウォッチ解除</string>
     <string name="m3_code">コード</string>
     <string name="m3_open_on_github">GitHub で開く</string>
     <string name="m3_repo_no_readme">このリポジトリには README がありません</string>
@@ -840,4 +839,5 @@ GitHub にはサードパーティ製クライアント向けのプッシュチ�
     <string name="m3_edit_discard_message">このファイルへの編集は失われます。</string>
     <string name="m3_edit_discard">破棄</string>
     <string name="m3_edit_ref_not_branch">この参照は読み取り専用です。代わりにプルリクエストを作成してください。</string>
+    <string name="m3_edit_file_not_text">このファイルはテキストとして編集できません。</string>
 </resources>

@@ -243,7 +243,6 @@
     <string name="m3_unstar">取消加星</string>
     <string name="m3_watch">关注</string>
     <string name="m3_watching">已关注</string>
-    <string name="m3_unwatch">取消关注</string>
     <string name="m3_code">代码</string>
     <string name="m3_open_on_github">在 GitHub 打开</string>
     <string name="m3_repo_no_readme">这个仓库没有 README</string>
@@ -837,4 +836,5 @@ github 不给第三方客户端推送通道，所以这是真的轮询：最短 
     <string name="m3_edit_discard_message">你对这个文件的修改会丢失。</string>
     <string name="m3_edit_discard">放弃</string>
     <string name="m3_edit_ref_not_branch">此引用是只读的，请改用新建分支并提交 PR。</string>
+    <string name="m3_edit_file_not_text">此文件不能作为文本编辑。</string>
 </resources>

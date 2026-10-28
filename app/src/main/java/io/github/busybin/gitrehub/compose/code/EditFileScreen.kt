@@ -32,6 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.delay
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.busybin.gitrehub.R
@@ -78,7 +79,14 @@ fun EditFileScreen(
 
     LaunchedEffect(owner, repo, path, ref) { vm.load(owner, repo, path, ref) }
     LaunchedEffect(state.text, state.loading) {
-        if (!state.loading && content == null) content = state.text
+        if (!state.loading && content == null) content = state.draft ?: state.text
+    }
+    // Keep an on-disk copy so a long edit survives the process being killed.
+    LaunchedEffect(content, state.loading) {
+        val value = content
+        if (state.loading || value == null) return@LaunchedEffect
+        delay(400)
+        vm.saveDraft(value)
     }
     // Both outcomes end the screen: a direct commit has no PR to open, so it just goes back.
     LaunchedEffect(finished) { if (finished) onDone(vm.prNumber.value) }
@@ -94,6 +102,7 @@ fun EditFileScreen(
                 TextButton(
                     onClick = {
                         confirmDiscard = false
+                        vm.clearDraft()
                         onDone(null)
                     },
                 ) {
@@ -113,6 +122,9 @@ fun EditFileScreen(
 
     when {
         state.loading -> LoadingView()
+        state.notText -> FailureView(
+            message = UiText.res(R.string.m3_edit_file_not_text),
+        )
         state.failed -> FailureView(
             message = UiText.res(R.string.m3_edit_file_load_failed),
             onRetry = { vm.load(owner, repo, path, ref, force = true) },
@@ -140,6 +152,7 @@ fun EditFileScreen(
                     .weight(1f),
                 textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
                 label = { Text(stringResource(R.string.m3_edit_file_content)) },
+                enabled = state.canWrite,
             )
             Spacer(Modifier.height(8.dp))
             OutlinedTextField(
@@ -148,6 +161,7 @@ fun EditFileScreen(
                 modifier = Modifier.fillMaxWidth(),
                 label = { Text(stringResource(R.string.m3_edit_commit_message)) },
                 singleLine = true,
+                enabled = state.canWrite,
             )
             Spacer(Modifier.height(8.dp))
             Row(

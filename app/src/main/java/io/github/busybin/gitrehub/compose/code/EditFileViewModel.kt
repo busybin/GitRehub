@@ -7,6 +7,7 @@ import io.github.busybin.gitrehub.R
 import io.github.busybin.gitrehub.compose.common.UiText
 import io.github.busybin.gitrehub.compose.common.toUiText
 import io.github.busybin.gitrehub.compose.data.RepoContent
+import io.github.busybin.gitrehub.core.net.ApiException
 import io.github.busybin.gitrehub.core.net.GitHubApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,6 +19,8 @@ import kotlinx.coroutines.withContext
 data class EditFileState(
     val loading: Boolean = true,
     val failed: Boolean = false,
+    /** The file exists but has no editable text (image, binary, or above the preview limit). */
+    val notText: Boolean = false,
     val sha: String? = null,
     val text: String = "",
     val defaultBranch: String = "main",
@@ -26,6 +29,8 @@ data class EditFileState(
     /** False when [ref] is a tag or commit: it can seed a branch, but nothing can commit onto it. */
     val refIsBranch: Boolean = true,
     val canWrite: Boolean = false,
+    /** Unsubmitted text left in [EditDraftStore] by an earlier session, if any. */
+    val draft: String? = null,
 )
 
 /** Edits one text file, committing straight to the default branch or on a new branch plus a PR. */
@@ -59,18 +64,33 @@ class EditFileViewModel : ViewModel() {
             val loaded = runCatching {
                 withContext(Dispatchers.IO) {
                     val entry = RepoContent.file(owner, repo, path, ref)
-                    // Images and files above the preview limit have no text to edit: never open the
-                    // editor with an empty body, or submitting would wipe the file.
-                    val body = entry
-                        ?.takeIf { !it.isImage && it.size <= RepoContent.MAX_PREVIEW_BYTES }
-                        ?.let { RepoContent.text(it) }
-                        ?: error("not an editable text file")
+                    // An SVG is an image by suffix but plain text by content, so it stays editable;
+                    // other images and files above the preview limit have no text at all.
+                    val vector = entry?.path?.endsWith(".svg", ignoreCase = true) == true
+                    val editable = entry != null && (vector || !entry.isImage) &&
+                        entry.size <= RepoContent.MAX_PREVIEW_BYTES
+                    val body = if (editable) RepoContent.text(entry) else null
+                    // Never open the editor with a fabricated or decoded-from-binary body: an empty
+                    // submit would overwrite the file.
+                    if (body == null || looksBinary(body)) throw NotText
                     val repoInfo = runCatching { GitHubApi.repo(owner, repo) }.getOrNull()
                     val cleanRef = ref?.takeIf { it.isNotBlank() }
                     // A tag or a commit can seed a new branch but cannot receive a commit, so the
-                    // screen must not offer a direct commit there.
-                    val refIsBranch = cleanRef == null ||
-                        runCatching { GitHubApi.branchHeadSha(owner, repo, cleanRef) }.isSuccess
+                    // screen must not offer a direct commit there. Only a 404 proves that; a
+                    // network failure is retried instead of silently guessing.
+                    val refIsBranch = when {
+                        cleanRef == null -> true
+                        else -> {
+                            val probe = runCatching { GitHubApi.branchHeadSha(owner, repo, cleanRef) }
+                            if (probe.isSuccess) {
+                                true
+                            } else {
+                                val status = (probe.exceptionOrNull() as? ApiException)?.error?.status
+                                if (status == 404 || status == 422) false else error("ref probe failed")
+                            }
+                        }
+                    }
+                    val draft = EditDraftStore.read(key)?.takeIf { it != body }
                     EditFileState(
                         loading = false,
                         sha = entry?.sha,
@@ -79,11 +99,47 @@ class EditFileViewModel : ViewModel() {
                         ref = cleanRef,
                         refIsBranch = refIsBranch,
                         canWrite = repoInfo?.permissions?.canWrite ?: false,
+                        draft = draft,
                     )
                 }
             }
-            _state.value = loaded.getOrElse { _state.value.copy(loading = false, failed = true) }
+            _state.value = loaded.getOrElse {
+                if (it is NotText) {
+                    EditFileState(loading = false, notText = true)
+                } else {
+                    _state.value.copy(loading = false, failed = true)
+                }
+            }
         }
+    }
+
+    /** Persists the current text so it survives process death; identical text clears the draft. */
+    fun saveDraft(content: String) {
+        val key = loadedKey
+        if (key.isEmpty() || _state.value.notText) return
+        val unchanged = content == _state.value.text
+        viewModelScope.launch(Dispatchers.IO) {
+            if (unchanged) EditDraftStore.clear(key) else EditDraftStore.write(key, content)
+        }
+    }
+
+    fun clearDraft() {
+        if (loadedKey.isEmpty()) return
+        viewModelScope.launch(Dispatchers.IO) { EditDraftStore.clear(loadedKey) }
+    }
+
+    /** A file that cannot be edited as text; shown as such instead of a retry loop. */
+    private object NotText : Exception()
+
+    /** NUL bytes or a visible share of control characters mean this is not a text file. */
+    private fun looksBinary(text: String): Boolean {
+        if (text.isEmpty()) return false
+        var control = 0
+        for (ch in text) {
+            if (ch == '\u0000') return true
+            if (ch < ' ' && ch != '\n' && ch != '\r' && ch != '\t') control++
+        }
+        return control * 100 > text.length * 2
     }
 
     /**
@@ -173,6 +229,7 @@ class EditFileViewModel : ViewModel() {
             }
             _submitting.value = false
             result.onSuccess {
+                clearDraft()
                 _prNumber.value = it
                 _finished.value = true
             }.onFailure { _error.value = it.toUiText() }

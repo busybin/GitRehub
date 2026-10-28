@@ -103,6 +103,11 @@ android {
         }
     }
 
+    packaging {
+        // A stray logo from a bundled HTML dependency; nothing in the app or its dex uses it.
+        resources.excludes += "images/ant_logo_large.gif"
+    }
+
     buildFeatures {
         buildConfig = true
         compose = true
@@ -200,3 +205,12 @@ dependencies {
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
 }
 
+// Store builds ship without the in-app updater, so its install permission is removed from the
+// merged manifest (a tools:node placeholder cannot be used for this).
+androidComponents {
+    onVariants { variant ->
+        if (storeBuild) {
+            variant.sources.manifests?.addStaticManifestFile("src/store/AndroidManifest.xml")
+        }
+    }
+}

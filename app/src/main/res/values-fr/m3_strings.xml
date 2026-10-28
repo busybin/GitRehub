@@ -244,7 +244,6 @@
     <string name="m3_unstar">Retirer l\'étoile</string>
     <string name="m3_watch">Suivre</string>
     <string name="m3_watching">Suivi</string>
-    <string name="m3_unwatch">Ne plus suivre</string>
     <string name="m3_code">Code</string>
     <string name="m3_open_on_github">Ouvrir sur GitHub</string>
     <string name="m3_repo_no_readme">Ce dépôt n\'a pas de README</string>
@@ -840,4 +839,5 @@ GitHub n\'a pas de canal push pour les clients tiers, il s\'agit donc d\'une vé
     <string name="m3_edit_discard_message">Vos modifications de ce fichier seront perdues.</string>
     <string name="m3_edit_discard">Abandonner</string>
     <string name="m3_edit_ref_not_branch">Cette référence est en lecture seule. Ouvrez plutôt une pull request.</string>
+    <string name="m3_edit_file_not_text">Ce fichier ne peut pas être modifié en tant que texte.</string>
 </resources>
