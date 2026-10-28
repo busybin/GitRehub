@@ -93,7 +93,26 @@ class DrawableHandler(
     private fun isVector(node: TagNode, src: String): Boolean =
         sequenceOf(node.getAttributeByName("data-canonical-src"), src)
             .filterNotNull()
-            .any { it.substringBefore('#').substringBefore('?').endsWith(".svg", ignoreCase = true) }
+            .map { original(it) ?: it }
+            .any { it.endsWith(".svg", ignoreCase = true) || svgHost(it) }
+
+    /** Camo serves the original URL hex-encoded under its hash, which is where shields.io shows up. */
+    private fun original(url: String): String? {
+        val segment = url.substringBefore('#').substringBefore('?').substringAfterLast('/')
+        if (segment.length < 16 || segment.length % 2 != 0) return null
+        if (segment.any { it !in "0123456789abcdefABCDEF" }) return null
+        val decoded = runCatching {
+            segment.chunked(2).map { it.toInt(16).toChar() }.joinToString("")
+        }.getOrNull() ?: return null
+        return decoded.takeIf { it.startsWith("http") }
+    }
+
+    /** These hosts always answer with SVG, even when the URL has no .svg extension. */
+    private fun svgHost(url: String): Boolean {
+        val host = url.substringAfter("://").substringBefore('/').substringBefore(':').lowercase()
+        return host == "img.shields.io" || host == "badgen.net" || host == "flat.badgen.net" ||
+            host == "badge.fury.io" || host == "img.badgesize.io"
+    }
 
     /** True when the image is wrapped in a link to a different target (a badge): the link wins. */
     private fun linksElsewhere(node: TagNode): Boolean {

@@ -32,6 +32,9 @@ class DrawableGetter(
 
     private val target = WeakReference(textView)
 
+    /** Set when the SVG's own width/height were read, so the decoded size needs no clamping. */
+    private var exact = false
+
     override fun getDrawable(url: String): Drawable {
         val slot = UrlDrawable()
         val textView = target.get() ?: return slot
@@ -43,8 +46,44 @@ class DrawableGetter(
             }
         )
         slot.callback = this
+        if (vector) {
+            // The size that Coil reports for an SVG depends on whether the file has a viewBox,
+            // so read width/height from the markup and decode at exactly that size instead.
+            Thread {
+                val size = runCatching { svgSize(url) }.getOrNull()
+                if (size == null) {
+                    enqueue(url, textView, slot, null)
+                } else {
+                    val density = textView.resources.displayMetrics.density
+                    val width = (size.first * density).roundToInt().coerceIn(1, maxWidth)
+                    val height = (width * size.second / size.first).roundToInt().coerceAtLeast(1)
+                    exact = true
+                    enqueue(url, textView, slot, Size(width, height))
+                }
+            }.apply { isDaemon = true }.start()
+            return slot
+        }
         enqueue(url, textView, slot, null)
         return slot
+    }
+
+    /** CSS pixel size of an SVG: its width/height attributes, else its viewBox. */
+    private fun svgSize(url: String): Pair<Float, Float>? {
+        val connection = java.net.URL(url).openConnection() as java.net.HttpURLConnection
+        connection.connectTimeout = 8000
+        connection.readTimeout = 8000
+        connection.setRequestProperty("User-Agent", "Mozilla/5.0")
+        val text = connection.inputStream.bufferedReader().use { it.readText() }
+        val tag = Regex("<svg[^>]*>").find(text)?.value ?: return null
+        fun attribute(name: String): String? =
+            Regex("\\b$name\\s*=\\s*[\"']([^\"']+)[\"']").find(tag)?.groupValues?.get(1)
+        val width = attribute("width")?.toFloatOrNull()
+        val height = attribute("height")?.toFloatOrNull()
+        if (width != null && height != null && width > 0 && height > 0) return width to height
+        val box = attribute("viewBox")?.trim()?.split(Regex("[\\s,]+"))
+            ?.mapNotNull { it.toFloatOrNull() }
+        if (box != null && box.size == 4 && box[2] > 0 && box[3] > 0) return box[2] to box[3]
+        return null
     }
 
     private fun enqueue(url: String, textView: TextView, slot: UrlDrawable, size: Size?) {
@@ -70,6 +109,7 @@ class DrawableGetter(
     ) {
         val intrinsicWidth = picture.intrinsicWidth
         val intrinsicHeight = picture.intrinsicHeight
+        android.util.Log.d("GHIMG", "success vector=$vector inline=$inline scaled=$scaled exact=$exact iw=$intrinsicWidth ih=$intrinsicHeight maxWidth=$maxWidth url=${url.takeLast(40)}")
         if (vector && !scaled && intrinsicWidth > 0 && intrinsicHeight > 0) {
             val density = textView.resources.displayMetrics.density
             val width = (intrinsicWidth * density).roundToInt().coerceIn(1, maxWidth)
@@ -84,7 +124,11 @@ class DrawableGetter(
         textView.post {
             val intrinsicWidth = picture.intrinsicWidth.coerceAtLeast(1)
             val intrinsicHeight = picture.intrinsicHeight.coerceAtLeast(1)
-            val rect = if (vector) {
+            val rect = if (vector && exact) {
+                val width = intrinsicWidth.coerceAtMost(maxWidth)
+                val height = (width * intrinsicHeight.toFloat() / intrinsicWidth).roundToInt().coerceAtLeast(1)
+                Rect(0, 0, width, height)
+            } else if (vector) {
                 // A badge is ~20 CSS px tall, but the decoded bitmap may be in CSS px or in device
                 // px depending on whether the SVG carries a viewBox. Cap the height instead of
                 // trusting the width: an oversized bitmap then shrinks back to badge size.
@@ -106,6 +150,7 @@ class DrawableGetter(
                     (intrinsicHeight / scale / 1.3f).roundToInt(),
                 )
             }
+            android.util.Log.d("GHIMG", "rect vector=$vector exact=$exact iw=$intrinsicWidth ih=$intrinsicHeight maxWidth=$maxWidth density=${textView.resources.displayMetrics.density} -> $rect")
             picture.bounds = rect
             slot.bounds = rect
             slot.setImage(picture)
