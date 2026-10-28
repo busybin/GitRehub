@@ -4,8 +4,12 @@ import io.github.busybin.gitrehub.helper.PrefHelper
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
 /** A search the user pinned: the query plus the tab it was run on (`SearchScope.name`). */
+@Serializable
 data class SavedSearch(val query: String, val scope: String)
 
 /**
@@ -19,6 +23,7 @@ object SavedPrefs {
     private const val KEY_SEARCHES = "m3_saved_searches"
     private const val KEY_FAVORITES = "m3_favorite_repos"
     private const val MAX_SEARCHES = 20
+    private val json = Json { ignoreUnknownKeys = true }
 
     private val _searches = MutableStateFlow(readSearches())
     val searches: StateFlow<List<SavedSearch>> = _searches.asStateFlow()
@@ -53,15 +58,14 @@ object SavedPrefs {
     fun isFavorite(fullName: String): Boolean = fullName in _favorites.value
 
     private fun writeSearches(value: List<SavedSearch>) {
-        PrefHelper.putAny(
-            KEY_SEARCHES,
-            value.joinToString("\n") { "${it.scope}\t${it.query.replace('\n', ' ')}" },
-        )
+        PrefHelper.putAny(KEY_SEARCHES, json.encodeToString(value))
         _searches.value = value
     }
 
     private fun readSearches(): List<SavedSearch> {
         val raw = PrefHelper.getString(KEY_SEARCHES) ?: return emptyList()
+        runCatching { json.decodeFromString<List<SavedSearch>>(raw) }.getOrNull()?.let { return it }
+        // Legacy tab-separated rows from before the JSON format.
         return raw.lineSequence().mapNotNull { line ->
             val at = line.indexOf('\t')
             if (at <= 0) null else SavedSearch(line.substring(at + 1), line.take(at))

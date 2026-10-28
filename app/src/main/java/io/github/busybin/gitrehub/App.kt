@@ -10,7 +10,6 @@ import coil.disk.DiskCache
 import coil.memory.MemoryCache
 import io.github.busybin.gitrehub.compose.common.AppShortcuts
 import io.github.busybin.gitrehub.core.auth.TokenStore
-import io.github.busybin.gitrehub.helper.DeviceNameGetter
 import io.github.busybin.gitrehub.helper.OfflineStatus
 import io.github.busybin.gitrehub.helper.PrefHelper.init
 import io.github.busybin.gitrehub.helper.TypeFaceHelper.generateTypeface
@@ -85,7 +84,6 @@ class App : Application(), ImageLoaderFactory {
         }
         EmojiStore.load(this)
         ColorsProvider.load()
-        DeviceNameGetter.instance.loadDevice()
     }
 
     private fun setupPreference() {

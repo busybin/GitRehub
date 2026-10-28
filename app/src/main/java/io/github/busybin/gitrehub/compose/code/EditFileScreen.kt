@@ -1,5 +1,6 @@
 package io.github.busybin.gitrehub.compose.code
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -10,17 +11,21 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -35,6 +40,16 @@ import io.github.busybin.gitrehub.compose.common.LoadingView
 import io.github.busybin.gitrehub.compose.common.UiText
 import io.github.busybin.gitrehub.compose.common.MetaText
 import io.github.busybin.gitrehub.compose.common.render
+
+/**
+ * Keeps a small edit across process death, but never writes a large body into the saved state:
+ * Bundle-backed state is capped by the Binder transaction size, and a megabyte of text would
+ * crash the process it is trying to save.
+ */
+private val EditContentSaver = Saver<String?, String>(
+    save = { text -> text?.takeIf { it.length <= 32_000 } },
+    restore = { it },
+)
 
 /** Edit a text file, then commit it to the default branch or open a PR from a new branch. */
 @Composable
@@ -51,12 +66,15 @@ fun EditFileScreen(
     val error by vm.error.collectAsStateWithLifecycle()
     val finished by vm.finished.collectAsStateWithLifecycle()
 
-    var content by remember { mutableStateOf<String?>(null) }
-    var message by remember { mutableStateOf("") }
-    var newBranch by remember { mutableStateOf("patch-${path.substringAfterLast('/').substringBeforeLast('.').ifBlank { "file" }}") }
-    var prMode by remember { mutableStateOf(true) }
-    var prTitle by remember { mutableStateOf("") }
-    var prBody by remember { mutableStateOf("") }
+    // Saveable so a rotation, a font-scale change or process death while the user is away from
+    // the app does not throw away the whole edit.
+    var content by rememberSaveable(stateSaver = EditContentSaver) { mutableStateOf<String?>(null) }
+    var message by rememberSaveable { mutableStateOf("") }
+    var newBranch by rememberSaveable { mutableStateOf("patch-${path.substringAfterLast('/').substringBeforeLast('.').ifBlank { "file" }}") }
+    var prMode by rememberSaveable { mutableStateOf(true) }
+    var prTitle by rememberSaveable { mutableStateOf("") }
+    var prBody by rememberSaveable { mutableStateOf("") }
+    var confirmDiscard by remember { mutableStateOf(false) }
 
     LaunchedEffect(owner, repo, path, ref) { vm.load(owner, repo, path, ref) }
     LaunchedEffect(state.text, state.loading) {
@@ -64,6 +82,34 @@ fun EditFileScreen(
     }
     // Both outcomes end the screen: a direct commit has no PR to open, so it just goes back.
     LaunchedEffect(finished) { if (finished) onDone(vm.prNumber.value) }
+
+    val dirty = !state.loading && content != null && content != state.text
+    BackHandler(enabled = dirty) { confirmDiscard = true }
+    if (confirmDiscard) {
+        AlertDialog(
+            onDismissRequest = { confirmDiscard = false },
+            title = { Text(stringResource(R.string.m3_edit_discard_title)) },
+            text = { Text(stringResource(R.string.m3_edit_discard_message)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        confirmDiscard = false
+                        onDone(null)
+                    },
+                ) {
+                    Text(
+                        stringResource(R.string.m3_edit_discard),
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmDiscard = false }) {
+                    Text(stringResource(R.string.m3_cancel))
+                }
+            },
+        )
+    }
 
     when {
         state.loading -> LoadingView()
@@ -111,6 +157,7 @@ fun EditFileScreen(
                 FilterChip(
                     selected = !prMode,
                     onClick = { prMode = false },
+                    enabled = state.refIsBranch || state.ref == null,
                     label = { Text(stringResource(R.string.m3_edit_direct)) },
                 )
                 FilterChip(

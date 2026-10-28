@@ -836,4 +836,8 @@ GitHub にはサードパーティ製クライアント向けのプッシュチ�
     <string name="m3_find_file_refine">先頭 100 件のみ表示 — 入力を増やして絞り込んでください</string>
     <string name="m3_delete_confirm_title">%1$s を削除しますか？</string>
     <string name="m3_delete_confirm_message">この操作は元に戻せません。</string>
+    <string name="m3_edit_discard_title">変更を破棄しますか？</string>
+    <string name="m3_edit_discard_message">このファイルへの編集は失われます。</string>
+    <string name="m3_edit_discard">破棄</string>
+    <string name="m3_edit_ref_not_branch">この参照は読み取り専用です。代わりにプルリクエストを作成してください。</string>
 </resources>

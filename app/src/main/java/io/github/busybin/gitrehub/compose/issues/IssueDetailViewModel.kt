@@ -152,8 +152,9 @@ class IssueDetailViewModel : ViewModel() {
     }
 
     /**
-     * Post a comment (issues and PRs share the same endpoint). A network-level failure keeps the
-     * text in the offline queue instead of throwing it away; a 4xx/5xx is reported and not queued.
+     * Post a comment (issues and PRs share the same endpoint). Answers that prove the comment was
+     * never created (no network, auth, rate limit, server error) keep the text in the offline
+     * queue; a validation error is reported and not queued so it does not retry forever.
      */
     fun postComment(owner: String, repo: String, number: Int, body: String) {
         val text = body.trim()
@@ -169,7 +170,7 @@ class IssueDetailViewModel : ViewModel() {
                 refresh(owner, repo, number)
             }.onFailure {
                 val status = (it as? ApiException)?.error?.status ?: 0
-                if (status == 0) {
+                if (status == 0 || status == 401 || status == 403 || status == 429 || status >= 500) {
                     DraftQueue.add(owner, repo, number, text)
                     _message.value = WriteMessage(UiText.res(R.string.m3_draft_saved), error = true)
                 } else {

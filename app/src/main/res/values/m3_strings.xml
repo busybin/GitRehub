@@ -836,4 +836,8 @@ GitHub has no push channel for third-party clients, so this is real polling: the
     <string name="m3_find_file_refine">Showing the first 100 — type more to narrow it down</string>
     <string name="m3_delete_confirm_title">Delete %1$s?</string>
     <string name="m3_delete_confirm_message">This can\'t be undone.</string>
+    <string name="m3_edit_discard_title">Discard changes?</string>
+    <string name="m3_edit_discard_message">Your edits to this file will be lost.</string>
+    <string name="m3_edit_discard">Discard</string>
+    <string name="m3_edit_ref_not_branch">This ref is read-only. Open a pull request instead.</string>
 </resources>

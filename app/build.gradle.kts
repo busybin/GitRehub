@@ -36,7 +36,7 @@ val mockApi = (project.findProperty("gitrehub.mockApi") as String?)?.takeIf { it
 
 // Store builds pass -Pgitrehub.store=external, which compiles the in-app self-updater out: a
 // store re-signs the APK, so a package signed by us can never be installed over it.
-val storeBuild = (project.findProperty("gitrehub.store") as String?) == "external"
+val storeBuild = (project.findProperty("gitrehub.store") as String?) in setOf("external", "fdroid")
 
 // The release key is not in the repo, so only attach the signing config when the key is present.
 val releaseKeystore = rootProject.file("app/keys_release.jks")
@@ -76,6 +76,8 @@ android {
                 storeFile = keystore
                 storePassword = config["PASSWORD"]
                 keyPassword = config["PASSWORD"]
+                // v3 covers key rotation and is the format modern Android checks first.
+                enableV3Signing = true
                 keyAlias = config["KEY_ALIAS"]
             } else {
                 println("WARNING: app/keys_release.jks not found — release builds will be unsigned.")
@@ -146,9 +148,6 @@ dependencies {
     implementation("com.atlassian.commonmark:commonmark-ext-gfm-tables:0.17.0")
     implementation("com.atlassian.commonmark:commonmark-ext-ins:0.17.0")
     implementation("com.atlassian.commonmark:commonmark-ext-yaml-front-matter:0.17.0")
-
-    // device name (used by AppHelper / DeviceNameGetter)
-    implementation("com.jaredrummler:android-device-names:2.1.0")
 
     // mmkv
     // 16KB page size: 1.2.12's prebuilt .so is only 0x1000 (4KB) aligned and cannot load on

@@ -3,6 +3,7 @@ package io.github.busybin.gitrehub.compose.code
 import android.util.Base64
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import io.github.busybin.gitrehub.R
 import io.github.busybin.gitrehub.compose.common.UiText
 import io.github.busybin.gitrehub.compose.common.toUiText
 import io.github.busybin.gitrehub.compose.data.RepoContent
@@ -22,6 +23,8 @@ data class EditFileState(
     val defaultBranch: String = "main",
     /** Ref the file was opened at; commits land on it, or on the default branch when null. */
     val ref: String? = null,
+    /** False when [ref] is a tag or commit: it can seed a branch, but nothing can commit onto it. */
+    val refIsBranch: Boolean = true,
     val canWrite: Boolean = false,
 )
 
@@ -56,14 +59,26 @@ class EditFileViewModel : ViewModel() {
             val loaded = runCatching {
                 withContext(Dispatchers.IO) {
                     val entry = RepoContent.file(owner, repo, path, ref)
+                    // Images and files above the preview limit have no text to edit: never open the
+                    // editor with an empty body, or submitting would wipe the file.
+                    val body = entry
+                        ?.takeIf { !it.isImage && it.size <= RepoContent.MAX_PREVIEW_BYTES }
+                        ?.let { RepoContent.text(it) }
+                        ?: error("not an editable text file")
                     val repoInfo = runCatching { GitHubApi.repo(owner, repo) }.getOrNull()
+                    val cleanRef = ref?.takeIf { it.isNotBlank() }
+                    // A tag or a commit can seed a new branch but cannot receive a commit, so the
+                    // screen must not offer a direct commit there.
+                    val refIsBranch = cleanRef == null ||
+                        runCatching { GitHubApi.branchHeadSha(owner, repo, cleanRef) }.isSuccess
                     EditFileState(
                         loading = false,
                         sha = entry?.sha,
-                        text = entry?.let { RepoContent.decode(it) }.orEmpty(),
+                        text = body,
                         defaultBranch = repoInfo?.defaultBranch?.takeIf { it.isNotBlank() } ?: "main",
-                        ref = ref?.takeIf { it.isNotBlank() },
-                        canWrite = repoInfo?.permissions?.canWrite ?: true,
+                        ref = cleanRef,
+                        refIsBranch = refIsBranch,
+                        canWrite = repoInfo?.permissions?.canWrite ?: false,
                     )
                 }
             }
@@ -86,18 +101,25 @@ class EditFileViewModel : ViewModel() {
         prBody: String?,
     ) {
         if (_submitting.value) return
+        val current = _state.value
+        if (newBranch.isNullOrBlank() && current.ref != null && !current.refIsBranch) {
+            _error.value = UiText.res(R.string.m3_edit_ref_not_branch)
+            return
+        }
         _submitting.value = true
         _error.value = null
         viewModelScope.launch {
             val result = runCatching {
                 withContext(Dispatchers.IO) {
-                    val base = _state.value.ref ?: _state.value.defaultBranch
-                    val sha = _state.value.sha
+                    val state = _state.value
+                    val ref = state.ref
+                    val sha = state.sha
                     val encoded = Base64.encodeToString(
                         content.toByteArray(Charsets.UTF_8),
                         Base64.NO_WRAP,
                     )
                     if (newBranch.isNullOrBlank()) {
+                        val branch = ref ?: state.defaultBranch
                         GitHubApi.putFile(
                             owner = owner,
                             repo = repo,
@@ -105,11 +127,19 @@ class EditFileViewModel : ViewModel() {
                             message = message.trim().ifBlank { "Update $path" },
                             content = encoded,
                             sha = sha,
-                            branch = base,
+                            branch = branch,
                         )
                         null
                     } else {
-                        val head = GitHubApi.branchHeadSha(owner, repo, base)
+                        // A branch starts from the commit the file was opened at: branchHeadSha
+                        // only knows heads, so a tag or a commit is resolved through the commits
+                        // endpoint instead.
+                        val head = if (state.refIsBranch) {
+                            val branch = ref ?: state.defaultBranch
+                            GitHubApi.branchHeadSha(owner, repo, branch)
+                        } else {
+                            GitHubApi.commit(owner, repo, ref.orEmpty()).sha
+                        }
                         GitHubApi.createBranch(owner, repo, newBranch.trim(), head)
                         // The new branch starts at the same commit, so the file exists there and
                         // its blob sha is the one the file was loaded with.
@@ -129,7 +159,13 @@ class EditFileViewModel : ViewModel() {
                             repo = repo,
                             title = title,
                             head = newBranch.trim(),
-                            base = base,
+                            // A pull request cannot target a tag, so non-branch refs land on the
+                            // default branch.
+                            base = if (state.refIsBranch) {
+                                ref ?: state.defaultBranch
+                            } else {
+                                state.defaultBranch
+                            },
                             body = prBody?.trim()?.takeIf { it.isNotBlank() },
                         ).number
                     }

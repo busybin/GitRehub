@@ -134,7 +134,7 @@ class NotificationSchedulerJobTask : JobService() {
             .setLargeIcon(BitmapFactory.decodeResource(resources, R.mipmap.ic_launcher))
             .setContentIntent(getPendingIntent(thread.numericId, url))
             .addAction(
-                R.drawable.ic_github, context.getString(R.string.open),
+                R.drawable.ic_open, context.getString(R.string.open),
                 getPendingIntent(thread.numericId, url),
             )
             .addAction(
@@ -173,7 +173,7 @@ class NotificationSchedulerJobTask : JobService() {
             .setWhen(comment.createdAt?.toEpochMilli() ?: System.currentTimeMillis())
             .setShowWhen(true)
             .addAction(
-                R.drawable.ic_github, context.getString(R.string.open),
+                R.drawable.ic_open, context.getString(R.string.open),
                 getPendingIntent(thread.numericId, url),
             )
             .addAction(
@@ -208,7 +208,7 @@ class NotificationSchedulerJobTask : JobService() {
                 if (toNotificationActivity) pendingIntent else getPendingIntent(thread.numericId, url),
             )
             .addAction(
-                R.drawable.ic_github, getString(R.string.open),
+                R.drawable.ic_open, getString(R.string.open),
                 getPendingIntent(thread.numericId, url),
             )
             .addAction(

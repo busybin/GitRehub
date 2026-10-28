@@ -66,18 +66,41 @@ object Actions {
             maxBytes = MAX_TOTAL_BYTES,
         )
         val out = mutableListOf<LogFile>()
+        var decompressed = 0L
         java.util.zip.ZipInputStream(bytes.inputStream()).use { zip ->
             while (true) {
                 val entry = zip.nextEntry ?: break
                 if (entry.isDirectory) continue
-                val text = zip.readBytes().toString(Charsets.UTF_8)
+                val (chunk, truncated) = zip.readCapped(MAX_ENTRY_BYTES)
+                decompressed += chunk.size
+                // One job log lives in memory with the rest, so cap each entry as well: the
+                // compressed archive can be small and still expand into hundreds of megabytes.
+                val text = chunk.toString(Charsets.UTF_8) + if (truncated) TRUNCATED else ""
                 out += LogFile(entry.name, text)
-                if (out.size >= MAX_FILES) break
+                if (out.size >= MAX_FILES || decompressed >= MAX_DECOMPRESSED_BYTES) break
             }
         }
         return out.sortedBy { it.name }
     }
 
+    private fun java.util.zip.ZipInputStream.readCapped(limit: Int): Pair<ByteArray, Boolean> {
+        val buffer = java.io.ByteArrayOutputStream()
+        val chunk = ByteArray(16 * 1024)
+        var total = 0
+        while (total < limit) {
+            val read = read(chunk, 0, minOf(chunk.size, limit - total))
+            if (read <= 0) break
+            buffer.write(chunk, 0, read)
+            total += read
+        }
+        // One more byte tells us whether the entry had more decompressed data.
+        val truncated = total >= limit && read(chunk, 0, 1) > 0
+        return buffer.toByteArray() to truncated
+    }
+
     private const val MAX_TOTAL_BYTES = 24L * 1024 * 1024
+    private const val MAX_DECOMPRESSED_BYTES = 32L * 1024 * 1024
+    private const val MAX_ENTRY_BYTES = 1 * 1024 * 1024
     private const val MAX_FILES = 80
+    private const val TRUNCATED = "\n… [truncated]"
 }

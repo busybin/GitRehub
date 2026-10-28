@@ -28,9 +28,9 @@ data class DraftComment(
  * Offline queue for comments: a network failure keeps the text locally instead of losing it, and
  * the drafts screen (or the next app launch) retries it.
  *
- * A draft is kept on network failures and on answers that prove the comment was never created
- * (401/403/429). Any other answer means GitHub saw the request and may have applied it, so the
- * draft is dropped rather than risk posting the same comment twice.
+ * A draft is dropped only when the answer proves it can never be created (the issue is gone or
+ * the body is invalid). Everything else, including 5xx from a proxy, keeps the text so a long
+ * comment is never lost; the user can check GitHub before deleting a draft.
  */
 object DraftQueue {
 
@@ -61,9 +61,11 @@ object DraftQueue {
             GitHubApi.createComment(draft.owner, draft.repo, draft.number, draft.body)
         }
         val status = (result.exceptionOrNull() as? ApiException)?.error?.status ?: 0
-        // These three never create the comment, and an expired token is the common case here.
-        val notCreated = status == 401 || status == 403 || status == 429
-        if (result.isSuccess || (status != 0 && !notCreated)) {
+        // Only a definitive rejection (the issue is gone or the body is invalid) makes the draft
+        // useless. Network errors, auth failures, rate limits and 5xx keep it: a gateway timeout
+        // may not have reached GitHub at all, and dropping the text would lose the user's work.
+        val finalRejection = status == 404 || status == 410 || status == 422
+        if (result.isSuccess || finalRejection) {
             remove(draft.id)
             true
         } else {

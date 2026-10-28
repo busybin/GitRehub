@@ -836,4 +836,8 @@
     <string name="m3_find_file_refine">تُعرض أول 100 نتيجة — اكتب المزيد لتضييق البحث</string>
     <string name="m3_delete_confirm_title">حذف %1$s؟</string>
     <string name="m3_delete_confirm_message">لا يمكن التراجع عن هذا الإجراء.</string>
+    <string name="m3_edit_discard_title">تجاهل التغييرات؟</string>
+    <string name="m3_edit_discard_message">ستفقد تعديلاتك على هذا الملف.</string>
+    <string name="m3_edit_discard">تجاهل</string>
+    <string name="m3_edit_ref_not_branch">هذا المرجع للقراءة فقط. افتح طلب سحب بدلاً من ذلك.</string>
 </resources>

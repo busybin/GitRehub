@@ -834,4 +834,8 @@
     <string name="m3_find_file_refine">Показаны первые 100 — уточните запрос</string>
     <string name="m3_delete_confirm_title">Удалить %1$s?</string>
     <string name="m3_delete_confirm_message">Это действие нельзя отменить.</string>
+    <string name="m3_edit_discard_title">Отменить изменения?</string>
+    <string name="m3_edit_discard_message">Ваши правки в этом файле будут потеряны.</string>
+    <string name="m3_edit_discard">Отменить</string>
+    <string name="m3_edit_ref_not_branch">Эта ссылка доступна только для чтения. Откройте pull request.</string>
 </resources>

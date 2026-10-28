@@ -5,9 +5,13 @@ import io.github.busybin.gitrehub.helper.PrefHelper
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import java.util.UUID
 
 /** A local rule that auto-archives (marks read) matching notifications. */
+@Serializable
 data class NotificationRule(
     val id: String = UUID.randomUUID().toString(),
     /** `repo` (exact `owner/repo`) or `keyword` (title / repository, case-insensitive). */
@@ -28,6 +32,7 @@ data class NotificationRule(
 object NotificationRules {
 
     private const val KEY = "m3_notification_rules"
+    private val json = Json { ignoreUnknownKeys = true }
 
     private val _rules = MutableStateFlow(read())
     val rules: StateFlow<List<NotificationRule>> = _rules.asStateFlow()
@@ -54,12 +59,14 @@ object NotificationRules {
     }
 
     private fun write(value: List<NotificationRule>) {
-        PrefHelper.putAny(KEY, value.joinToString("\n") { "${it.id}\t${it.kind}\t${it.value}" })
+        PrefHelper.putAny(KEY, json.encodeToString(value))
         _rules.value = value
     }
 
     private fun read(): List<NotificationRule> {
         val raw = PrefHelper.getString(KEY) ?: return emptyList()
+        runCatching { json.decodeFromString<List<NotificationRule>>(raw) }.getOrNull()?.let { return it }
+        // Legacy tab-separated rows from before the JSON format.
         return raw.lineSequence().mapNotNull { line ->
             val parts = line.split('\t')
             if (parts.size < 3) null else NotificationRule(parts[0], parts[1], parts[2])

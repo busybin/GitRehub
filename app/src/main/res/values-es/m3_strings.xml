@@ -836,4 +836,8 @@ GitHub no tiene canal de notificaciones push para los clientes de terceros, así
     <string name="m3_find_file_refine">Se muestran los primeros 100; escribe más para acotar</string>
     <string name="m3_delete_confirm_title">¿Eliminar %1$s?</string>
     <string name="m3_delete_confirm_message">Esta acción no se puede deshacer.</string>
+    <string name="m3_edit_discard_title">¿Descartar cambios?</string>
+    <string name="m3_edit_discard_message">Se perderán tus cambios en este archivo.</string>
+    <string name="m3_edit_discard">Descartar</string>
+    <string name="m3_edit_ref_not_branch">Esta referencia es de solo lectura. Abre una solicitud de cambios.</string>
 </resources>

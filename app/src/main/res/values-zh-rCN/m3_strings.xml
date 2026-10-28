@@ -833,4 +833,8 @@ github 不给第三方客户端推送通道，所以这是真的轮询：最短 
     <string name="m3_find_file_refine">只显示前 100 个，再输入几个字缩小范围</string>
     <string name="m3_delete_confirm_title">删除 %1$s？</string>
     <string name="m3_delete_confirm_message">此操作无法撤销。</string>
+    <string name="m3_edit_discard_title">放弃修改？</string>
+    <string name="m3_edit_discard_message">你对这个文件的修改会丢失。</string>
+    <string name="m3_edit_discard">放弃</string>
+    <string name="m3_edit_ref_not_branch">此引用是只读的，请改用新建分支并提交 PR。</string>
 </resources>
