@@ -249,20 +249,38 @@ fun RepoDetailScreen(
             val sections = outline.sections
             val currentSection by remember(sections) {
                 derivedStateOf {
-                    if (sections.isEmpty()) {
-                        0
-                    } else {
-                        val viewport = scrollState.value + (containerTopInWindow - readmeTop)
-                        sections.indexOfLast { (outline.yOf(it) ?: Int.MAX_VALUE) <= viewport }
-                            .coerceAtLeast(0)
+                    when {
+                        sections.isEmpty() -> 0
+                        // The page may end mid-section: at the bottom the last heading is the one
+                        // being read, even though its top is still below the viewport head.
+                        scrollState.maxValue > 0 && scrollState.value >= scrollState.maxValue - 8 ->
+                            sections.lastIndex
+                        else -> {
+                            // Viewport head in README coordinates, a quarter down so a heading
+                            // becomes current once it reaches the reading area. Derived from the
+                            // scroll offset, not from the view's window position: that one is not
+                            // updated while the container scrolls.
+                            val base = if (readmeOffset >= 0f) {
+                                readmeOffset
+                            } else {
+                                scrollState.value + (readmeTop - containerTopInWindow)
+                            }
+                            val line = scrollState.value - base + containerHeight * 0.25f
+                            sections.indexOfLast { (outline.yOf(it) ?: Int.MAX_VALUE) <= line }
+                                .coerceAtLeast(0)
+                        }
                     }
                 }
             }
             fun jumpTo(index: Int, animate: Boolean) {
                 val section = sections.getOrNull(index) ?: return
                 val y = outline.yOf(section) ?: return
-                val target = scrollState.value + (readmeTop - containerTopInWindow) + y -
-                    with(density) { 8.dp.toPx() }
+                val base = if (readmeOffset >= 0f) {
+                    readmeOffset
+                } else {
+                    scrollState.value + (readmeTop - containerTopInWindow)
+                }
+                val target = base + y - with(density) { 8.dp.toPx() }
                 if (animate) {
                     scope.launch { scrollState.animateScrollTo(target.toInt().coerceAtLeast(0)) }
                 } else {
