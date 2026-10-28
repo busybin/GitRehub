@@ -840,4 +840,6 @@ GitHub n\'a pas de canal push pour les clients tiers, il s\'agit donc d\'une vé
     <string name="m3_edit_discard">Abandonner</string>
     <string name="m3_edit_ref_not_branch">Cette référence est en lecture seule. Ouvrez plutôt une pull request.</string>
     <string name="m3_edit_file_not_text">Ce fichier ne peut pas être modifié en tant que texte.</string>
+    <string name="m3_edit_file_readonly_hint">La modification nécessite un accès en écriture à ce dépôt.</string>
+    <string name="m3_draft_blocked">En attente d\'un accès en écriture</string>
 </resources>

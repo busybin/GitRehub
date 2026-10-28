@@ -840,4 +840,6 @@ O GitHub não tem canal de push para clientes de terceiros, então isto é uma c
     <string name="m3_edit_discard">Descartar</string>
     <string name="m3_edit_ref_not_branch">Esta referência é somente leitura. Abra um pull request.</string>
     <string name="m3_edit_file_not_text">Este arquivo não pode ser editado como texto.</string>
+    <string name="m3_edit_file_readonly_hint">Editar exige permissão de escrita neste repositório.</string>
+    <string name="m3_draft_blocked">Aguardando permissão de escrita</string>
 </resources>

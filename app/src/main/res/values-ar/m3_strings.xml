@@ -840,4 +840,6 @@
     <string name="m3_edit_discard">تجاهل</string>
     <string name="m3_edit_ref_not_branch">هذا المرجع للقراءة فقط. افتح طلب سحب بدلاً من ذلك.</string>
     <string name="m3_edit_file_not_text">لا يمكن تحرير هذا الملف كنص.</string>
+    <string name="m3_edit_file_readonly_hint">يتطلب التحرير حق الكتابة في هذا المستودع.</string>
+    <string name="m3_draft_blocked">في انتظار إذن الكتابة</string>
 </resources>

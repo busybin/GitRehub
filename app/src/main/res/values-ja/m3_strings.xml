@@ -840,4 +840,6 @@ GitHub にはサードパーティ製クライアント向けのプッシュチ�
     <string name="m3_edit_discard">破棄</string>
     <string name="m3_edit_ref_not_branch">この参照は読み取り専用です。代わりにプルリクエストを作成してください。</string>
     <string name="m3_edit_file_not_text">このファイルはテキストとして編集できません。</string>
+    <string name="m3_edit_file_readonly_hint">編集にはこのリポジトリへの書き込み権限が必要です。</string>
+    <string name="m3_draft_blocked">書き込み権限を待機中</string>
 </resources>

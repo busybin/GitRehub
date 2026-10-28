@@ -87,6 +87,13 @@ fun DraftsScreen(onOpenIssue: (String, String, Int) -> Unit) {
                             overflow = TextOverflow.Ellipsis,
                             style = MaterialTheme.typography.bodyMedium,
                         )
+                        if (draft.blocked) {
+                            Text(
+                                text = stringResource(R.string.m3_draft_blocked),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error,
+                            )
+                        }
                         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                             TextButton(
                                 enabled = !busy,

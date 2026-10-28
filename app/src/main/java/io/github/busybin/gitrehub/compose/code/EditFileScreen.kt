@@ -143,6 +143,19 @@ fun EditFileScreen(
                     state.ref ?: state.defaultBranch,
                 ) + if (state.canWrite) "" else " · " + stringResource(R.string.m3_edit_file_readonly)
             )
+            if (!state.canWrite) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        stringResource(R.string.m3_edit_file_readonly_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f),
+                    )
+                    TextButton(onClick = { vm.load(owner, repo, path, ref, force = true) }) {
+                        Text(stringResource(R.string.m3_retry))
+                    }
+                }
+            }
             Spacer(Modifier.height(8.dp))
             OutlinedTextField(
                 value = content.orEmpty(),

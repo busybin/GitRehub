@@ -170,10 +170,14 @@ class IssueDetailViewModel : ViewModel() {
                 refresh(owner, repo, number)
             }.onFailure {
                 val status = (it as? ApiException)?.error?.status ?: 0
-                // 403 is usually a locked or archived thread, so retrying it would never work.
-                if (status == 0 || status == 401 || status == 429 || status >= 500) {
-                    DraftQueue.add(owner, repo, number, text)
-                    _message.value = WriteMessage(UiText.res(R.string.m3_draft_saved), error = true)
+                // Keep the text for every answer that did not create the comment. A 403 is
+                // usually a locked thread: keep it too, but mark it so it is not retried silently.
+                if (status == 0 || status == 401 || status == 403 || status == 429 || status >= 500) {
+                    DraftQueue.add(owner, repo, number, text, blocked = status == 403)
+                    _message.value = WriteMessage(
+                        if (status == 403) writeError(it) else UiText.res(R.string.m3_draft_saved),
+                        error = true,
+                    )
                 } else {
                     _message.value = WriteMessage(writeError(it), error = true)
                 }
@@ -182,10 +186,17 @@ class IssueDetailViewModel : ViewModel() {
     }
 
     /** Edit my own comment (`PATCH /issues/comments/{id}`). */
-    fun editComment(owner: String, repo: String, number: Int, commentId: Long, body: String) {
+    fun editComment(
+        owner: String,
+        repo: String,
+        number: Int,
+        commentId: Long,
+        body: String,
+        onSuccess: (() -> Unit)? = null,
+    ) {
         val text = body.trim()
         if (text.isEmpty()) return
-        write(owner, repo, number, UiText.res(R.string.m3_write_comment_edited)) {
+        write(owner, repo, number, UiText.res(R.string.m3_write_comment_edited), onSuccess) {
             GitHubApi.editComment(owner, repo, commentId, text)
         }
     }
@@ -198,10 +209,17 @@ class IssueDetailViewModel : ViewModel() {
     }
 
     /** Edit title and body (PRs also go through `/issues/{n}`). */
-    fun editIssue(owner: String, repo: String, number: Int, title: String, body: String) {
+    fun editIssue(
+        owner: String,
+        repo: String,
+        number: Int,
+        title: String,
+        body: String,
+        onSuccess: (() -> Unit)? = null,
+    ) {
         val newTitle = title.trim()
         if (newTitle.isEmpty()) return
-        write(owner, repo, number, UiText.res(R.string.m3_write_edited_done)) {
+        write(owner, repo, number, UiText.res(R.string.m3_write_edited_done), onSuccess) {
             GitHubApi.editIssue(owner, repo, number, newTitle, body)
         }
     }
@@ -306,6 +324,7 @@ class IssueDetailViewModel : ViewModel() {
         repo: String,
         number: Int,
         success: UiText,
+        onSuccess: (() -> Unit)? = null,
         block: suspend () -> Unit,
     ) {
         if (_busy.value) return
@@ -314,6 +333,7 @@ class IssueDetailViewModel : ViewModel() {
             val result = runCatching { withContext(Dispatchers.IO) { block() } }
             _busy.value = false
             result.onSuccess {
+                onSuccess?.invoke()
                 _message.value = WriteMessage(success, error = false)
                 // Reload so new comments appear and the state pill updates.
                 refresh(owner, repo, number)

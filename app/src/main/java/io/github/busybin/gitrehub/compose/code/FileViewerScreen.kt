@@ -178,7 +178,8 @@ fun FileViewerScreen(
                             Text(stringResource(R.string.m3_copy))
                         }
                     }
-                    if (onEdit != null && !file.isImage && !file.tooBig && !file.text.isNullOrEmpty()) {
+                    val vector = file.path.endsWith(".svg", ignoreCase = true)
+                    if (onEdit != null && !file.tooBig && (vector || !file.isImage)) {
                         TextButton(onClick = onEdit) {
                             Icon(Icons.Outlined.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(Modifier.width(6.dp))

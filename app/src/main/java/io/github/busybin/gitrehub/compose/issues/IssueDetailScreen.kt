@@ -381,8 +381,8 @@ fun IssueDetailScreen(
             submitLabel = stringResource(R.string.m3_write_save),
             onDismiss = { editingComment = null },
             onSubmit = { _, body ->
-                editingComment = null
-                vm.editComment(owner, repo, number, comment.id, body)
+                // Keep the sheet (and its text) open unless the edit actually went through.
+                vm.editComment(owner, repo, number, comment.id, body) { editingComment = null }
             },
         )
     }
@@ -413,8 +413,7 @@ fun IssueDetailScreen(
             submitLabel = stringResource(R.string.m3_write_save),
             onDismiss = { showEditIssue = false },
             onSubmit = { title, body ->
-                showEditIssue = false
-                vm.editIssue(owner, repo, number, title, body)
+                vm.editIssue(owner, repo, number, title, body) { showEditIssue = false }
             },
         )
     }

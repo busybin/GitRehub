@@ -22,6 +22,8 @@ data class DraftComment(
     val number: Int = 0,
     val body: String = "",
     val createdAt: Long = 0,
+    /** GitHub answered 403: keep the text, but do not retry it on every launch. */
+    val blocked: Boolean = false,
 )
 
 /**
@@ -40,7 +42,7 @@ object DraftQueue {
     private val _drafts = MutableStateFlow(read())
     val drafts: StateFlow<List<DraftComment>> = _drafts.asStateFlow()
 
-    fun add(owner: String, repo: String, number: Int, body: String): DraftComment {
+    fun add(owner: String, repo: String, number: Int, body: String, blocked: Boolean = false): DraftComment {
         val draft = DraftComment(
             id = UUID.randomUUID().toString(),
             owner = owner,
@@ -48,6 +50,7 @@ object DraftQueue {
             number = number,
             body = body,
             createdAt = System.currentTimeMillis(),
+            blocked = blocked,
         )
         write(_drafts.value + draft)
         return draft
@@ -64,22 +67,30 @@ object DraftQueue {
         // Only a definitive rejection (the issue is gone or the body is invalid) makes the draft
         // useless. Network errors, auth failures, rate limits and 5xx keep it: a gateway timeout
         // may not have reached GitHub at all, and dropping the text would lose the user's work.
-        val finalRejection = status == 403 || status == 404 || status == 410 || status == 422
+        val finalRejection = status == 404 || status == 410 || status == 422
         if (result.isSuccess || finalRejection) {
             remove(draft.id)
             true
         } else {
+            // 403 is usually a locked or archived thread: keep the text, stop retrying it
+            // automatically, and let the user send it again from the drafts screen.
+            if (status == 403 && !draft.blocked) markBlocked(draft.id)
             false
         }
     }
 
-    /** Retries everything; returns how many drafts were delivered. */
+    /** Retries every draft that is not blocked; returns how many were delivered. */
     suspend fun flushAll(): Int {
         var sent = 0
         _drafts.value.toList().forEach { draft ->
-            if (send(draft)) sent++
+            if (!draft.blocked && send(draft)) sent++
         }
         return sent
+    }
+
+    private fun markBlocked(id: String) {
+        val next = _drafts.value.map { if (it.id == id && !it.blocked) it.copy(blocked = true) else it }
+        if (next != _drafts.value) write(next)
     }
 
     private fun write(value: List<DraftComment>) {

@@ -67,12 +67,15 @@ class EditFileViewModel : ViewModel() {
                     // An SVG is an image by suffix but plain text by content, so it stays editable;
                     // other images and files above the preview limit have no text at all.
                     val vector = entry?.path?.endsWith(".svg", ignoreCase = true) == true
-                    val editable = entry != null && (vector || !entry.isImage) &&
-                        entry.size <= RepoContent.MAX_PREVIEW_BYTES
-                    val body = if (editable) RepoContent.text(entry) else null
-                    // Never open the editor with a fabricated or decoded-from-binary body: an empty
-                    // submit would overwrite the file.
-                    if (body == null || looksBinary(body)) throw NotText
+                    if (entry == null || (!vector && entry.isImage) ||
+                        entry.size > RepoContent.MAX_PREVIEW_BYTES
+                    ) {
+                        throw NotText
+                    }
+                    // A failed fetch is a retryable error, not "this file is not text"; never open
+                    // the editor with an empty body, or submitting would wipe the file.
+                    val body = RepoContent.text(entry) ?: error("cannot read the file")
+                    if (looksBinary(body)) throw NotText
                     val repoInfo = runCatching { GitHubApi.repo(owner, repo) }.getOrNull()
                     val cleanRef = ref?.takeIf { it.isNotBlank() }
                     // A tag or a commit can seed a new branch but cannot receive a commit, so the
@@ -90,16 +93,18 @@ class EditFileViewModel : ViewModel() {
                             }
                         }
                     }
-                    val draft = EditDraftStore.read(key)?.takeIf { it != body }
+                    val draft = EditDraftStore.read(key)?.takeIf { it.text != body }
                     EditFileState(
                         loading = false,
-                        sha = entry?.sha,
+                        // A restored draft keeps the blob it started from, so an upstream change
+                        // makes the commit fail instead of being silently overwritten.
+                        sha = draft?.sha ?: entry.sha,
                         text = body,
                         defaultBranch = repoInfo?.defaultBranch?.takeIf { it.isNotBlank() } ?: "main",
                         ref = cleanRef,
                         refIsBranch = refIsBranch,
                         canWrite = repoInfo?.permissions?.canWrite ?: false,
-                        draft = draft,
+                        draft = draft?.text,
                     )
                 }
             }
@@ -118,28 +123,29 @@ class EditFileViewModel : ViewModel() {
         val key = loadedKey
         if (key.isEmpty() || _state.value.notText) return
         val unchanged = content == _state.value.text
+        val sha = _state.value.sha
         viewModelScope.launch(Dispatchers.IO) {
-            if (unchanged) EditDraftStore.clear(key) else EditDraftStore.write(key, content)
+            if (unchanged) EditDraftStore.clear(key) else EditDraftStore.write(key, sha, content)
         }
     }
 
+    /** Synchronous: the screen is about to leave, so a coroutine would be cancelled. */
     fun clearDraft() {
-        if (loadedKey.isEmpty()) return
-        viewModelScope.launch(Dispatchers.IO) { EditDraftStore.clear(loadedKey) }
+        if (loadedKey.isNotEmpty()) EditDraftStore.clear(loadedKey)
     }
 
     /** A file that cannot be edited as text; shown as such instead of a retry loop. */
     private object NotText : Exception()
 
-    /** NUL bytes or a visible share of control characters mean this is not a text file. */
+    /** NUL bytes, replacement characters or a visible share of control characters mean binary. */
     private fun looksBinary(text: String): Boolean {
         if (text.isEmpty()) return false
-        var control = 0
+        var bad = 0
         for (ch in text) {
             if (ch == '\u0000') return true
-            if (ch < ' ' && ch != '\n' && ch != '\r' && ch != '\t') control++
+            if (ch == '\uFFFD' || (ch < ' ' && ch != '\n' && ch != '\r' && ch != '\t')) bad++
         }
-        return control * 100 > text.length * 2
+        return bad * 100 > text.length * 2
     }
 
     /**
