@@ -6,6 +6,7 @@ import androidx.annotation.RequiresApi
 import coil.ImageLoader
 import coil.ImageLoaderFactory
 import coil.decode.GifDecoder
+import coil.decode.SvgDecoder
 import coil.disk.DiskCache
 import coil.memory.MemoryCache
 import io.github.busybin.gitrehub.compose.common.AppShortcuts
@@ -56,8 +57,11 @@ class App : Application(), ImageLoaderFactory {
                 .build()
         }
         .crossfade(true)
-        // Animated GIFs in READMEs and issue bodies (coil-gif).
-        .components { add(GifDecoder.Factory()) }
+        // Animated GIFs in READMEs and issue bodies (coil-gif), SVG badges (coil-svg).
+        .components {
+            add(GifDecoder.Factory())
+            add(SvgDecoder.Factory())
+        }
         // README images of private repositories need the token (see ImageAuthInterceptor).
         .okHttpClient { OkHttpClient.Builder().addInterceptor(ImageAuthInterceptor()).build() }
         .build()

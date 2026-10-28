@@ -196,9 +196,11 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.7")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
     implementation("androidx.core:core-ktx:1.13.1")
-    // image loading for Compose; coil-gif keeps animated GIFs in READMEs animating
+    // image loading for Compose; coil-gif keeps animated GIFs in READMEs animating, coil-svg
+    // decodes the shields.io badges GitHub serves through camo as image/svg+xml
     implementation("io.coil-kt:coil-compose:2.7.0")
     implementation("io.coil-kt:coil-gif:2.7.0")
+    implementation("io.coil-kt:coil-svg:2.7.0")
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
     androidTestImplementation(composeBom)

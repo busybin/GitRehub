@@ -21,12 +21,16 @@ private const val FAILED_TINT = 0xFFE5534B.toInt()
  * load asynchronously and [UrlDrawable] draws nothing before Coil answers, so without this the text
  * does not even show that an image is there. Colors come from [MarkdownPalette]; the size is set by
  * the caller via `setBounds`.
+ *
+ * [compact] is the inline variant used for badges: no glyph, just the alt text in a pill, so a row
+ * of badges does not reserve a full-width box each.
  */
 internal class ImageSlotDrawable(
     private val label: CharSequence,
     private val palette: MarkdownPalette,
     private val failed: Boolean,
     private val density: Float,
+    private val compact: Boolean = false,
 ) : Drawable() {
 
     private val tint: Int = if (failed) FAILED_TINT else palette.text
@@ -49,7 +53,7 @@ internal class ImageSlotDrawable(
     }
     private val labelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         textAlign = Paint.Align.CENTER
-        textSize = 12f * density
+        textSize = (if (compact) 11f else 12f) * density
         color = ColorUtils.setAlphaComponent(if (failed) FAILED_TINT else palette.text, 0xB0)
     }
 
@@ -57,6 +61,10 @@ internal class ImageSlotDrawable(
         val w = bounds.width().toFloat()
         val h = bounds.height().toFloat()
         if (w <= 0f || h <= 0f) return
+        if (compact) {
+            drawCompact(canvas, w, h)
+            return
+        }
         val radius = min(10f * density, min(w, h) / 6f)
         canvas.drawRoundRect(0f, 0f, w, h, radius, radius, background)
         val half = border.strokeWidth / 2f
@@ -76,6 +84,27 @@ internal class ImageSlotDrawable(
             val baseline = top + glyphSize + gap - labelPaint.fontMetrics.ascent
             canvas.drawText(label, 0, label.length, w / 2f, baseline, labelPaint)
         }
+    }
+
+    /** Inline badge placeholder: a pill with the alt text instead of the full-width image box. */
+    private fun drawCompact(canvas: Canvas, w: Float, h: Float) {
+        val radius = h / 2f
+        canvas.drawRoundRect(0f, 0f, w, h, radius, radius, background)
+        val half = border.strokeWidth / 2f
+        canvas.drawRoundRect(half, half, w - half, h - half, radius, radius, border)
+        val text = fitLabel(w - 10f * density)
+        if (text.isEmpty()) return
+        val baseline = h / 2f - (labelPaint.ascent() + labelPaint.descent()) / 2f
+        canvas.drawText(text, 0, text.length, w / 2f, baseline, labelPaint)
+    }
+
+    /** Truncates with an ellipsis so a long `alt` never overflows the pill. */
+    private fun fitLabel(maxWidth: Float): CharSequence {
+        if (labelPaint.measureText(label, 0, label.length) <= maxWidth) return label
+        var end = label.length
+        while (end > 1 && labelPaint.measureText(label, 0, end) > maxWidth) end--
+        if (end <= 1) return ""
+        return label.subSequence(0, end - 1).toString() + "…"
     }
 
     /** Hand-drawn "image" glyph: frame + hill + sun. */
@@ -104,7 +133,13 @@ internal class ImageSlotDrawable(
 
     override fun setColorFilter(colorFilter: ColorFilter?) = Unit
 
-    override fun getOpacity(): Int = PixelFormat.TRANSLUCENT
+    override fun getOpacity() = PixelFormat.TRANSLUCENT
+
+    private fun labelWidth(): Int =
+        labelPaint.measureText(label, 0, label.length).toInt()
+
+    private fun labelHeight(): Int =
+        (labelPaint.descent() - labelPaint.ascent()).toInt()
 
     companion object {
         /** Image not loaded yet: placeholder that also reserves the space. */
@@ -114,6 +149,25 @@ internal class ImageSlotDrawable(
         /** Load failed: show a placeholder instead of blank space. */
         fun failed(context: Context, palette: MarkdownPalette, widthPx: Int): ImageSlotDrawable =
             sized(context, palette, true, R.string.m3_image_failed, widthPx)
+
+        /** Inline badge: a small pill sized to its alt text. */
+        fun inline(
+            context: Context,
+            palette: MarkdownPalette,
+            alt: CharSequence?,
+            maxWidth: Int,
+            failed: Boolean = false,
+        ): ImageSlotDrawable {
+            val density = context.resources.displayMetrics.density
+            val label = alt?.takeIf { it.isNotBlank() }
+                ?: context.getString(if (failed) R.string.m3_image_failed else R.string.m3_image_loading)
+            val drawable = ImageSlotDrawable(label, palette, failed, density, compact = true)
+            val width = (drawable.labelWidth() + 22f * density).toInt()
+                .coerceIn((44f * density).toInt(), maxWidth.coerceAtLeast(1))
+            val height = (drawable.labelHeight() + 10f * density).toInt()
+            drawable.setBounds(0, 0, width, height)
+            return drawable
+        }
 
         private fun sized(
             context: Context,
