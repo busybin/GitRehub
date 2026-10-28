@@ -841,5 +841,7 @@
     <string name="m3_edit_ref_not_branch">هذا المرجع للقراءة فقط. افتح طلب سحب بدلاً من ذلك.</string>
     <string name="m3_edit_file_not_text">لا يمكن تحرير هذا الملف كنص.</string>
     <string name="m3_edit_file_readonly_hint">يتطلب التحرير حق الكتابة في هذا المستودع.</string>
-    <string name="m3_draft_blocked">في انتظار إذن الكتابة</string>
+    <string name="m3_draft_blocked">لم يُرسل بعد</string>
+    <string name="m3_edit_conflict">تغيّر الملف على GitHub. احفظ مرة أخرى لاستبداله.</string>
+    <string name="m3_draft_not_sent">لم يُرسل: المحادثة مقفلة أو ليس لديك إذن. حُفظ كمسودة.</string>
 </resources>

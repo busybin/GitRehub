@@ -841,5 +841,7 @@ GitHub has no push channel for third-party clients, so this is real polling: the
     <string name="m3_edit_ref_not_branch">This ref is read-only. Open a pull request instead.</string>
     <string name="m3_edit_file_not_text">This file cannot be edited as text.</string>
     <string name="m3_edit_file_readonly_hint">Editing needs write access to this repository.</string>
-    <string name="m3_draft_blocked">Waiting for write access</string>
+    <string name="m3_draft_blocked">Not sent yet</string>
+    <string name="m3_edit_conflict">The file changed on GitHub. Save again to overwrite it.</string>
+    <string name="m3_draft_not_sent">Not sent: the thread is locked or you lack access. Saved as a draft.</string>
 </resources>

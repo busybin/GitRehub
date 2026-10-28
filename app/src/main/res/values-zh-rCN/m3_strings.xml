@@ -838,5 +838,7 @@ github 不给第三方客户端推送通道，所以这是真的轮询：最短 
     <string name="m3_edit_ref_not_branch">此引用是只读的，请改用新建分支并提交 PR。</string>
     <string name="m3_edit_file_not_text">此文件不能作为文本编辑。</string>
     <string name="m3_edit_file_readonly_hint">编辑需要此仓库的写权限。</string>
-    <string name="m3_draft_blocked">等待写权限</string>
+    <string name="m3_draft_blocked">尚未发送</string>
+    <string name="m3_edit_conflict">文件在 GitHub 上已更新。再次保存将覆盖它。</string>
+    <string name="m3_draft_not_sent">未发送：该讨论已锁定或你没有权限。已存为草稿。</string>
 </resources>

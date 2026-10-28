@@ -841,5 +841,7 @@ O GitHub não tem canal de push para clientes de terceiros, então isto é uma c
     <string name="m3_edit_ref_not_branch">Esta referência é somente leitura. Abra um pull request.</string>
     <string name="m3_edit_file_not_text">Este arquivo não pode ser editado como texto.</string>
     <string name="m3_edit_file_readonly_hint">Editar exige permissão de escrita neste repositório.</string>
-    <string name="m3_draft_blocked">Aguardando permissão de escrita</string>
+    <string name="m3_draft_blocked">Ainda não enviado</string>
+    <string name="m3_edit_conflict">O arquivo mudou no GitHub. Salve de novo para substituí-lo.</string>
+    <string name="m3_draft_not_sent">Não enviado: o tópico está bloqueado ou você não tem acesso. Salvo como rascunho.</string>
 </resources>

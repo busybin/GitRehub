@@ -238,7 +238,22 @@ class EditFileViewModel : ViewModel() {
                 clearDraft()
                 _prNumber.value = it
                 _finished.value = true
-            }.onFailure { _error.value = it.toUiText() }
+            }.onFailure {
+                val status = (it as? ApiException)?.error?.status
+                if (status == 409) {
+                    // The blob moved on. Keep the user's text, adopt the new sha and say that a
+                    // second save overwrites it, instead of leaving the editor stuck.
+                    _error.value = UiText.res(R.string.m3_edit_conflict)
+                    viewModelScope.launch {
+                        val latest = withContext(Dispatchers.IO) {
+                            runCatching { RepoContent.file(owner, repo, path, _state.value.ref)?.sha }.getOrNull()
+                        }
+                        if (latest != null) _state.value = _state.value.copy(sha = latest)
+                    }
+                } else {
+                    _error.value = it.toUiText()
+                }
+            }
         }
     }
 }

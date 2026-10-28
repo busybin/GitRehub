@@ -841,5 +841,7 @@ GitHub no tiene canal de notificaciones push para los clientes de terceros, así
     <string name="m3_edit_ref_not_branch">Esta referencia es de solo lectura. Abre una solicitud de cambios.</string>
     <string name="m3_edit_file_not_text">Este archivo no se puede editar como texto.</string>
     <string name="m3_edit_file_readonly_hint">Editar requiere permiso de escritura en este repositorio.</string>
-    <string name="m3_draft_blocked">Esperando permiso de escritura</string>
+    <string name="m3_draft_blocked">Aún no enviado</string>
+    <string name="m3_edit_conflict">El archivo cambió en GitHub. Guarda otra vez para sobrescribirlo.</string>
+    <string name="m3_draft_not_sent">No enviado: el hilo está bloqueado o no tienes acceso. Guardado como borrador.</string>
 </resources>

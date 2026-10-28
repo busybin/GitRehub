@@ -839,5 +839,7 @@
     <string name="m3_edit_ref_not_branch">Эта ссылка доступна только для чтения. Откройте pull request.</string>
     <string name="m3_edit_file_not_text">Этот файл нельзя редактировать как текст.</string>
     <string name="m3_edit_file_readonly_hint">Для редактирования нужен доступ на запись в этот репозиторий.</string>
-    <string name="m3_draft_blocked">Ожидание доступа на запись</string>
+    <string name="m3_draft_blocked">Ещё не отправлено</string>
+    <string name="m3_edit_conflict">Файл изменился на GitHub. Сохраните ещё раз, чтобы перезаписать его.</string>
+    <string name="m3_draft_not_sent">Не отправлено: обсуждение закрыто или нет доступа. Сохранено как черновик.</string>
 </resources>

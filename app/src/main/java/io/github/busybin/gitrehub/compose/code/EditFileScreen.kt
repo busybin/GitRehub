@@ -249,7 +249,8 @@ fun EditFileScreen(
                         )
                     },
                     enabled = !submitting && state.canWrite &&
-                        (!prMode || newBranch.isNotBlank()),
+                        (!prMode || newBranch.isNotBlank()) &&
+                        content != null && content != state.text,
                 ) {
                     Text(
                         stringResource(

@@ -175,7 +175,11 @@ class IssueDetailViewModel : ViewModel() {
                 if (status == 0 || status == 401 || status == 403 || status == 429 || status >= 500) {
                     DraftQueue.add(owner, repo, number, text, blocked = status == 403)
                     _message.value = WriteMessage(
-                        if (status == 403) writeError(it) else UiText.res(R.string.m3_draft_saved),
+                        if (status == 403) {
+                            UiText.res(R.string.m3_draft_not_sent)
+                        } else {
+                            UiText.res(R.string.m3_draft_saved)
+                        },
                         error = true,
                     )
                 } else {
