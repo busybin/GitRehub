@@ -238,7 +238,8 @@ fun RepoDetailScreen(
             )
         }
 
-        Box(Modifier.fillMaxSize()) {
+        var containerHeight by remember { mutableIntStateOf(0) }
+        Box(Modifier.fillMaxSize().onSizeChanged { containerHeight = it.height }) {
             // In-page anchors (`#xxx` in a README) must scroll inside this same container: remember its
             // top Y in the window, then convert the README block's window position into a content offset.
             var containerTopInWindow by remember { mutableFloatStateOf(0f) }
@@ -634,15 +635,22 @@ fun RepoDetailScreen(
                 Spacer(Modifier.height(24.dp))
             }
 
-            if (sections.size >= 2) {
+            // Only once the README has moved in: while the repo header is on screen the outline is
+            // noise, and the rail would sit over content nobody is reading yet.
+            val showRail = sections.size >= 2 && containerHeight > 0 &&
+                readmeTop < containerTopInWindow + containerHeight * 0.35f
+            AnimatedVisibility(
+                visible = showRail,
+                modifier = Modifier.align(Alignment.CenterEnd),
+                enter = fadeIn(),
+                exit = fadeOut(),
+            ) {
                 SectionRail(
                     sections = sections,
                     current = currentSection,
                     onSeek = { jumpTo(it, animate = false) },
                     onOpen = { showOutline = true },
-                    modifier = Modifier
-                        .align(Alignment.CenterEnd)
-                        .padding(top = 48.dp, bottom = 88.dp),
+                    modifier = Modifier.height(320.dp),
                 )
             }
 
