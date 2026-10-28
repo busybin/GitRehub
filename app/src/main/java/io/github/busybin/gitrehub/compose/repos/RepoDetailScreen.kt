@@ -3,6 +3,8 @@ package io.github.busybin.gitrehub.compose.repos
 import android.net.Uri
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
@@ -968,7 +970,10 @@ private fun countBadge(value: Int): String? = when {
     else -> value.toString()
 }
 
-/** Thin table-of-contents rail on the right edge: drag to jump between sections, tap to open the list. */
+/**
+ * Table-of-contents rail on the right edge: always names the section being read, ticks jump straight
+ * to a heading while dragging, and a tap opens the full list.
+ */
 @Composable
 private fun SectionRail(
     sections: List<OutlineSection>,
@@ -980,10 +985,10 @@ private fun SectionRail(
     val colors = MaterialTheme.colorScheme
     val density = LocalDensity.current
     val haptics = LocalHapticFeedback.current
-    val inset = 14.dp
+    val inset = 16.dp
     var railHeight by remember { mutableFloatStateOf(0f) }
     var dragIndex by remember { mutableIntStateOf(-1) }
-    var bubbleHeight by remember { mutableFloatStateOf(0f) }
+    var labelHeight by remember { mutableFloatStateOf(0f) }
 
     fun indexAt(y: Float): Int {
         val top = with(density) { inset.toPx() }
@@ -993,13 +998,13 @@ private fun SectionRail(
         return (fraction * (sections.size - 1)).roundToInt().coerceIn(0, sections.size - 1)
     }
 
-    // Wide enough for the title bubble, but only the strip on the right takes touches.
-    Box(modifier.fillMaxHeight().width(200.dp)) {
+    // Wide enough for the title label, but only the strip on the right takes touches.
+    Box(modifier.fillMaxHeight().width(210.dp)) {
         Box(
             modifier = Modifier
                 .align(Alignment.CenterEnd)
                 .fillMaxHeight()
-                .width(26.dp)
+                .width(28.dp)
                 .onSizeChanged { railHeight = it.height.toFloat() }
                 .pointerInput(sections.size) {
                     awaitEachGesture {
@@ -1041,12 +1046,20 @@ private fun SectionRail(
                 val top = inset.toPx()
                 val span = size.height - 2 * top
                 val step = if (sections.size > 1) span / (sections.size - 1) else 0f
+                val activeIndex = if (dragIndex in sections.indices) dragIndex else current
+                // Faint guide line so the ticks read as one scale.
+                drawRoundRect(
+                    color = colors.outlineVariant.copy(alpha = 0.35f),
+                    topLeft = Offset(size.width - 1.dp.toPx(), top),
+                    size = Size(1.dp.toPx(), span),
+                    cornerRadius = CornerRadius(0.5.dp.toPx()),
+                )
                 for (index in sections.indices) {
-                    val active = index == current || index == dragIndex
+                    val active = index == activeIndex
                     val width = if (active) 3.dp.toPx() else 2.dp.toPx()
-                    val height = if (active) 7.dp.toPx() else 3.dp.toPx()
+                    val height = if (active) 9.dp.toPx() else 3.dp.toPx()
                     drawRoundRect(
-                        color = if (active) colors.primary else colors.onSurfaceVariant.copy(alpha = 0.32f),
+                        color = if (active) colors.primary else colors.onSurfaceVariant.copy(alpha = 0.38f),
                         topLeft = Offset(size.width - width, top + step * index - height / 2),
                         size = Size(width, height),
                         cornerRadius = CornerRadius(width / 2),
@@ -1055,41 +1068,44 @@ private fun SectionRail(
             }
         }
 
-        if (dragIndex in sections.indices) {
-            val top = with(density) { inset.toPx() }
-            val step = if (sections.size > 1) (railHeight - 2 * top) / (sections.size - 1) else 0f
-            val tickY = top + step * dragIndex
-            Surface(
+        val topPx = with(density) { inset.toPx() }
+        val step = if (sections.size > 1) {
+            (railHeight - 2 * topPx).coerceAtLeast(0f) / (sections.size - 1)
+        } else {
+            0f
+        }
+        val labelIndex = if (dragIndex in sections.indices) dragIndex else current
+        val targetY = topPx + step * labelIndex
+        // Glide between sections while reading; follow the finger exactly while dragging.
+        val animatedY by animateFloatAsState(targetY, animationSpec = tween(durationMillis = 180))
+        val labelY = if (dragIndex in sections.indices) targetY else animatedY
+        Surface(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .offset { IntOffset(0, (labelY - labelHeight / 2).roundToInt()) }
+                .padding(end = 40.dp)
+                .onSizeChanged { labelHeight = it.height.toFloat() }
+                .clip(RoundedCornerShape(10.dp))
+                .clickable { onOpen() },
+            shape = RoundedCornerShape(10.dp),
+            color = if (dragIndex in sections.indices) {
+                colors.surfaceContainerHighest
+            } else {
+                colors.surfaceContainerHigh.copy(alpha = 0.95f)
+            },
+            shadowElevation = if (dragIndex in sections.indices) 6.dp else 2.dp,
+        ) {
+            Text(
+                text = sections[labelIndex].title,
+                style = MaterialTheme.typography.labelMedium,
+                color = if (dragIndex in sections.indices) colors.onSurface else colors.onSurfaceVariant,
+                fontWeight = if (dragIndex in sections.indices) FontWeight.SemiBold else FontWeight.Medium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
                 modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .offset { IntOffset(0, (tickY - bubbleHeight / 2).roundToInt()) }
-                    .padding(end = 34.dp)
-                    .onSizeChanged { bubbleHeight = it.height.toFloat() },
-                shape = RoundedCornerShape(8.dp),
-                color = colors.surfaceContainerHighest,
-                shadowElevation = 4.dp,
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = "${dragIndex + 1}/${sections.size}",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = colors.primary,
-                        fontWeight = FontWeight.Bold,
-                    )
-                    Spacer(Modifier.width(6.dp))
-                    Text(
-                        text = sections[dragIndex].title,
-                        style = MaterialTheme.typography.labelMedium,
-                        color = colors.onSurface,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.widthIn(max = 150.dp),
-                    )
-                }
-            }
+                    .widthIn(max = 140.dp)
+                    .padding(horizontal = 9.dp, vertical = 5.dp),
+            )
         }
     }
 }
