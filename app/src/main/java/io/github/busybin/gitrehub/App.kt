@@ -16,6 +16,7 @@ import io.github.busybin.gitrehub.helper.PrefHelper.init
 import io.github.busybin.gitrehub.helper.TypeFaceHelper.generateTypeface
 import io.github.busybin.gitrehub.provider.colors.ColorsProvider
 import io.github.busybin.gitrehub.provider.rest.interceptors.ImageAuthInterceptor
+import io.github.busybin.gitrehub.provider.rest.interceptors.WifiOnlyImageInterceptor
 import io.github.busybin.gitrehub.provider.crash.Report
 import io.github.busybin.gitrehub.provider.emoji.EmojiStore
 import io.github.busybin.gitrehub.provider.tasks.notification.NotificationSchedulerJobTask
@@ -63,7 +64,12 @@ class App : Application(), ImageLoaderFactory {
             add(SvgDecoder.Factory())
         }
         // README images of private repositories need the token (see ImageAuthInterceptor).
-        .okHttpClient { OkHttpClient.Builder().addInterceptor(ImageAuthInterceptor()).build() }
+        .okHttpClient {
+            OkHttpClient.Builder()
+                .addInterceptor(WifiOnlyImageInterceptor(this))
+                .addInterceptor(ImageAuthInterceptor())
+                .build()
+        }
         .build()
 
     @RequiresApi(Build.VERSION_CODES.N_MR1)

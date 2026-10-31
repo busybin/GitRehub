@@ -70,6 +70,6 @@ object MarkDownProvider {
         return Html.fromHtml(markdownToHtml(markdown!!), Html.FROM_HTML_MODE_LEGACY).toString()
     }
 
-    private fun markdownToHtml(markdown: String): String =
+    fun markdownToHtml(markdown: String): String =
         renderer.render(parser.parse(markdown))
 }

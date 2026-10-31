@@ -50,6 +50,17 @@ object Actions {
     suspend fun rerun(owner: String, repo: String, runId: Long) =
         GitHubApi.rerunRun(owner, repo, runId)
 
+    suspend fun rerunFailed(owner: String, repo: String, runId: Long) =
+        GitHubApi.rerunFailedJobs(owner, repo, runId)
+
+    suspend fun dispatch(
+        owner: String,
+        repo: String,
+        workflowId: Long,
+        ref: String,
+        inputs: Map<String, String>,
+    ) = GitHubApi.dispatchWorkflow(owner, repo, workflowId, ref, inputs)
+
     suspend fun cancel(owner: String, repo: String, runId: Long) =
         GitHubApi.cancelRun(owner, repo, runId)
 

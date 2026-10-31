@@ -67,6 +67,7 @@ import io.github.busybin.gitrehub.compose.common.relativeTime
 import io.github.busybin.gitrehub.core.model.CommitFile
 import io.github.busybin.gitrehub.core.model.ReviewComment
 import io.github.busybin.gitrehub.core.model.Review
+import io.github.busybin.gitrehub.core.model.ReviewThread
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -121,10 +122,11 @@ fun PullRequestFilesScreen(owner: String, repo: String, number: Int) {
                 } else {
                     data.files
                 }
-                // Item slots before the first diff: summary, checks, review status, truncation note,
-                // file toolbar. The jump target depends on that count.
+                // Item slots before the first diff: summary, checks, review status, unresolved
+                // conversations, truncation note, file toolbar. The jump target depends on that count.
                 val headerItems = 3 +
                     (if (data.checks.isNotEmpty()) 1 else 0) +
+                    (if (data.threads.isNotEmpty()) 1 else 0) +
                     (if (data.truncated) 1 else 0)
                 LazyColumn(
                     state = listState,
@@ -143,6 +145,15 @@ fun PullRequestFilesScreen(owner: String, repo: String, number: Int) {
                             canReview = canReview,
                             onReview = { showReview = true },
                         )
+                    }
+                    if (data.threads.isNotEmpty()) {
+                        item {
+                            ThreadsCard(
+                                threads = data.threads,
+                                canResolve = canReview,
+                                onToggle = { thread -> vm.setThreadResolved(owner, repo, number, thread) },
+                            )
+                        }
                     }
                     if (data.truncated) {
                         item {
@@ -416,6 +427,85 @@ private fun ReviewStatus(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.align(Alignment.Start),
+                )
+            }
+        }
+    }
+}
+
+/** Unresolved review conversations; each row resolves/unresolves through GraphQL. */
+@Composable
+private fun ThreadsCard(
+    threads: List<ReviewThread>,
+    canResolve: Boolean,
+    onToggle: (ReviewThread) -> Unit,
+) {
+    val unresolved = threads.filter { !it.isResolved }
+    val shown = (if (unresolved.isNotEmpty()) unresolved else threads).take(12)
+    Card(
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        shape = RoundedCornerShape(16.dp),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(Modifier.padding(14.dp)) {
+            Text(
+                text = stringResource(
+                    if (unresolved.isEmpty()) R.string.m3_pr_threads_all_resolved
+                    else R.string.m3_pr_threads_open,
+                    unresolved.size,
+                ),
+                style = MaterialTheme.typography.titleSmall,
+            )
+            Spacer(Modifier.height(8.dp))
+            shown.forEach { thread ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.Top,
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(
+                                R.string.m3_pr_line_comment_title,
+                                thread.path ?: "",
+                                thread.line ?: 0,
+                            ),
+                            style = MaterialTheme.typography.labelMedium,
+                            fontFamily = FontFamily.Monospace,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                        )
+                        thread.firstComment?.body?.takeIf { it.isNotBlank() }?.let { body ->
+                            Spacer(Modifier.height(2.dp))
+                            Text(
+                                text = body,
+                                style = MaterialTheme.typography.bodySmall,
+                                maxLines = 2,
+                            )
+                        }
+                    }
+                    if (canResolve) {
+                        TextButton(onClick = { onToggle(thread) }) {
+                            Text(
+                                stringResource(
+                                    if (thread.isResolved) R.string.m3_pr_thread_unresolve
+                                    else R.string.m3_pr_thread_resolve
+                                )
+                            )
+                        }
+                    }
+                }
+                HorizontalDivider()
+            }
+            if ((if (unresolved.isNotEmpty()) unresolved else threads).size > shown.size) {
+                Text(
+                    text = stringResource(
+                        R.string.m3_pr_threads_more,
+                        (if (unresolved.isNotEmpty()) unresolved else threads).size - shown.size,
+                    ),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }

@@ -9,6 +9,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.jsonObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -159,5 +160,79 @@ class WriteOpsTest {
         )
         assertTrue(merged.merged)
         assertEquals("abc123", merged.sha)
+    }
+
+    @Test
+    fun reviewRequestBodiesUseTheReviewersArray() {
+        val json = WriteBodies.reviewers(listOf("octocat", "hubot"))
+        assertEquals(listOf("octocat", "hubot"), json.strings("reviewers"))
+        // Removing is the same body on DELETE; no other fields are involved.
+        assertEquals(setOf("reviewers"), json.keys)
+    }
+
+    @Test
+    fun updateBranchOnlySendsAnExpectedShaWhenKnown() {
+        assertEquals("[REDACTED]", WriteBodies.updateBranch("[REDACTED]").text("expected_head_sha"))
+        assertTrue(WriteBodies.updateBranch(null).isEmpty())
+        assertTrue(WriteBodies.updateBranch("  ").isEmpty())
+    }
+
+    @Test
+    fun releaseBodyOnlyCarriesTheFieldsTheCallerSet() {
+        val created = WriteBodies.release(
+            tagName = "5", targetCommitish = "main", name = "V5", body = "notes",
+            draft = true, prerelease = false,
+        )
+        assertEquals("5", created.text("tag_name"))
+        assertEquals("main", created.text("target_commitish"))
+        assertEquals("V5", created.text("name"))
+        assertEquals("notes", created.text("body"))
+        assertEquals("true", created.text("draft"))
+        assertEquals("false", created.text("prerelease"))
+
+        // Edit: an omitted tag/name must not be rewritten to empty.
+        val edit = WriteBodies.release(name = "", body = "new")
+        assertFalse(edit.containsKey("tag_name"))
+        assertFalse(edit.containsKey("draft"))
+        assertEquals("", edit.text("name"))
+    }
+
+    @Test
+    fun generateNotesUsesPreviousTagOnlyWhenProvided() {
+        val withPrevious = WriteBodies.generateNotes("6", null, "5")
+        assertEquals("6", withPrevious.text("tag_name"))
+        assertEquals("5", withPrevious.text("previous_tag_name"))
+        assertFalse(WriteBodies.generateNotes("6", null, null).containsKey("previous_tag_name"))
+    }
+
+    @Test
+    fun gistBodyKeepsNullFilesAsDeletions() {
+        val json = WriteBodies.gist(
+            description = "d",
+            public = true,
+            files = mapOf("a.md" to "text", "old.md" to null),
+        )
+        assertEquals("true", json.text("public"))
+        val files = json["files"]!!.jsonObject
+        assertEquals("text", files["a.md"]!!.jsonObject.text("content"))
+        assertEquals(JsonNull, files["old.md"])
+    }
+
+    @Test
+    fun dispatchBodySendsRefAndOptionalInputs() {
+        val plain = WriteBodies.dispatch("main", emptyMap())
+        assertEquals("main", plain.text("ref"))
+        assertFalse(plain.containsKey("inputs"))
+
+        val withInputs = WriteBodies.dispatch("release", mapOf("version" to "6"))
+        assertEquals("6", withInputs["inputs"]!!.jsonObject.text("version"))
+    }
+
+    @Test
+    fun topicsUseTheNamesArrayAndRepoEditKeepsEmptyValues() {
+        assertEquals(listOf("android", "kotlin"), WriteBodies.topics(listOf("android", "kotlin")).strings("names"))
+        val edit = WriteBodies.repoEdit("", "https://example.com")
+        assertEquals("", edit.text("description"))
+        assertEquals("https://example.com", edit.text("homepage"))
     }
 }

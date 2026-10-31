@@ -69,6 +69,13 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.foundation.focusable
+import androidx.compose.ui.input.key.isCtrlPressed
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
@@ -95,6 +102,7 @@ import io.github.busybin.gitrehub.compose.auth.LoginMode
 import io.github.busybin.gitrehub.compose.auth.LoginScreen
 import io.github.busybin.gitrehub.compose.code.BranchesScreen
 import io.github.busybin.gitrehub.compose.code.CodeBrowserScreen
+import io.github.busybin.gitrehub.compose.code.CodeSearchScreen
 import io.github.busybin.gitrehub.compose.code.CommitDetailScreen
 import io.github.busybin.gitrehub.compose.code.CommitsScreen
 import io.github.busybin.gitrehub.compose.code.EditFileScreen
@@ -111,6 +119,7 @@ import io.github.busybin.gitrehub.compose.common.TabBadges
 import io.github.busybin.gitrehub.compose.common.UpdatePromptHost
 import io.github.busybin.gitrehub.compose.common.UpdateSupport
 import io.github.busybin.gitrehub.compose.common.restartModernUi
+import io.github.busybin.gitrehub.compose.common.PendingText
 import io.github.busybin.gitrehub.compose.common.shareText
 import kotlinx.coroutines.runBlocking
 import io.github.busybin.gitrehub.core.auth.Session
@@ -121,6 +130,7 @@ import io.github.busybin.gitrehub.compose.feed.FeedFilterAction
 import io.github.busybin.gitrehub.compose.feed.FeedFilterSheet
 import io.github.busybin.gitrehub.compose.feed.FeedScreen
 import io.github.busybin.gitrehub.compose.gists.GistDetailScreen
+import io.github.busybin.gitrehub.compose.gists.GistEditorScreen
 import io.github.busybin.gitrehub.compose.gists.GistsScreen
 import io.github.busybin.gitrehub.compose.issues.IssueKind
 import io.github.busybin.gitrehub.compose.issues.IssueDetailScreen
@@ -128,12 +138,14 @@ import io.github.busybin.gitrehub.compose.issues.PullRequestFilesScreen
 import io.github.busybin.gitrehub.compose.mywork.MyWorkScreen
 import io.github.busybin.gitrehub.compose.issues.IssuesScreen
 import io.github.busybin.gitrehub.compose.issues.NewIssueScreen
+import io.github.busybin.gitrehub.compose.issues.NewPullScreen
 import io.github.busybin.gitrehub.compose.notifications.NotificationPrefs
 import io.github.busybin.gitrehub.compose.notifications.NotificationsScreen
 import io.github.busybin.gitrehub.compose.profile.ProfileScreen
 import io.github.busybin.gitrehub.compose.profile.UserProfileScreen
 import io.github.busybin.gitrehub.compose.repos.RepoActivityScreen
 import io.github.busybin.gitrehub.compose.repos.RepoDetailScreen
+import io.github.busybin.gitrehub.compose.repos.RepoInsightsScreen
 import io.github.busybin.gitrehub.compose.repos.RepoLabelsScreen
 import io.github.busybin.gitrehub.compose.repos.RepoMilestonesScreen
 import io.github.busybin.gitrehub.compose.repos.ReposScreen
@@ -142,6 +154,8 @@ import io.github.busybin.gitrehub.compose.repos.ForksScreen
 import io.github.busybin.gitrehub.compose.repos.StargazersScreen
 import io.github.busybin.gitrehub.compose.repos.WatchersScreen
 import io.github.busybin.gitrehub.compose.repos.TrendingScreen
+import io.github.busybin.gitrehub.compose.releases.CompareScreen
+import io.github.busybin.gitrehub.compose.releases.ReleaseEditorScreen
 import io.github.busybin.gitrehub.compose.releases.ReleasesScreen
 import io.github.busybin.gitrehub.compose.search.SearchScreen
 import io.github.busybin.gitrehub.compose.settings.SettingsScreen
@@ -171,6 +185,8 @@ object Routes {
     const val SEARCH = "search"
     const val GISTS = "gists?login={login}"
     const val GIST = "gist/{id}"
+    const val GIST_EDIT = "gist-edit?id={id}"
+    const val SHARE = "share"
     const val DRAFTS = "drafts"
     const val SETTINGS = "settings"
     const val REPO = "repo/{owner}/{name}"
@@ -178,9 +194,12 @@ object Routes {
     const val ISSUE = "issue/{owner}/{repo}/{number}"
     const val PR_FILES = "pr-files/{owner}/{repo}/{number}"
     const val NEW_ISSUE = "new-issue/{owner}/{repo}"
+    const val NEW_PULL = "new-pull/{owner}/{repo}?base={base}&head={head}"
     const val COMMIT = "commit/{owner}/{repo}?sha={sha}"
     const val COMMITS = "commits/{owner}/{repo}?ref={ref}"
     const val RELEASES = "releases/{owner}/{repo}"
+    const val RELEASE_EDIT = "release-edit/{owner}/{repo}?id={id}"
+    const val COMPARE = "compare/{owner}/{repo}?base={base}&head={head}"
     const val DISCUSSIONS = "discussions/{owner}/{repo}"
     const val DISCUSSION = "discussion/{owner}/{repo}/{number}"
     const val LABELS = "labels/{owner}/{repo}"
@@ -193,10 +212,12 @@ object Routes {
     const val FORKS = "forks/{owner}/{repo}"
     const val CONTRIBUTORS = "contributors/{owner}/{repo}"
     const val REPO_ACTIVITY = "repo-activity/{owner}/{repo}"
+    const val INSIGHTS = "insights/{owner}/{repo}"
     const val CODE = "code/{owner}/{repo}?ref={ref}&path={path}"
     const val FILE = "file/{owner}/{repo}?path={path}&ref={ref}"
     const val FILE_HISTORY = "file-history/{owner}/{repo}?path={path}&ref={ref}"
     const val EDIT_FILE = "edit-file/{owner}/{repo}?path={path}&ref={ref}"
+    const val CODE_SEARCH = "code-search/{owner}/{repo}?ref={ref}"
 
     fun repo(owner: String, name: String) = "repo/$owner/$name"
 
@@ -207,7 +228,15 @@ object Routes {
 
     fun gist(id: String) = "gist/${Uri.encode(id)}"
 
+    fun gistEdit(id: String? = null) = "gist-edit?id=${Uri.encode(id.orEmpty())}"
+
     fun releases(owner: String, repo: String) = "releases/$owner/$repo"
+
+    fun releaseEdit(owner: String, repo: String, id: Long? = null) =
+        "release-edit/$owner/$repo?id=${id ?: 0}"
+
+    fun compare(owner: String, repo: String, base: String, head: String) =
+        "compare/$owner/$repo?base=${Uri.encode(base)}&head=${Uri.encode(head)}"
 
     fun discussions(owner: String, repo: String) = "discussions/$owner/$repo"
 
@@ -231,6 +260,9 @@ object Routes {
 
     fun newIssue(owner: String, repo: String) = "new-issue/$owner/$repo"
 
+    fun newPull(owner: String, repo: String, base: String = "", head: String = "") =
+        "new-pull/$owner/$repo?base=${Uri.encode(base)}&head=${Uri.encode(head)}"
+
     fun commit(owner: String, repo: String, sha: String) =
         "commit/$owner/$repo?sha=${Uri.encode(sha)}"
 
@@ -249,6 +281,8 @@ object Routes {
 
     fun repoActivity(owner: String, repo: String) = "repo-activity/$owner/$repo"
 
+    fun insights(owner: String, repo: String) = "insights/$owner/$repo"
+
     fun code(owner: String, repo: String, ref: String? = null, path: String = "") =
         "code/$owner/$repo?ref=${Uri.encode(ref.orEmpty())}&path=${Uri.encode(path)}"
 
@@ -260,6 +294,9 @@ object Routes {
 
     fun editFile(owner: String, repo: String, path: String, ref: String? = null) =
         "edit-file/$owner/$repo?path=${Uri.encode(path)}&ref=${Uri.encode(ref.orEmpty())}"
+
+    fun codeSearch(owner: String, repo: String, ref: String? = null) =
+        "code-search/$owner/$repo?ref=${Uri.encode(ref.orEmpty())}"
 }
 
 private data class Tab(val route: String, @StringRes val labelRes: Int, val icon: ImageVector)
@@ -610,7 +647,52 @@ fun FaApp(routeRequest: MutableState<String?>? = null) {
                     }
                 },
             ) { padding ->
-                Box(Modifier.fillMaxSize().padding(padding)) {
+                val keyFocus = remember { androidx.compose.ui.focus.FocusRequester() }
+                LaunchedEffect(Unit) { runCatching { keyFocus.requestFocus() } }
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .padding(padding)
+                        .focusRequester(keyFocus)
+                        .focusable()
+                        .onPreviewKeyEvent { event ->
+                            if (event.type != androidx.compose.ui.input.key.KeyEventType.KeyDown) {
+                                return@onPreviewKeyEvent false
+                            }
+                            // Hardware keyboard (tablet / DeX / Chromebook) shortcuts.
+                            if (event.isCtrlPressed) {
+                                when (event.key) {
+                                    androidx.compose.ui.input.key.Key.K -> {
+                                        nav.navigateSingleTop(Routes.SEARCH); true
+                                    }
+                                    androidx.compose.ui.input.key.Key.One -> {
+                                        nav.navigateSingleTop(Routes.FEED); true
+                                    }
+                                    androidx.compose.ui.input.key.Key.Two -> {
+                                        nav.navigateSingleTop(Routes.REPOS); true
+                                    }
+                                    androidx.compose.ui.input.key.Key.Three -> {
+                                        nav.navigateSingleTop(Routes.NOTIFICATIONS); true
+                                    }
+                                    androidx.compose.ui.input.key.Key.Four -> {
+                                        nav.navigateSingleTop(Routes.MY_WORK); true
+                                    }
+                                    androidx.compose.ui.input.key.Key.Five -> {
+                                        nav.navigateSingleTop(Routes.PROFILE); true
+                                    }
+                                    androidx.compose.ui.input.key.Key.Comma -> {
+                                        nav.navigateSingleTop(Routes.SETTINGS); true
+                                    }
+                                    else -> false
+                                }
+                            } else if (event.key == androidx.compose.ui.input.key.Key.Escape) {
+                                if (nav.previousBackStackEntry != null) nav.popBackStack()
+                                true
+                            } else {
+                                false
+                            }
+                        },
+                ) {
                     NavHost(navController = nav, startDestination = start) {
                         composable(Routes.LOGIN) {
                             LoginScreen(
@@ -740,6 +822,7 @@ fun FaApp(routeRequest: MutableState<String?>? = null) {
                                 login = entry.arguments?.getString("login").orEmpty()
                                     .ifBlank { null },
                                 onOpenGist = { gist -> nav.navigate(Routes.gist(gist.id)) },
+                                onNewGist = { nav.navigate(Routes.gistEdit()) },
                             )
                         }
                         composable(
@@ -748,9 +831,48 @@ fun FaApp(routeRequest: MutableState<String?>? = null) {
                                 navArgument("id") { type = NavType.StringType },
                             ),
                         ) { entry ->
+                            val gistId = entry.arguments?.getString("id").orEmpty()
                             GistDetailScreen(
-                                id = entry.arguments?.getString("id").orEmpty(),
+                                id = gistId,
                                 onDeleted = { nav.popBackStack() },
+                                onEdit = { nav.navigate(Routes.gistEdit(gistId)) },
+                            )
+                        }
+                        composable(
+                            route = Routes.GIST_EDIT,
+                            arguments = listOf(
+                                navArgument("id") {
+                                    type = NavType.StringType
+                                    defaultValue = ""
+                                },
+                            ),
+                        ) { entry ->
+                            val editId = entry.arguments?.getString("id").orEmpty().ifBlank { null }
+                            val initial = remember { PendingText.gistContent.also { PendingText.gistContent = null } }
+                            GistEditorScreen(
+                                id = editId,
+                                initialContent = initial,
+                                onDone = { nav.popBackStack() },
+                            )
+                        }
+                        composable(Routes.SHARE) {
+                            val shared = remember { PendingText.shared.also { PendingText.shared = null } }
+                                .orEmpty()
+                            ShareScreen(
+                                text = shared,
+                                onNewIssue = { owner, repo ->
+                                    PendingText.issueBody = shared
+                                    nav.navigate(Routes.newIssue(owner, repo)) {
+                                        popUpTo(Routes.SHARE) { inclusive = true }
+                                    }
+                                },
+                                onNewGist = {
+                                    PendingText.gistContent = shared
+                                    nav.navigate(Routes.gistEdit()) {
+                                        popUpTo(Routes.SHARE) { inclusive = true }
+                                    }
+                                },
+                                onDone = { nav.popBackStack() },
                             )
                         }
                         composable(Routes.DRAFTS) {
@@ -796,6 +918,7 @@ fun FaApp(routeRequest: MutableState<String?>? = null) {
                                 onOpenDiscussions = { owner, repo -> nav.navigate(Routes.discussions(owner, repo)) },
                                 onOpenActions = { owner, repo -> nav.navigate(Routes.actions(owner, repo)) },
                                 onOpenActivity = { owner, repo -> nav.navigate(Routes.repoActivity(owner, repo)) },
+                                onOpenInsights = { owner, repo -> nav.navigate(Routes.insights(owner, repo)) },
                                 onOpenLabels = { owner, repo -> nav.navigate(Routes.labels(owner, repo)) },
                                 onOpenMilestones = { owner, repo -> nav.navigate(Routes.milestones(owner, repo)) },
                                 onOpenUser = { nav.navigate(Routes.user(it)) },
@@ -873,6 +996,21 @@ fun FaApp(routeRequest: MutableState<String?>? = null) {
                             )
                         }
                         composable(
+                            route = Routes.INSIGHTS,
+                            arguments = listOf(
+                                navArgument("owner") { type = NavType.StringType },
+                                navArgument("repo") { type = NavType.StringType },
+                            ),
+                        ) { entry ->
+                            RepoInsightsScreen(
+                                owner = entry.arguments?.getString("owner").orEmpty(),
+                                repo = entry.arguments?.getString("repo").orEmpty(),
+                                onOpenIssue = { owner, repo, number ->
+                                    nav.navigate(Routes.issue(owner, repo, number))
+                                },
+                            )
+                        }
+                        composable(
                             route = Routes.BRANCHES,
                             arguments = listOf(
                                 navArgument("owner") { type = NavType.StringType },
@@ -890,6 +1028,7 @@ fun FaApp(routeRequest: MutableState<String?>? = null) {
                                 repo = repo,
                                 initialKind = if (entry.arguments?.getString("kind") == "tag") RefKind.TAG else RefKind.BRANCH,
                                 onOpenRef = { ref -> nav.navigate(Routes.code(owner, repo, ref)) },
+                                onNewPull = { nav.navigate(Routes.newPull(owner, repo)) },
                             )
                         }
                         composable(
@@ -919,6 +1058,30 @@ fun FaApp(routeRequest: MutableState<String?>? = null) {
                                 onOpenCommit = { sha -> nav.navigate(Routes.commit(owner, repo, sha)) },
                                 onOpenCommits = { resolvedRef ->
                                     nav.navigate(Routes.commits(owner, repo, resolvedRef))
+                                },
+                                onSearchCode = { nav.navigate(Routes.codeSearch(owner, repo, ref)) },
+                            )
+                        }
+                        composable(
+                            route = Routes.CODE_SEARCH,
+                            arguments = listOf(
+                                navArgument("owner") { type = NavType.StringType },
+                                navArgument("repo") { type = NavType.StringType },
+                                navArgument("ref") {
+                                    type = NavType.StringType
+                                    defaultValue = ""
+                                },
+                            ),
+                        ) { entry ->
+                            val searchOwner = entry.arguments?.getString("owner").orEmpty()
+                            val searchRepo = entry.arguments?.getString("repo").orEmpty()
+                            val searchRef = entry.arguments?.getString("ref").orEmpty().ifBlank { null }
+                            CodeSearchScreen(
+                                owner = searchOwner,
+                                repo = searchRepo,
+                                ref = searchRef,
+                                onOpenFile = { path ->
+                                    nav.navigate(Routes.file(searchOwner, searchRepo, path, searchRef))
                                 },
                             )
                         }
@@ -1085,6 +1248,35 @@ fun FaApp(routeRequest: MutableState<String?>? = null) {
                             )
                         }
                         composable(
+                            route = Routes.NEW_PULL,
+                            arguments = listOf(
+                                navArgument("owner") { type = NavType.StringType },
+                                navArgument("repo") { type = NavType.StringType },
+                                navArgument("base") {
+                                    type = NavType.StringType
+                                    defaultValue = ""
+                                },
+                                navArgument("head") {
+                                    type = NavType.StringType
+                                    defaultValue = ""
+                                },
+                            ),
+                        ) { entry ->
+                            val prOwner = entry.arguments?.getString("owner").orEmpty()
+                            val prRepo = entry.arguments?.getString("repo").orEmpty()
+                            NewPullScreen(
+                                owner = prOwner,
+                                repo = prRepo,
+                                initialBase = entry.arguments?.getString("base").orEmpty(),
+                                initialHead = entry.arguments?.getString("head").orEmpty(),
+                                onCreated = { number ->
+                                    nav.navigate(Routes.issue(prOwner, prRepo, number)) {
+                                        popUpTo(Routes.NEW_PULL) { inclusive = true }
+                                    }
+                                },
+                            )
+                        }
+                        composable(
                             route = Routes.COMMIT,
                             arguments = listOf(
                                 navArgument("owner") { type = NavType.StringType },
@@ -1108,9 +1300,76 @@ fun FaApp(routeRequest: MutableState<String?>? = null) {
                                 navArgument("repo") { type = NavType.StringType },
                             ),
                         ) { entry ->
+                            val relOwner = entry.arguments?.getString("owner").orEmpty()
+                            val relRepo = entry.arguments?.getString("repo").orEmpty()
+                            val relRefresh by entry.savedStateHandle
+                                .getStateFlow("releases_refresh", false)
+                                .collectAsStateWithLifecycle()
                             ReleasesScreen(
-                                owner = entry.arguments?.getString("owner").orEmpty(),
-                                repo = entry.arguments?.getString("repo").orEmpty(),
+                                owner = relOwner,
+                                repo = relRepo,
+                                onNewRelease = { nav.navigate(Routes.releaseEdit(relOwner, relRepo)) },
+                                onEditRelease = { id -> nav.navigate(Routes.releaseEdit(relOwner, relRepo, id)) },
+                                onCompare = { base, head ->
+                                    nav.navigate(Routes.compare(relOwner, relRepo, base, head))
+                                },
+                                refreshSignal = relRefresh,
+                                onRefreshConsumed = { entry.savedStateHandle["releases_refresh"] = false },
+                            )
+                        }
+                        composable(
+                            route = Routes.RELEASE_EDIT,
+                            arguments = listOf(
+                                navArgument("owner") { type = NavType.StringType },
+                                navArgument("repo") { type = NavType.StringType },
+                                navArgument("id") {
+                                    type = NavType.LongType
+                                    defaultValue = 0L
+                                },
+                            ),
+                        ) { entry ->
+                            val relOwner = entry.arguments?.getString("owner").orEmpty()
+                            val relRepo = entry.arguments?.getString("repo").orEmpty()
+                            val id = entry.arguments?.getLong("id") ?: 0L
+                            ReleaseEditorScreen(
+                                owner = relOwner,
+                                repo = relRepo,
+                                releaseId = id.takeIf { it > 0 },
+                                onDone = {
+                                    nav.previousBackStackEntry?.savedStateHandle
+                                        ?.set("releases_refresh", true)
+                                    nav.popBackStack()
+                                },
+                            )
+                        }
+                        composable(
+                            route = Routes.COMPARE,
+                            arguments = listOf(
+                                navArgument("owner") { type = NavType.StringType },
+                                navArgument("repo") { type = NavType.StringType },
+                                navArgument("base") {
+                                    type = NavType.StringType
+                                    defaultValue = ""
+                                },
+                                navArgument("head") {
+                                    type = NavType.StringType
+                                    defaultValue = ""
+                                },
+                            ),
+                        ) { entry ->
+                            val cmpOwner = entry.arguments?.getString("owner").orEmpty()
+                            val cmpRepo = entry.arguments?.getString("repo").orEmpty()
+                            val cmpBase = entry.arguments?.getString("base").orEmpty()
+                            val cmpHead = entry.arguments?.getString("head").orEmpty()
+                            CompareScreen(
+                                owner = cmpOwner,
+                                repo = cmpRepo,
+                                base = cmpBase,
+                                head = cmpHead,
+                                onOpenCommit = { sha -> nav.navigate(Routes.commit(cmpOwner, cmpRepo, sha)) },
+                                onCreatePull = {
+                                    nav.navigate(Routes.newPull(cmpOwner, cmpRepo, cmpBase, cmpHead))
+                                },
                             )
                         }
                         composable(
@@ -1295,6 +1554,8 @@ private fun FaTopBar(
         Routes.SEARCH -> stringResource(R.string.m3_title_search)
         Routes.GISTS -> stringResource(R.string.m3_gists)
         Routes.GIST -> stringResource(R.string.m3_gist)
+        Routes.GIST_EDIT -> stringResource(R.string.m3_gist_edit)
+        Routes.SHARE -> stringResource(R.string.m3_share_title)
         Routes.DRAFTS -> stringResource(R.string.m3_drafts)
         Routes.SETTINGS -> stringResource(R.string.m3_title_settings)
         Routes.REPO -> entry?.arguments?.getString("name")
@@ -1313,7 +1574,10 @@ private fun FaTopBar(
         Routes.FORKS -> stringResource(R.string.m3_forks)
         Routes.CONTRIBUTORS -> stringResource(R.string.m3_contributors)
         Routes.REPO_ACTIVITY -> stringResource(R.string.m3_activity)
+        Routes.INSIGHTS -> stringResource(R.string.m3_insights)
         Routes.RELEASES -> stringResource(R.string.m3_releases)
+        Routes.RELEASE_EDIT -> stringResource(R.string.m3_release_edit)
+        Routes.COMPARE -> stringResource(R.string.m3_compare)
         Routes.BRANCHES -> if (entry?.arguments?.getString("kind") == "tag") {
             stringResource(R.string.m3_tag)
         } else {
@@ -1326,6 +1590,7 @@ private fun FaTopBar(
             ?: stringResource(R.string.m3_title_file)
 
         Routes.FILE_HISTORY -> stringResource(R.string.m3_file_history)
+        Routes.CODE_SEARCH -> stringResource(R.string.m3_code_search)
 
         Routes.EDIT_FILE -> stringResource(R.string.m3_edit_file)
 
@@ -1333,6 +1598,7 @@ private fun FaTopBar(
         Routes.ISSUE -> "#${entry?.arguments?.getInt("number") ?: 0}"
         Routes.PR_FILES -> stringResource(R.string.m3_pr_files_title)
         Routes.NEW_ISSUE -> stringResource(R.string.m3_new_issue)
+        Routes.NEW_PULL -> stringResource(R.string.m3_new_pull)
         Routes.COMMIT -> stringResource(R.string.m3_commit)
             .plus(" " + (entry?.arguments?.getString("sha")?.take(7) ?: ""))
         Routes.COMMITS -> stringResource(R.string.m3_commits)

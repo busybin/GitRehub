@@ -131,6 +131,26 @@ class NotificationsViewModel : PagedViewModel<Notification>() {
     }
 
     /**
+     * GitHub's "Done": unsubscribe the thread and drop it from the inbox. The row disappears first;
+     * a failed call reloads the list so the UI does not lie about what is still there.
+     */
+    fun done(item: Notification) {
+        val key = ThreadKey.fromApiUrl(item.subject?.url)
+        publish(currentItems().filterNot { it.id == item.id })
+        ReadState.markReadKey(key, at = System.currentTimeMillis())
+        TabBadges.notificationRead()
+        viewModelScope.launch {
+            val ok = runCatching {
+                withContext(Dispatchers.IO) {
+                    GitHubApi.unsubscribeThread(item.id)
+                    GitHubApi.markThreadRead(item.id)
+                }
+            }.isSuccess
+            if (!ok) refresh()
+        }
+    }
+
+    /**
      * Swipe action: mark a single thread as read. The row and the shared read state change first,
      * so a process death while the PATCH is in flight cannot bring the row back as unread; the
      * server call then either confirms it or rolls both back.

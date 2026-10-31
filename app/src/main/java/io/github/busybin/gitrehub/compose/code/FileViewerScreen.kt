@@ -29,6 +29,7 @@ import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Share
@@ -177,6 +178,19 @@ fun FileViewerScreen(
                             Spacer(Modifier.width(6.dp))
                             Text(stringResource(R.string.m3_copy))
                         }
+                    }
+                    // Permalink to the line currently at the top of the viewport.
+                    TextButton(
+                        onClick = {
+                            val line = listState.firstVisibleItemIndex + 1
+                            val url = "https://github.com/$owner/$repo/blob/" +
+                                "${file.ref ?: "HEAD"}/${file.path}#L$line"
+                            clipboard.setText(AnnotatedString(url))
+                        },
+                    ) {
+                        Icon(Icons.Outlined.Link, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text(stringResource(R.string.m3_copy_permalink))
                     }
                     val vector = file.path.endsWith(".svg", ignoreCase = true)
                     if (onEdit != null && !file.tooBig && (vector || !file.isImage)) {

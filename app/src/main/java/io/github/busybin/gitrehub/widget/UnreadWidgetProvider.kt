@@ -10,6 +10,7 @@ import android.widget.RemoteViews
 import io.github.busybin.gitrehub.R
 import io.github.busybin.gitrehub.compose.MainComposeActivity
 import io.github.busybin.gitrehub.helper.PrefHelper
+import io.github.busybin.gitrehub.provider.scheme.SchemeParser
 
 /** Home-screen unread badge: unread notifications plus the My Work count. */
 class UnreadWidgetProvider : AppWidgetProvider() {
@@ -45,15 +46,19 @@ class UnreadWidgetProvider : AppWidgetProvider() {
                 R.id.widget_mywork,
                 context.getString(R.string.m3_widget_mywork, myWork),
             )
-            val intent = Intent(context, MainComposeActivity::class.java)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-            val pending = PendingIntent.getActivity(
-                context,
-                0,
-                intent,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-            )
-            views.setOnClickPendingIntent(R.id.widget_root, pending)
+            fun pendingFor(route: String, request: Int): PendingIntent {
+                val intent = Intent(context, MainComposeActivity::class.java)
+                    .putExtra(SchemeParser.EXTRA_NAVIGATE, route)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                return PendingIntent.getActivity(
+                    context,
+                    request,
+                    intent,
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+                )
+            }
+            views.setOnClickPendingIntent(R.id.widget_root, pendingFor("notifications", 1))
+            views.setOnClickPendingIntent(R.id.widget_mywork, pendingFor("my-work", 2))
             return views
         }
     }

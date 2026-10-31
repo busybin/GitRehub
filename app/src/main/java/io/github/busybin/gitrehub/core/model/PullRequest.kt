@@ -11,6 +11,7 @@ import java.time.Instant
 @Serializable
 data class PullRequest(
     val id: Long = 0,
+    @SerialName("node_id") val nodeId: String? = null,
     val number: Int = 0,
     val title: String? = null,
     val body: String? = null,

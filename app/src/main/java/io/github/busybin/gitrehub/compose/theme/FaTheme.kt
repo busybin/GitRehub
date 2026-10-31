@@ -38,6 +38,31 @@ private val FaTypography = Typography(
     labelLarge = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Medium),
 )
 
+/** Multiply every defined line height; a 1.0 value returns the same object (no recomposition cost). */
+private fun scaleLineHeight(base: Typography, factor: Float): Typography {
+    if (factor == 1f) return base
+    fun TextStyle.scaled(): TextStyle =
+        if (lineHeight == androidx.compose.ui.unit.TextUnit.Unspecified) this
+        else copy(lineHeight = lineHeight * factor)
+    return base.copy(
+        displayLarge = base.displayLarge.scaled(),
+        displayMedium = base.displayMedium.scaled(),
+        displaySmall = base.displaySmall.scaled(),
+        headlineLarge = base.headlineLarge.scaled(),
+        headlineMedium = base.headlineMedium.scaled(),
+        headlineSmall = base.headlineSmall.scaled(),
+        titleLarge = base.titleLarge.scaled(),
+        titleMedium = base.titleMedium.scaled(),
+        titleSmall = base.titleSmall.scaled(),
+        bodyLarge = base.bodyLarge.scaled(),
+        bodyMedium = base.bodyMedium.scaled(),
+        bodySmall = base.bodySmall.scaled(),
+        labelLarge = base.labelLarge.scaled(),
+        labelMedium = base.labelMedium.scaled(),
+        labelSmall = base.labelSmall.scaled(),
+    )
+}
+
 /**
  * Root theme of the modern UI.
  *
@@ -54,6 +79,7 @@ fun FaTheme(content: @Composable () -> Unit) {
     val theme by ThemeState.theme.collectAsStateWithLifecycle()
     val fontScale by ThemeState.fontScale.collectAsStateWithLifecycle()
     val density by ThemeState.density.collectAsStateWithLifecycle()
+    val lineHeight by ThemeState.lineHeight.collectAsStateWithLifecycle()
 
     // The modern UI is dark-only (2026-10-18): the light/system switch is gone.
     val dark = true
@@ -91,7 +117,7 @@ fun FaTheme(content: @Composable () -> Unit) {
     ) {
         MaterialTheme(
             colorScheme = scheme,
-            typography = FaTypography,
+            typography = scaleLineHeight(FaTypography, lineHeight),
             content = content,
         )
     }

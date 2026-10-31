@@ -24,11 +24,13 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AddReaction
 import androidx.compose.material.icons.outlined.CallMerge
+import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.OpenInNew
+import androidx.compose.material.icons.outlined.Print
 import androidx.compose.material.icons.outlined.TaskAlt
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.AlertDialog
@@ -52,10 +54,12 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -76,8 +80,12 @@ import io.github.busybin.gitrehub.compose.common.ConfirmDialog
 import io.github.busybin.gitrehub.compose.common.LoadState
 import io.github.busybin.gitrehub.compose.common.LinkCopyDialog
 import io.github.busybin.gitrehub.compose.common.MarkdownText
+import io.github.busybin.gitrehub.compose.common.SavedReplies
+import io.github.busybin.gitrehub.compose.common.ThreadKey
+import io.github.busybin.gitrehub.compose.common.ThreadSeen
 import io.github.busybin.gitrehub.compose.common.MetaText
 import io.github.busybin.gitrehub.compose.common.Pill
+import io.github.busybin.gitrehub.compose.common.PrintSupport
 import io.github.busybin.gitrehub.compose.common.UiText
 import io.github.busybin.gitrehub.compose.common.relativeTime
 import io.github.busybin.gitrehub.compose.common.render
@@ -90,6 +98,7 @@ import io.github.busybin.gitrehub.core.model.Reactions
 import io.github.busybin.gitrehub.core.model.Commit
 import io.github.busybin.gitrehub.helper.BrowserLauncher
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /**
  * Issue / PR detail with write support: comment (incl. edit/delete), reactions, title/body,
@@ -117,6 +126,7 @@ fun IssueDetailScreen(
     val myReactions by vm.myReactions.collectAsStateWithLifecycle()
     val options by vm.options.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
 
     var showCommentSheet by rememberSaveable { mutableStateOf(false) }
     var showEditIssue by rememberSaveable { mutableStateOf(false) }
@@ -125,6 +135,8 @@ fun IssueDetailScreen(
     var deletingComment by remember { mutableStateOf<Comment?>(null) }
     var confirmToggle by rememberSaveable { mutableStateOf(false) }
     var showMergeDialog by rememberSaveable { mutableStateOf(false) }
+    var showReviewers by rememberSaveable { mutableStateOf(false) }
+    var confirmDeleteBranch by rememberSaveable { mutableStateOf(false) }
     var linkToCopy by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(owner, repo, number) { vm.load(owner, repo, number) }
@@ -133,8 +145,8 @@ fun IssueDetailScreen(
     LaunchedEffect(isPull) { onPullDetected?.invoke(isPull) }
 
     // Fetch manage candidates only when the drawer opens.
-    LaunchedEffect(showManage) {
-        if (showManage) vm.loadOptions(owner, repo)
+    LaunchedEffect(showManage, showReviewers) {
+        if (showManage || showReviewers) vm.loadOptions(owner, repo)
     }
 
     // Let the banner fade away instead of requiring a tap.
@@ -162,7 +174,25 @@ fun IssueDetailScreen(
             val canWrite = data.permissions?.canWrite == true
             val canTriage = data.permissions?.canTriage == true
             val isAuthor = myLogin != null && issue.user?.login.equals(myLogin, ignoreCase = true)
+            val threadKey = ThreadKey.of(
+                "$owner/$repo",
+                if (pr != null) ThreadKey.PULL_REQUEST else ThreadKey.ISSUE,
+                number.toLong(),
+            )
+            val seenAt = remember(threadKey) { ThreadSeen.lastSeen(threadKey) }
+            DisposableEffect(threadKey) {
+                onDispose { ThreadSeen.markSeen(threadKey) }
+            }
+            val firstUnread = remember(data.comments, seenAt) {
+                if (seenAt <= 0L) -1
+                else data.comments.indexOfFirst {
+                    (it.createdAt?.toEpochMilli() ?: 0L) > seenAt
+                }
+            }
+            val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+            val scope = rememberCoroutineScope()
             LazyColumn(
+                state = listState,
                 modifier = Modifier.fillMaxWidth(),
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(14.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -182,16 +212,28 @@ fun IssueDetailScreen(
                         isPull = pr != null,
                         closed = issue.isClosed,
                         merged = pr?.merged == true,
+                        behind = pr?.mergeableState == "behind",
+                        draft = pr?.draft == true,
                         canComment = !issue.locked || canWrite,
                         canEdit = canTriage || isAuthor,
                         canManage = canTriage,
                         canClose = canTriage || isAuthor,
                         canMerge = canWrite,
+                        canReview = canWrite,
+                        canDeleteBranch = canWrite && pr?.head?.ref != null,
                         onComment = { showCommentSheet = true },
                         onEdit = { showEditIssue = true },
                         onManage = { showManage = true },
                         onToggleState = { confirmToggle = true },
                         onMerge = { showMergeDialog = true },
+                        onUpdateBranch = {
+                            vm.updateBranch(owner, repo, number, pr?.head?.sha)
+                        },
+                        onToggleDraft = {
+                            vm.setDraft(owner, repo, number, !(pr?.draft == true))
+                        },
+                        onRequestReview = { showReviewers = true },
+                        onDeleteBranch = { confirmDeleteBranch = true },
                     )
                 }
 
@@ -251,6 +293,34 @@ fun IssueDetailScreen(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                             HorizontalDivider(Modifier.weight(1f))
+                        }
+                        if (firstUnread >= 0) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(
+                                    text = stringResource(
+                                        R.string.m3_issue_new_comments,
+                                        data.comments.size - firstUnread,
+                                    ),
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.weight(1f),
+                                )
+                                TextButton(
+                                    onClick = {
+                                        scope.launch {
+                                            // title, state, actions, body, header -> first comment
+                                            listState.animateScrollToItem(5 + firstUnread)
+                                        }
+                                    },
+                                ) {
+                                    Text(stringResource(R.string.m3_issue_jump_new))
+                                }
+                            }
                         }
                     }
                     items(data.comments, key = { it.id }) { comment ->
@@ -335,21 +405,59 @@ fun IssueDetailScreen(
                 }
 
                 item {
-                    TextButton(
-                        onClick = {
-                            val url = issue.htmlUrl
-                                ?: "https://github.com/$owner/$repo/issues/$number"
-                            // Use BrowserLauncher: the app declares a github.com filter, so a raw VIEW intent loops back.
-                            if (!BrowserLauncher.open(context, url)) linkToCopy = url
+                    val canonical = issue.htmlUrl
+                        ?: "https://github.com/$owner/$repo/issues/$number"
+                    Row {
+                        TextButton(
+                            onClick = {
+                                // Use BrowserLauncher: the app declares a github.com filter, so a raw VIEW intent loops back.
+                                if (!BrowserLauncher.open(context, canonical)) linkToCopy = canonical
+                            }
+                        ) {
+                            Icon(
+                                Icons.Outlined.OpenInNew,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Text(stringResource(R.string.m3_open_in_browser))
                         }
-                    ) {
-                        Icon(
-                            Icons.Outlined.OpenInNew,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp),
-                        )
-                        Spacer(Modifier.width(6.dp))
-                        Text(stringResource(R.string.m3_open_in_browser))
+                        TextButton(
+                            onClick = {
+                                val md = "[${issue.title.orEmpty()}]($canonical)"
+                                clipboard.setText(androidx.compose.ui.text.AnnotatedString(md))
+                            }
+                        ) {
+                            Icon(
+                                Icons.Outlined.ContentCopy,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Text(stringResource(R.string.m3_copy_markdown))
+                        }
+                        TextButton(
+                            onClick = {
+                                val body = buildString {
+                                    append(issue.title.orEmpty()).append('\n').append('\n')
+                                    append(issue.body.orEmpty())
+                                    data.comments.forEach { comment ->
+                                        append("\n\n---\n\n")
+                                        append(comment.user?.login.orEmpty()).append(":\n\n")
+                                        append(comment.body.orEmpty())
+                                    }
+                                }
+                                PrintSupport.printMarkdown(context, issue.title.orEmpty(), body)
+                            }
+                        ) {
+                            Icon(
+                                Icons.Outlined.Print,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Text(stringResource(R.string.m3_print))
+                        }
                     }
                 }
                 item { Spacer(Modifier.height(20.dp)) }
@@ -369,6 +477,8 @@ fun IssueDetailScreen(
                 showCommentSheet = false
                 vm.postComment(owner, repo, number, body)
             },
+            repo = "$owner/$repo",
+            imageBaseUrl = repoRawBaseUrl(owner, repo),
         )
     }
 
@@ -384,6 +494,8 @@ fun IssueDetailScreen(
                 // Keep the sheet (and its text) open unless the edit actually went through.
                 vm.editComment(owner, repo, number, comment.id, body) { editingComment = null }
             },
+            repo = "$owner/$repo",
+            imageBaseUrl = repoRawBaseUrl(owner, repo),
         )
     }
 
@@ -415,6 +527,8 @@ fun IssueDetailScreen(
             onSubmit = { title, body ->
                 vm.editIssue(owner, repo, number, title, body) { showEditIssue = false }
             },
+            repo = "$owner/$repo",
+            imageBaseUrl = repoRawBaseUrl(owner, repo),
         )
     }
 
@@ -473,6 +587,36 @@ fun IssueDetailScreen(
         )
     }
 
+    if (showReviewers) {
+        ReviewerSheet(
+            candidates = options.assignees.mapNotNull { it.login },
+            loading = options.loading,
+            failed = options.failed,
+            onRetry = { vm.loadOptions(owner, repo, force = true) },
+            onDismiss = { showReviewers = false },
+            onSubmit = { logins ->
+                showReviewers = false
+                vm.requestReviewers(owner, repo, number, logins)
+            },
+        )
+    }
+
+    if (confirmDeleteBranch) {
+        val data = (state as? LoadState.Ready)?.value
+        val branch = data?.pullRequest?.head?.ref.orEmpty()
+        ConfirmDialog(
+            title = stringResource(R.string.m3_pr_delete_branch_title, branch),
+            message = stringResource(R.string.m3_pr_delete_branch_message),
+            confirmLabel = stringResource(R.string.m3_pr_delete_branch),
+            destructive = true,
+            onConfirm = {
+                confirmDeleteBranch = false
+                vm.deleteBranch(owner, repo, number, branch)
+            },
+            onDismiss = { confirmDeleteBranch = false },
+        )
+    }
+
     linkToCopy?.let { url -> LinkCopyDialog(url = url) { linkToCopy = null } }
 }
 
@@ -487,16 +631,24 @@ private fun WriteActions(
     isPull: Boolean,
     closed: Boolean,
     merged: Boolean,
+    behind: Boolean,
+    draft: Boolean,
     canComment: Boolean,
     canEdit: Boolean,
     canManage: Boolean,
     canClose: Boolean,
     canMerge: Boolean,
+    canReview: Boolean,
+    canDeleteBranch: Boolean,
     onComment: () -> Unit,
     onEdit: () -> Unit,
     onManage: () -> Unit,
     onToggleState: () -> Unit,
     onMerge: () -> Unit,
+    onUpdateBranch: () -> Unit,
+    onToggleDraft: () -> Unit,
+    onRequestReview: () -> Unit,
+    onDeleteBranch: () -> Unit,
 ) {
     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         CompactButton(
@@ -529,6 +681,39 @@ private fun WriteActions(
                 text = stringResource(R.string.m3_write_merge),
                 onClick = onMerge,
                 enabled = !busy && canMerge,
+            )
+            if (behind) {
+                CompactButton(
+                    text = stringResource(R.string.m3_pr_update_branch),
+                    onClick = onUpdateBranch,
+                    enabled = !busy && canReview,
+                )
+            }
+            if (draft) {
+                CompactButton(
+                    text = stringResource(R.string.m3_pr_ready),
+                    onClick = onToggleDraft,
+                    enabled = !busy && canReview,
+                )
+            } else {
+                CompactButton(
+                    text = stringResource(R.string.m3_pr_to_draft),
+                    onClick = onToggleDraft,
+                    enabled = !busy && canReview,
+                )
+            }
+            CompactButton(
+                text = stringResource(R.string.m3_pr_request_review),
+                onClick = onRequestReview,
+                enabled = !busy && canReview,
+            )
+        }
+        // After a merge the source branch is usually gone from the list; offer the cleanup here.
+        if (isPull && merged && canDeleteBranch) {
+            CompactButton(
+                text = stringResource(R.string.m3_pr_delete_branch),
+                onClick = onDeleteBranch,
+                enabled = !busy && canReview,
             )
         }
     }
@@ -634,9 +819,13 @@ private fun EditSheet(
     submitLabel: String,
     onDismiss: () -> Unit,
     onSubmit: (String, String) -> Unit,
+    repo: String? = null,
+    imageBaseUrl: String? = null,
 ) {
     var title by remember(initialTitle) { mutableStateOf(initialTitle) }
     var body by remember(initialBody) { mutableStateOf(initialBody) }
+    var preview by rememberSaveable { mutableStateOf(false) }
+    var showSnippets by rememberSaveable { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
@@ -647,11 +836,21 @@ private fun EditSheet(
                 .padding(horizontal = 18.dp)
                 .padding(bottom = 24.dp),
         ) {
-            Text(
-                text = heading,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.SemiBold,
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = heading,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.weight(1f),
+                )
+                TextButton(onClick = { preview = !preview }) {
+                    Text(
+                        stringResource(
+                            if (preview) R.string.m3_write_edit_mode else R.string.m3_write_preview
+                        )
+                    )
+                }
+            }
             Spacer(Modifier.height(10.dp))
             if (showTitle) {
                 OutlinedTextField(
@@ -663,21 +862,44 @@ private fun EditSheet(
                 )
                 Spacer(Modifier.height(10.dp))
             }
-            OutlinedTextField(
-                value = body,
-                onValueChange = { body = it },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 120.dp),
-                placeholder = { Text(stringResource(R.string.m3_write_comment_hint)) },
-                minLines = 5,
-            )
+            if (preview) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 120.dp)
+                        .verticalScroll(rememberScrollState()),
+                ) {
+                    if (body.isBlank()) {
+                        Text(
+                            text = stringResource(R.string.m3_write_preview_empty),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    } else {
+                        MarkdownText(markdown = body, baseUrl = imageBaseUrl, repo = repo)
+                    }
+                }
+            } else {
+                OutlinedTextField(
+                    value = body,
+                    onValueChange = { body = it },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 120.dp),
+                    placeholder = { Text(stringResource(R.string.m3_write_comment_hint)) },
+                    minLines = 5,
+                )
+            }
             Spacer(Modifier.height(12.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
+                TextButton(onClick = { showSnippets = true }) {
+                    Text(stringResource(R.string.m3_write_snippets))
+                }
+                Spacer(Modifier.weight(1f))
                 TextButton(onClick = onDismiss) { Text(stringResource(R.string.m3_cancel)) }
                 Spacer(Modifier.width(8.dp))
                 Button(
@@ -686,6 +908,90 @@ private fun EditSheet(
                 ) {
                     Text(submitLabel)
                 }
+            }
+        }
+    }
+
+    if (showSnippets) {
+        SnippetSheet(
+            current = body,
+            onDismiss = { showSnippets = false },
+            onPick = { snippet ->
+                body = if (body.isBlank()) snippet else body.trimEnd() + "\n\n" + snippet
+                showSnippets = false
+            },
+        )
+    }
+}
+
+/** Saved replies: reuse a canned answer or save the text typed so far. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SnippetSheet(
+    current: String,
+    onDismiss: () -> Unit,
+    onPick: (String) -> Unit,
+) {
+    val replies by SavedReplies.items.collectAsStateWithLifecycle()
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(max = 520.dp)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 18.dp)
+                .padding(bottom = 24.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.m3_write_snippets),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Spacer(Modifier.height(6.dp))
+            Text(
+                text = stringResource(R.string.m3_write_snippets_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(10.dp))
+            Button(
+                onClick = {
+                    SavedReplies.add(current)
+                    onDismiss()
+                },
+                enabled = current.isNotBlank(),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(stringResource(R.string.m3_write_snippet_save))
+            }
+            Spacer(Modifier.height(10.dp))
+            if (replies.isEmpty()) {
+                MetaText(stringResource(R.string.m3_write_snippets_empty))
+            }
+            replies.forEach { reply ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onPick(reply.body) }
+                        .padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = reply.title,
+                        style = MaterialTheme.typography.bodyMedium,
+                        maxLines = 1,
+                        modifier = Modifier.weight(1f),
+                    )
+                    IconButton(onClick = { SavedReplies.remove(reply) }, modifier = Modifier.size(28.dp)) {
+                        Icon(
+                            Icons.Outlined.Delete,
+                            contentDescription = stringResource(R.string.m3_write_delete),
+                            modifier = Modifier.size(16.dp),
+                        )
+                    }
+                }
+                HorizontalDivider()
             }
         }
     }
@@ -867,6 +1173,86 @@ private fun ManageSheet(
                     enabled = !busy,
                 ) {
                     Text(stringResource(R.string.m3_write_save))
+                }
+            }
+        }
+    }
+}
+
+/** Request review: pick collaborators (the repository's assignable users) and send them. */
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@Composable
+private fun ReviewerSheet(
+    candidates: List<String>,
+    loading: Boolean,
+    failed: Boolean,
+    onRetry: () -> Unit,
+    onDismiss: () -> Unit,
+    onSubmit: (List<String>) -> Unit,
+) {
+    var selected by remember(candidates) { mutableStateOf(emptySet<String>()) }
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(max = 560.dp)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 18.dp)
+                .padding(bottom = 24.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.m3_pr_request_review_title),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Spacer(Modifier.height(6.dp))
+            Text(
+                text = stringResource(R.string.m3_pr_reviewers_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(12.dp))
+            if (loading) {
+                Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
+                }
+            }
+            if (failed) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = stringResource(R.string.m3_write_manage_failed),
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.weight(1f),
+                    )
+                    TextButton(onClick = onRetry) { Text(stringResource(R.string.m3_retry)) }
+                }
+            }
+            if (!loading && candidates.isEmpty()) {
+                MetaText(stringResource(R.string.m3_pr_reviewers_empty))
+            }
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                candidates.forEach { login ->
+                    FilterChip(
+                        selected = selected.contains(login),
+                        onClick = {
+                            selected = if (selected.contains(login)) selected - login
+                            else selected + login
+                        },
+                        label = { Text(login) },
+                    )
+                }
+            }
+            Spacer(Modifier.height(16.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+            ) {
+                TextButton(onClick = onDismiss) { Text(stringResource(R.string.m3_cancel)) }
+                Spacer(Modifier.width(8.dp))
+                Button(onClick = { onSubmit(selected.toList()) }, enabled = selected.isNotEmpty()) {
+                    Text(stringResource(R.string.m3_pr_send_review_request))
                 }
             }
         }

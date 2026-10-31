@@ -332,6 +332,7 @@ private fun NotificationsList(
                                             ignored = ignoredMap[item.id],
                                             onMenuOpen = { vm.loadSubscription(item.id) },
                                             onSetIgnored = { vm.setIgnored(item.id, it) },
+                                            onDone = { vm.done(item) },
                                             onSwipe = { action ->
                                                 when (action) {
                                                     SwipeAction.MARK_READ -> vm.markAsRead(item)
@@ -537,6 +538,7 @@ private fun NotificationRow(
     onSwipe: (SwipeAction) -> Unit,
     onMenuOpen: () -> Unit,
     onSetIgnored: (Boolean) -> Unit,
+    onDone: () -> Unit,
     onClick: () -> Unit,
 ) {
     val tokens = LocalTokens.current
@@ -607,6 +609,7 @@ private fun NotificationRow(
             ignored = ignored,
             onMenuOpen = onMenuOpen,
             onSetIgnored = onSetIgnored,
+            onDone = onDone,
             onClick = onClick,
         )
     }
@@ -619,6 +622,7 @@ private fun NotificationCard(
     ignored: Boolean?,
     onMenuOpen: () -> Unit,
     onSetIgnored: (Boolean) -> Unit,
+    onDone: () -> Unit,
     onClick: () -> Unit,
 ) {
     var menu by remember { mutableStateOf(false) }
@@ -709,6 +713,16 @@ private fun NotificationCard(
                         onClick = {
                             menu = false
                             onSetIgnored(!muted)
+                        },
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.m3_notif_done)) },
+                        leadingIcon = {
+                            Icon(Icons.Outlined.DoneAll, contentDescription = null)
+                        },
+                        onClick = {
+                            menu = false
+                            onDone()
                         },
                     )
                 }

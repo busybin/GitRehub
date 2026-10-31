@@ -32,6 +32,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -65,6 +66,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.busybin.gitrehub.BuildConfig
 import io.github.busybin.gitrehub.R
 import io.github.busybin.gitrehub.compose.common.LanguagePrefs
+import io.github.busybin.gitrehub.compose.common.NetworkPrefs
 import io.github.busybin.gitrehub.compose.common.MarkdownText
 import io.github.busybin.gitrehub.compose.common.Density
 import io.github.busybin.gitrehub.compose.common.ReadState
@@ -95,6 +97,7 @@ import io.github.busybin.gitrehub.provider.rest.HttpCache
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.Locale
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -102,6 +105,7 @@ fun SettingsScreen() {
     val themeId by ThemeState.theme.collectAsStateWithLifecycle()
     val fontScale by ThemeState.fontScale.collectAsStateWithLifecycle()
     val density by ThemeState.density.collectAsStateWithLifecycle()
+    val lineHeight by ThemeState.lineHeight.collectAsStateWithLifecycle()
     val language by LanguagePrefs.tag.collectAsStateWithLifecycle()
     val context = LocalContext.current
     // Sliders only move a local draft while dragging: applying the value live rebuilds the whole
@@ -109,6 +113,7 @@ fun SettingsScreen() {
     // gesture after a frame or two. The setting is committed on release.
     var fontDraft by remember(fontScale) { mutableFloatStateOf(fontScale) }
     var densityDraft by remember(density) { mutableFloatStateOf(density) }
+    var lineDraft by remember(lineHeight) { mutableFloatStateOf(lineHeight) }
 
     Column(
         modifier = Modifier
@@ -169,6 +174,34 @@ fun SettingsScreen() {
                     onValueChangeFinished = { ThemeState.setFontScale(fontDraft) },
                     valueRange = ThemePrefs.fontScaleMin..ThemePrefs.fontScaleMax,
                     modifier = Modifier.testTag("font_scale_slider"),
+                )
+            }
+        }
+
+        Spacer(Modifier.height(12.dp))
+        Card(
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+            ),
+        ) {
+            Column(Modifier.padding(horizontal = 14.dp, vertical = 12.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = stringResource(R.string.m3_line_height),
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Text(
+                        text = "${(lineDraft * 100).toInt()}%",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Slider(
+                    value = lineDraft,
+                    onValueChange = { lineDraft = it },
+                    onValueChangeFinished = { ThemeState.setLineHeight(lineDraft) },
+                    valueRange = ThemePrefs.lineHeightMin..ThemePrefs.lineHeightMax,
                 )
             }
         }
@@ -318,6 +351,81 @@ fun SettingsScreen() {
         ) {
             Column(Modifier.padding(horizontal = 14.dp, vertical = 12.dp)) {
                 OfflineCacheSettings()
+                HorizontalDivider(Modifier.padding(vertical = 10.dp))
+                val wifiOnly by NetworkPrefs.wifiOnlyImages.collectAsStateWithLifecycle()
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            stringResource(R.string.m3_wifi_only_images),
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
+                        Text(
+                            text = stringResource(R.string.m3_wifi_only_images_desc),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Switch(
+                        checked = wifiOnly,
+                        onCheckedChange = { NetworkPrefs.setWifiOnlyImages(it) },
+                    )
+                }
+            }
+        }
+
+        Spacer(Modifier.height(20.dp))
+        HorizontalDivider()
+        Spacer(Modifier.height(12.dp))
+        SectionTitle(stringResource(R.string.m3_section_backup))
+        Card(
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+            ),
+        ) {
+            Column(Modifier.padding(horizontal = 14.dp, vertical = 12.dp)) {
+                Text(
+                    text = stringResource(R.string.m3_backup_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(10.dp))
+                val exportLauncher = rememberLauncherForActivityResult(
+                    ActivityResultContracts.CreateDocument("application/json")
+                ) { uri ->
+                    if (uri != null) {
+                        runCatching {
+                            context.contentResolver.openOutputStream(uri)?.use { output ->
+                                output.write(SettingsBackupStore.export().toByteArray())
+                            }
+                        }.onSuccess {
+                            Toast.makeText(context, R.string.m3_backup_exported, Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
+                val importLauncher = rememberLauncherForActivityResult(
+                    ActivityResultContracts.OpenDocument()
+                ) { uri ->
+                    if (uri != null) {
+                        val text = runCatching {
+                            context.contentResolver.openInputStream(uri)?.bufferedReader()?.readText()
+                        }.getOrNull()
+                        val ok = text != null && SettingsBackupStore.import(text)
+                        if (ok) {
+                            Toast.makeText(context, R.string.m3_backup_imported, Toast.LENGTH_SHORT).show()
+                            restartModernUi(context)
+                        } else {
+                            Toast.makeText(context, R.string.m3_backup_failed, Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    OutlinedButton(onClick = { exportLauncher.launch("gitrehub-settings.json") }) {
+                        Text(stringResource(R.string.m3_backup_export))
+                    }
+                    OutlinedButton(onClick = { importLauncher.launch(arrayOf("application/json")) }) {
+                        Text(stringResource(R.string.m3_backup_import))
+                    }
+                }
             }
         }
 
@@ -586,6 +694,63 @@ private fun NotificationSettings() {
             text = stringResource(R.string.m3_notif_interval_hint),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+
+    // Quiet hours: hold notifications inside a window instead of waking the phone at night.
+    Spacer(Modifier.height(14.dp))
+    val quietEnabled by NotificationPrefs.quietEnabled.collectAsStateWithLifecycle()
+    val quietStart by NotificationPrefs.quietStart.collectAsStateWithLifecycle()
+    val quietEnd by NotificationPrefs.quietEnd.collectAsStateWithLifecycle()
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            Text(stringResource(R.string.m3_quiet_title), style = MaterialTheme.typography.bodyLarge)
+            Text(
+                text = stringResource(R.string.m3_quiet_desc),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Switch(
+            checked = quietEnabled,
+            onCheckedChange = { NotificationPrefs.setQuietEnabled(it) },
+        )
+    }
+    if (quietEnabled) {
+        Spacer(Modifier.height(8.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = stringResource(R.string.m3_quiet_start),
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.weight(1f),
+            )
+            Text(
+                text = String.format(Locale.getDefault(), "%02d:00", quietStart),
+                style = MaterialTheme.typography.labelLarge,
+            )
+        }
+        Slider(
+            value = quietStart.toFloat(),
+            onValueChange = { NotificationPrefs.setQuietStart(it.toInt()) },
+            valueRange = 0f..23f,
+            steps = 22,
+        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = stringResource(R.string.m3_quiet_end),
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.weight(1f),
+            )
+            Text(
+                text = String.format(Locale.getDefault(), "%02d:00", quietEnd),
+                style = MaterialTheme.typography.labelLarge,
+            )
+        }
+        Slider(
+            value = quietEnd.toFloat(),
+            onValueChange = { NotificationPrefs.setQuietEnd(it.toInt()) },
+            valueRange = 0f..23f,
+            steps = 22,
         )
     }
 }

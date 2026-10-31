@@ -18,6 +18,7 @@ object ThemePrefs {
     internal const val KEY_FONT_SCALE = "m3_font_scale"
     internal const val KEY_COMPACT = "m3_compact"
     internal const val KEY_DENSITY = "m3_density_scale"
+    internal const val KEY_LINE_HEIGHT = "m3_line_height"
 
     /** Keys from the old version (seed colour + dynamic colour switch), used for migration. */
     internal const val KEY_LEGACY_DYNAMIC = "m3_dynamic_color"
@@ -28,6 +29,11 @@ object ThemePrefs {
     val fontScaleMax: Float = 1.40f
 
     val defaultFontScale: Float = 1.0f
+
+    /** Line-height multiplier (1.0 = the theme's own leading). */
+    val lineHeightMin: Float = 0.9f
+    val lineHeightMax: Float = 1.5f
+    val defaultLineHeight: Float = 1.0f
 
     /** Material You dynamic colour is only offered on Android 12+. */
     val supportsDynamicColor: Boolean get() = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
@@ -52,6 +58,9 @@ object ThemeState {
     private val _density = MutableStateFlow(readDensity())
     val density: StateFlow<Float> = _density.asStateFlow()
 
+    private val _lineHeight = MutableStateFlow(readLineHeight())
+    val lineHeight: StateFlow<Float> = _lineHeight.asStateFlow()
+
     fun setTheme(value: ThemeId) {        PrefHelper.putAny(ThemePrefs.KEY_THEME, value.name)
         _theme.value = value
     }
@@ -71,6 +80,11 @@ object ThemeState {
         _compact.value = compact
     }
 
+    fun setLineHeight(value: Float) {
+        _lineHeight.value = value.coerceIn(ThemePrefs.lineHeightMin, ThemePrefs.lineHeightMax)
+        PrefHelper.putAny(ThemePrefs.KEY_LINE_HEIGHT, _lineHeight.value)
+    }
+
     fun setDensity(value: Float) {
         previewDensity(value)
         PrefHelper.putAny(ThemePrefs.KEY_DENSITY, _density.value)
@@ -85,6 +99,11 @@ object ThemeState {
             PrefHelper.getBoolean(ThemePrefs.KEY_COMPACT)
 
     /** New key first; when upgrading from the old boolean "compact" switch, derive once. */
+    private fun readLineHeight(): Float {
+        val stored = PrefHelper.getFloat(ThemePrefs.KEY_LINE_HEIGHT)
+        return if (stored > 0.5f && stored < 2f) stored else ThemePrefs.defaultLineHeight
+    }
+
     private fun readDensity(): Float {
         val stored = PrefHelper.getFloat(ThemePrefs.KEY_DENSITY)
         if (stored > 0.5f && stored < 2f) return Density.clamp(stored)

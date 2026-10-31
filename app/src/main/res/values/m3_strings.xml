@@ -846,4 +846,160 @@ GitHub has no push channel for third-party clients, so this is real polling: the
     <string name="m3_draft_blocked">Not sent yet</string>
     <string name="m3_edit_conflict">The file changed on GitHub. Save again to overwrite it.</string>
     <string name="m3_draft_not_sent">Not sent: the thread is locked or you lack access. Saved as a draft.</string>
+
+    <string name="m3_pr_update_branch">Update branch</string>
+    <string name="m3_pr_update_branch_done">Branch updated</string>
+    <string name="m3_pr_ready">Ready for review</string>
+    <string name="m3_pr_to_draft">Convert to draft</string>
+    <string name="m3_pr_draft_done">Converted to draft</string>
+    <string name="m3_pr_ready_done">Marked ready for review</string>
+    <string name="m3_pr_request_review">Request review</string>
+    <string name="m3_pr_request_review_title">Request review</string>
+    <string name="m3_pr_reviewers_hint">Pick one or more collaborators.</string>
+    <string name="m3_pr_reviewers_empty">No collaborators available.</string>
+    <string name="m3_pr_send_review_request">Send request</string>
+    <string name="m3_pr_reviewers_sent">Review requested</string>
+    <string name="m3_pr_delete_branch">Delete branch</string>
+    <string name="m3_pr_delete_branch_title">Delete %1$s?</string>
+    <string name="m3_pr_delete_branch_message">The branch is deleted on GitHub. This can\'t be undone.</string>
+    <string name="m3_pr_branch_deleted">Branch deleted</string>
+    <string name="m3_pr_threads_open">%1$d unresolved conversations</string>
+    <string name="m3_pr_threads_all_resolved">All conversations resolved</string>
+    <string name="m3_pr_thread_resolve">Resolve</string>
+    <string name="m3_pr_thread_unresolve">Reopen</string>
+    <string name="m3_pr_thread_resolved">Conversation resolved</string>
+    <string name="m3_pr_thread_reopened">Conversation reopened</string>
+    <string name="m3_pr_threads_more">+%1$d more</string>
+
+    <string name="m3_notif_done">Done</string>
+    <string name="m3_notif_reply">Reply</string>
+    <string name="m3_notif_reply_hint">Reply to this thread</string>
+
+    <string name="m3_quiet_title">Quiet hours</string>
+    <string name="m3_quiet_desc">Hold notifications during this window; they arrive when it ends.</string>
+    <string name="m3_quiet_start">Starts at</string>
+    <string name="m3_quiet_end">Ends at</string>
+
+    <string name="m3_actions_run_workflow">Run workflow</string>
+    <string name="m3_actions_rerun_failed">Re-run failed jobs</string>
+    <string name="m3_actions_dispatched">Workflow started</string>
+    <string name="m3_actions_no_dispatch">This repository has no workflow that can be started manually.</string>
+    <string name="m3_actions_ref">Branch or tag</string>
+    <string name="m3_actions_inputs">Inputs (key=value, one per line)</string>
+    <string name="m3_actions_inputs_count">%1$d inputs</string>
+    <string name="m3_actions_run">Run</string>
+
+    <string name="m3_release_new">New release</string>
+    <string name="m3_release_edit">Edit release</string>
+    <string name="m3_release_compare">What changed</string>
+    <string name="m3_release_delete">Delete release</string>
+    <string name="m3_release_delete_title">Delete "%1$s"?</string>
+    <string name="m3_release_delete_asset">Delete asset</string>
+    <string name="m3_release_asset_deleted">Asset deleted</string>
+    <string name="m3_release_saved">Release saved</string>
+    <string name="m3_release_deleted">Release deleted</string>
+    <string name="m3_release_tag">Tag</string>
+    <string name="m3_release_target">Target branch or commit</string>
+    <string name="m3_release_title">Title</string>
+    <string name="m3_release_body">Release notes</string>
+    <string name="m3_release_body_hint">Markdown supported</string>
+    <string name="m3_release_previous_tag">Previous tag</string>
+    <string name="m3_release_auto">Automatic</string>
+    <string name="m3_release_draft">Save as draft</string>
+    <string name="m3_release_generate">Generate notes</string>
+    <string name="m3_release_save">Save</string>
+    <string name="m3_release_tag_required">A tag is required.</string>
+
+    <string name="m3_compare">Compare</string>
+    <string name="m3_compare_empty">Nothing differs between %1$s and %2$s.</string>
+    <string name="m3_compare_summary">%1$d commits · %2$d files changed</string>
+    <string name="m3_compare_ahead_behind">%1$d ahead · %2$d behind</string>
+    <string name="m3_compare_create_pull">Create pull request</string>
+    <string name="m3_compare_files">%1$d files</string>
+    <string name="m3_pr_diff_too_large">GitHub does not return this diff (too large).</string>
+
+    <string name="m3_delete">Delete</string>
+
+    <string name="m3_insights">Maintainer dashboard</string>
+    <string name="m3_insights_views">Views (14 days)</string>
+    <string name="m3_insights_clones">Clones (14 days)</string>
+    <string name="m3_insights_total">%1$d total</string>
+    <string name="m3_insights_uniques">%1$d unique visitors</string>
+    <string name="m3_insights_referrers">Where visitors came from</string>
+    <string name="m3_insights_paths">Most visited pages</string>
+    <string name="m3_insights_direct">Direct</string>
+    <string name="m3_insights_alerts">Dependabot alerts</string>
+    <string name="m3_insights_alerts_unavailable">This token cannot read Dependabot alerts (needs the security_events scope).</string>
+    <string name="m3_insights_alerts_none">No open alerts.</string>
+    <string name="m3_insights_stale">Issues untouched for 90 days</string>
+    <string name="m3_insights_stale_unavailable">Could not load the stale issues.</string>
+    <string name="m3_insights_stale_none">Nothing is stale.</string>
+    <string name="m3_insights_unavailable">Traffic data needs push access to this repository.</string>
+
+    <string name="m3_write_preview">Preview</string>
+    <string name="m3_write_edit_mode">Write</string>
+    <string name="m3_write_preview_empty">Nothing to preview yet.</string>
+    <string name="m3_write_snippets">Saved replies</string>
+    <string name="m3_write_snippets_hint">Tap one to insert it; the current text can be saved too.</string>
+    <string name="m3_write_snippet_save">Save current text as a reply</string>
+    <string name="m3_write_snippets_empty">No saved replies yet.</string>
+    <string name="m3_issue_new_comments">%1$d new comments</string>
+    <string name="m3_issue_jump_new">Jump</string>
+
+    <string name="m3_code_search">Search code</string>
+    <string name="m3_code_search_hint">Search words in this repository</string>
+    <string name="m3_code_search_empty">No code matches.</string>
+    <string name="m3_search_action">Search</string>
+    <string name="m3_repo_edit">Edit repository</string>
+    <string name="m3_repo_edit_saved">Repository updated</string>
+    <string name="m3_repo_description">Description</string>
+    <string name="m3_repo_homepage">Homepage</string>
+    <string name="m3_repo_topics">Topics (comma separated)</string>
+
+    <string name="m3_gist_new">New gist</string>
+    <string name="m3_gist_edit">Edit gist</string>
+    <string name="m3_gist_description">Description</string>
+    <string name="m3_gist_filename">File name</string>
+    <string name="m3_gist_content">File content</string>
+    <string name="m3_gist_public">Public gist</string>
+    <string name="m3_gist_save">Save gist</string>
+    <string name="m3_gist_saved">Gist saved</string>
+    <string name="m3_gist_empty">Write something first.</string>
+    <string name="m3_share_title">Shared with GitRehub</string>
+    <string name="m3_share_open_link">Open link</string>
+    <string name="m3_share_repo_hint">Repository for a new issue (owner/repo)</string>
+    <string name="m3_share_new_issue">New issue from this text</string>
+    <string name="m3_share_new_gist">Save as gist</string>
+    <string name="m3_share_copy">Copy text</string>
+    <string name="m3_share_copied">Copied</string>
+
+    <string name="m3_copy_permalink">Copy link to line</string>
+    <string name="m3_copy_markdown">Copy as Markdown</string>
+
+    <string name="m3_wifi_only_images">Load images on Wi-Fi only</string>
+    <string name="m3_wifi_only_images_desc">Avatars and screenshots are skipped on mobile data; text still loads.</string>
+
+    <string name="m3_section_backup">Backup</string>
+    <string name="m3_backup_hint">Move themes, type size, saved searches, favourites and canned replies to another phone. Tokens are not included.</string>
+    <string name="m3_backup_export">Export</string>
+    <string name="m3_backup_import">Import</string>
+    <string name="m3_backup_exported">Settings exported</string>
+    <string name="m3_backup_imported">Settings imported</string>
+    <string name="m3_backup_failed">That file could not be imported.</string>
+
+    <string name="m3_theme_amoled">AMOLED black</string>
+    <string name="m3_theme_amoled_desc">True black surfaces for OLED screens</string>
+
+    <string name="m3_line_height">Line height</string>
+
+    <string name="m3_print">Print</string>
+
+    <string name="m3_new_pull">New pull request</string>
+    <string name="m3_new_pull_base">Base</string>
+    <string name="m3_new_pull_head">Compare (head)</string>
+    <string name="m3_new_pull_draft">Draft</string>
+    <string name="m3_new_pull_create">Create pull request</string>
+
+    <string name="m3_actions_inputs_hint">key=value</string>
+    <string name="m3_repo_topics_hint">android, kotlin</string>
 </resources>

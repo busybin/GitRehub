@@ -24,6 +24,7 @@ import io.github.busybin.gitrehub.R
 enum class ThemeId(@StringRes val labelRes: Int, @StringRes val blurbRes: Int) {
     WALLPAPER(R.string.m3_theme_wallpaper, R.string.m3_theme_wallpaper_desc),
     GITHUB(R.string.m3_theme_github, R.string.m3_theme_github_desc),
+    AMOLED(R.string.m3_theme_amoled, R.string.m3_theme_amoled_desc),
     ONE_DARK(R.string.m3_theme_onedark, R.string.m3_theme_onedark_desc),
     DRACULA(R.string.m3_theme_dracula, R.string.m3_theme_dracula_desc),
     NORD(R.string.m3_theme_nord, R.string.m3_theme_nord_desc),
@@ -101,6 +102,48 @@ internal val ThemeId.spec: FaSpec?
 private fun ThemeId.buildSpec(): FaSpec? = when (this) {
         // Wallpaper-following takes the whole scheme from the system, so there are no base tones.
         ThemeId.WALLPAPER -> null
+
+        ThemeId.AMOLED -> FaSpec(
+            // Same syntax colours as GitHub; only the surfaces go to true black (OLED power saving).
+            light = Tones(
+                background = Color(0xFFFFFFFF),
+                surface = Color(0xFFFFFFFF),
+                variant = Color(0xFFF6F8FA),
+                onSurface = Color(0xFF1F2328),
+                onVariant = Color(0xFF59636E),
+                primary = Color(0xFF0969DA),
+                outline = Color(0xFFD1D9E0),
+            ),
+            dark = Tones(
+                background = Color(0xFF000000),
+                surface = Color(0xFF000000),
+                variant = Color(0xFF0A0A0A),
+                onSurface = Color(0xFFE6EDF3),
+                onVariant = Color(0xFF9198A1),
+                primary = Color(0xFF4493F8),
+                outline = Color(0xFF262626),
+            ),
+            lightCode = CodePalette(
+                background = Color(0xFFF6F8FA),
+                plain = Color(0xFF1F2328),
+                comment = Color(0xFF59636E),
+                keyword = Color(0xFFCF222E),
+                string = Color(0xFF0A3069),
+                number = Color(0xFF0550AE),
+                function = Color(0xFF8250DF),
+                type = Color(0xFF953800),
+            ),
+            darkCode = CodePalette(
+                background = Color(0xFF000000),
+                plain = Color(0xFFE6EDF3),
+                comment = Color(0xFF8B949E),
+                keyword = Color(0xFFFF7B72),
+                string = Color(0xFFA5D6FF),
+                number = Color(0xFF79C0FF),
+                function = Color(0xFFD2A8FF),
+                type = Color(0xFFFFA657),
+            ),
+        )
 
         ThemeId.GITHUB -> FaSpec(
             light = Tones(

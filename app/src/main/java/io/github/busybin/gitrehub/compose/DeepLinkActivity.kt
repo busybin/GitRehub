@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import io.github.busybin.gitrehub.compose.common.PendingText
 import io.github.busybin.gitrehub.helper.BrowserLauncher
 import io.github.busybin.gitrehub.helper.InputHelper.isEmpty
 import io.github.busybin.gitrehub.provider.scheme.SchemeParser
@@ -22,10 +23,23 @@ class DeepLinkActivity : Activity() {
         super.onCreate(savedInstanceState)
         when (val action = intent?.action) {
             Intent.ACTION_SEND -> {
-                val shared = intent?.getStringExtra(Intent.EXTRA_TEXT)
+                val shared = intent?.getStringExtra(Intent.EXTRA_TEXT).orEmpty()
                 // Shared text is usually "some words https://github.com/owner/repo more words".
-                val url = shared?.let { firstUrlIn(it) }
-                if (url != null) open(Uri.parse(url)) else finishQuietly()
+                val url = firstUrlIn(shared)
+                if (url != null) {
+                    open(Uri.parse(url))
+                } else if (shared.isNotBlank()) {
+                    // No link: offer to turn the text into an issue or a gist instead of dropping it.
+                    PendingText.shared = shared
+                    startActivity(
+                        Intent(this, MainComposeActivity::class.java)
+                            .putExtra(SchemeParser.EXTRA_NAVIGATE, Routes.SHARE)
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                    )
+                    finish()
+                } else {
+                    finishQuietly()
+                }
             }
             Intent.ACTION_VIEW -> {
                 val data = intent?.data

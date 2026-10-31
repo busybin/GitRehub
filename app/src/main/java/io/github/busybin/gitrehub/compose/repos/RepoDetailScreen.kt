@@ -43,10 +43,12 @@ import androidx.compose.material.icons.automirrored.outlined.Toc
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.CallSplit
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ForkRight
 import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material.icons.outlined.Insights
+import androidx.compose.material.icons.outlined.QueryStats
 import androidx.compose.material.icons.outlined.Label
 import androidx.compose.material.icons.outlined.NewReleases
 import androidx.compose.material.icons.outlined.Notifications
@@ -111,6 +113,7 @@ import io.github.busybin.gitrehub.compose.common.ConfirmDialog
 import io.github.busybin.gitrehub.compose.common.HtmlText
 import io.github.busybin.gitrehub.compose.common.LinkCopyDialog
 import io.github.busybin.gitrehub.compose.common.MetaText
+import io.github.busybin.gitrehub.compose.common.Pill
 import io.github.busybin.gitrehub.compose.common.OutlineController
 import io.github.busybin.gitrehub.compose.common.compactNumber
 import io.github.busybin.gitrehub.compose.common.relativeTime
@@ -153,6 +156,7 @@ fun RepoDetailScreen(
     onOpenDiscussions: (String, String) -> Unit = { _, _ -> },
     onOpenActions: (String, String) -> Unit = { _, _ -> },
     onOpenActivity: (String, String) -> Unit = { _, _ -> },
+    onOpenInsights: (String, String) -> Unit = { _, _ -> },
     onOpenLabels: (String, String) -> Unit = { _, _ -> },
     onOpenMilestones: (String, String) -> Unit = { _, _ -> },
     onOpenUser: (String) -> Unit = {},
@@ -166,6 +170,7 @@ fun RepoDetailScreen(
     val forked by vm.forked.collectAsStateWithLifecycle()
     val forkFullName by vm.forkFullName.collectAsStateWithLifecycle()
     val watchBusy by vm.watchBusy.collectAsStateWithLifecycle()
+    val editBusy by vm.editBusy.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val download = rememberDownloader()
@@ -181,6 +186,7 @@ fun RepoDetailScreen(
     var confirmStar by remember { mutableStateOf(false) }
     var showWatch by remember { mutableStateOf(false) }
     var showForkDialog by remember { mutableStateOf(false) }
+    var showEditRepo by remember { mutableStateOf(false) }
 
     LaunchedEffect(owner, name) { vm.load(owner, name) }
 
@@ -224,6 +230,19 @@ fun RepoDetailScreen(
                     vm.forkRepo(forkName, defaultBranchOnly)
                 },
                 onDismiss = { showForkDialog = false },
+            )
+        }
+        if (showEditRepo) {
+            RepoEditDialog(
+                description = repo.description.orEmpty(),
+                homepage = repo.homepage.orEmpty(),
+                topics = repo.topics,
+                busy = editBusy,
+                onSave = { description, homepage, topics ->
+                    showEditRepo = false
+                    vm.editRepo(description, homepage, topics)
+                },
+                onDismiss = { showEditRepo = false },
             )
         }
         if (showWatch) {
@@ -352,6 +371,15 @@ fun RepoDetailScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
+                if (repo.topics.isNotEmpty()) {
+                    Spacer(Modifier.height(8.dp))
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        repo.topics.forEach { topic -> Pill(topic) }
+                    }
+                }
 
                 // ----- Stat chips (tappable: stars -> stargazers, forks -> fork list)
                 Spacer(Modifier.height(12.dp))
@@ -442,6 +470,18 @@ fun RepoDetailScreen(
                         label = stringResource(R.string.m3_activity),
                         onClick = { onOpenActivity(owner, name) },
                     )
+                    if (repo.permissions?.canWrite == true) {
+                        NavChip(
+                            icon = Icons.Outlined.QueryStats,
+                            label = stringResource(R.string.m3_insights),
+                            onClick = { onOpenInsights(owner, name) },
+                        )
+                        NavChip(
+                            icon = Icons.Outlined.Edit,
+                            label = stringResource(R.string.m3_repo_edit),
+                            onClick = { showEditRepo = true },
+                        )
+                    }
                     NavChip(
                         icon = Icons.Outlined.Groups,
                         label = stringResource(R.string.m3_contributors),
@@ -923,6 +963,65 @@ private fun ForkDialog(
             ) { Text(stringResource(R.string.m3_fork_confirm)) }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.m3_cancel)) } },
+    )
+}
+
+/** Edit description / homepage / topics of a repository the account can push to. */
+@Composable
+private fun RepoEditDialog(
+    description: String,
+    homepage: String,
+    topics: List<String>,
+    busy: Boolean,
+    onSave: (String, String, List<String>) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var desc by remember { mutableStateOf(description) }
+    var home by remember { mutableStateOf(homepage) }
+    var topicText by remember { mutableStateOf(topics.joinToString(", ")) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.m3_repo_edit)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = desc,
+                    onValueChange = { desc = it },
+                    label = { Text(stringResource(R.string.m3_repo_description)) },
+                    minLines = 2,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                OutlinedTextField(
+                    value = home,
+                    onValueChange = { home = it },
+                    label = { Text(stringResource(R.string.m3_repo_homepage)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                OutlinedTextField(
+                    value = topicText,
+                    onValueChange = { topicText = it },
+                    label = { Text(stringResource(R.string.m3_repo_topics)) },
+                    placeholder = { Text(stringResource(R.string.m3_repo_topics_hint)) },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    onSave(
+                        desc,
+                        home,
+                        topicText.split(',').map { it.trim() }.filter { it.isNotEmpty() },
+                    )
+                },
+                enabled = !busy,
+            ) { Text(stringResource(R.string.m3_save)) }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.m3_cancel)) }
+        },
     )
 }
 

@@ -7,12 +7,15 @@ import io.github.busybin.gitrehub.core.model.CodeFrequency
 import io.github.busybin.gitrehub.core.model.Comment
 import io.github.busybin.gitrehub.core.model.Commit
 import io.github.busybin.gitrehub.core.model.CommitFile
+import io.github.busybin.gitrehub.core.model.CompareResult
 import io.github.busybin.gitrehub.core.model.ContributionCalendar
 import io.github.busybin.gitrehub.core.model.ContributorStat
 import io.github.busybin.gitrehub.core.model.CreatedPullRequest
+import io.github.busybin.gitrehub.core.model.DependabotAlert
 import io.github.busybin.gitrehub.core.model.Discussion
 import io.github.busybin.gitrehub.core.model.DiscussionComment
 import io.github.busybin.gitrehub.core.model.Event
+import io.github.busybin.gitrehub.core.model.GeneratedNotes
 import io.github.busybin.gitrehub.core.model.Gist
 import io.github.busybin.gitrehub.core.model.GitTree
 import io.github.busybin.gitrehub.core.model.Issue
@@ -28,11 +31,15 @@ import io.github.busybin.gitrehub.core.model.Repo
 import io.github.busybin.gitrehub.core.model.RepoSubscription
 import io.github.busybin.gitrehub.core.model.Review
 import io.github.busybin.gitrehub.core.model.ReviewComment
+import io.github.busybin.gitrehub.core.model.ReviewThread
 import io.github.busybin.gitrehub.core.model.SearchCode
 import io.github.busybin.gitrehub.core.model.SearchResult
 import io.github.busybin.gitrehub.core.model.StatsOutcome
 import io.github.busybin.gitrehub.core.model.Tag
 import io.github.busybin.gitrehub.core.model.ThreadSubscription
+import io.github.busybin.gitrehub.core.model.TrafficPath
+import io.github.busybin.gitrehub.core.model.TrafficReferrer
+import io.github.busybin.gitrehub.core.model.TrafficSeries
 import io.github.busybin.gitrehub.core.model.User
 import io.github.busybin.gitrehub.core.model.WatchLevel
 import io.github.busybin.gitrehub.core.model.WatchersPage
@@ -110,6 +117,30 @@ object GitHubApi {
         GitHubClient.get("/gists/$id", Gist.serializer()).value
 
     suspend fun deleteGist(id: String) = GitHubClient.sendNoContent("DELETE", "/gists/$id")
+
+    /** `POST /gists`. [files] maps a filename to its text; a gist needs at least one entry. */
+    suspend fun createGist(
+        description: String,
+        public: Boolean,
+        files: Map<String, String>,
+    ): Gist = GitHubClient.send(
+        "POST",
+        "/gists",
+        WriteBodies.gist(description, public, files),
+        Gist.serializer(),
+    ).value
+
+    /** `PATCH /gists/{id}`: files left out keep their text, a `null` value deletes them. */
+    suspend fun updateGist(
+        id: String,
+        description: String,
+        files: Map<String, String?>,
+    ): Gist = GitHubClient.send(
+        "PATCH",
+        "/gists/$id",
+        WriteBodies.gist(description, public = false, files = files),
+        Gist.serializer(),
+    ).value
 
     private suspend fun gists(path: String, page: Int): ApiResponse<List<Gist>> =
         GitHubClient.get(
@@ -219,6 +250,36 @@ object GitHubApi {
 
     suspend fun repo(owner: String, repo: String): Repo =
         GitHubClient.get("/repos/$owner/$repo", Repo.serializer()).value
+
+    /**
+     * `PATCH /repos/{o}/{r}`: description and homepage. Topics live on their own endpoint, because
+     * GitHub only accepts them through `PUT /topics` (and the PATCH ignores the field silently).
+     */
+    suspend fun editRepo(
+        owner: String,
+        repo: String,
+        description: String,
+        homepage: String,
+        topics: List<String>?,
+    ): Repo {
+        val updated = GitHubClient.send(
+            "PATCH",
+            "/repos/$owner/$repo",
+            WriteBodies.repoEdit(description.trim(), homepage.trim()),
+            Repo.serializer(),
+        ).value
+        if (topics == null) return updated
+        val names = GitHubClient.send(
+            "PUT",
+            "/repos/$owner/$repo/topics",
+            WriteBodies.topics(topics.map { it.trim() }.filter { it.isNotEmpty() }),
+            RepoTopicsEnvelope.serializer(),
+        ).value.names
+        return updated.copy(topics = names)
+    }
+
+    @Serializable
+    private data class RepoTopicsEnvelope(val names: List<String> = emptyList())
 
     /** README rendered by GitHub itself (`Accept: application/vnd.github.html`), as the detail page shows it. */
     suspend fun readmeHtml(owner: String, repo: String): String = GitHubClient.getText(
@@ -465,6 +526,125 @@ object GitHubApi {
         ListSerializer(ReviewComment.serializer()),
         query = mapOf("per_page" to "100"),
     ).value
+
+    // ------------------------------------------------- pull request review completion
+
+    /** `POST /pulls/{n}/requested_reviewers`. Adding someone already requested is a no-op on GitHub. */
+    suspend fun requestReviewers(
+        owner: String,
+        repo: String,
+        number: Int,
+        reviewers: List<String>,
+    ): PullRequest {
+        if (reviewers.isEmpty()) return pullRequest(owner, repo, number)
+        return GitHubClient.send(
+            "POST",
+            "/repos/$owner/$repo/pulls/$number/requested_reviewers",
+            WriteBodies.reviewers(reviewers),
+            PullRequest.serializer(),
+        ).value
+    }
+
+    /** `DELETE /pulls/{n}/requested_reviewers` — the one DELETE that carries a JSON body here. */
+    suspend fun removeReviewers(
+        owner: String,
+        repo: String,
+        number: Int,
+        reviewers: List<String>,
+    ): PullRequest = GitHubClient.send(
+        "DELETE",
+        "/repos/$owner/$repo/pulls/$number/requested_reviewers",
+        WriteBodies.reviewers(reviewers),
+        PullRequest.serializer(),
+    ).value
+
+    /** `PUT /pulls/{n}/update-branch`: merges the base branch into the PR branch (202 Accepted). */
+    suspend fun updatePullBranch(
+        owner: String,
+        repo: String,
+        number: Int,
+        expectedHeadSha: String?,
+    ) = GitHubClient.sendNoContent(
+        "PUT",
+        "/repos/$owner/$repo/pulls/$number/update-branch",
+        WriteBodies.updateBranch(expectedHeadSha),
+    )
+
+    /** `DELETE /git/refs/heads/{branch}`: remove the source branch after a merge. */
+    suspend fun deleteBranch(owner: String, repo: String, branch: String) =
+        GitHubClient.sendNoContent(
+            "DELETE",
+            "/repos/$owner/$repo/git/refs/heads/${encodePath(branch)}",
+        )
+
+    /**
+     * Convert a PR to draft / mark it ready. Both are GraphQL-only mutations keyed by the PR's node
+     * id, so the REST object is read first (its `node_id` is not in the lists we already hold).
+     */
+    suspend fun setPullDraft(owner: String, repo: String, number: Int, draft: Boolean) {
+        val nodeId = pullRequest(owner, repo, number).nodeId
+            ?: throw ApiException(422, "Pull request has no node id")
+        val field = if (draft) "convertPullRequestToDraft" else "markPullRequestReadyForReview"
+        GitHubClient.graphQl(
+            "mutation SetDraft(${'$'}id: ID!) { $field(input: {pullRequestId: ${'$'}id}) { pullRequest { isDraft } } }",
+            buildJsonObject { put("id", JsonPrimitive(nodeId)) },
+        )
+    }
+
+    private const val REVIEW_THREADS_QUERY = """
+        query ReviewThreads(${'$'}owner: String!, ${'$'}repo: String!, ${'$'}number: Int!) {
+          repository(owner: ${'$'}owner, name: ${'$'}repo) {
+            pullRequest(number: ${'$'}number) {
+              reviewThreads(first: 100) {
+                nodes {
+                  id
+                  path
+                  line
+                  isResolved
+                  isOutdated
+                  comments(first: 1) { nodes { body author { login avatarUrl } } }
+                }
+              }
+            }
+          }
+        }
+    """
+
+    /** Review conversations of a PR. REST has no thread ids, so resolving one needs this query. */
+    suspend fun reviewThreads(owner: String, repo: String, number: Int): List<ReviewThread> {
+        val data = GitHubClient.graphQl(
+            REVIEW_THREADS_QUERY,
+            buildJsonObject {
+                put("owner", JsonPrimitive(owner))
+                put("repo", JsonPrimitive(repo))
+                put("number", JsonPrimitive(number))
+            },
+        )
+        return GitHubClient.json
+            .decodeFromJsonElement(ReviewThreadsEnvelope.serializer(), data)
+            .repository?.pullRequest?.reviewThreads?.nodes.orEmpty()
+    }
+
+    /** `resolveReviewThread` / `unresolveReviewThread`. */
+    suspend fun setReviewThreadResolved(threadId: String, resolved: Boolean) {
+        val field = if (resolved) "resolveReviewThread" else "unresolveReviewThread"
+        GitHubClient.graphQl(
+            "mutation ResolveThread(${'$'}id: ID!) { $field(input: {threadId: ${'$'}id}) { thread { isResolved } } }",
+            buildJsonObject { put("id", JsonPrimitive(threadId)) },
+        )
+    }
+
+    @Serializable
+    private data class ReviewThreadsEnvelope(val repository: ReviewThreadsRepo? = null)
+
+    @Serializable
+    private data class ReviewThreadsRepo(val pullRequest: ReviewThreadsPull? = null)
+
+    @Serializable
+    private data class ReviewThreadsPull(val reviewThreads: ReviewThreadsConn? = null)
+
+    @Serializable
+    private data class ReviewThreadsConn(val nodes: List<ReviewThread> = emptyList())
 
     /** `POST /pulls/{n}/reviews`: inline comments plus the verdict in one submission. */
     suspend fun submitReview(
@@ -823,6 +1003,85 @@ object GitHubApi {
     suspend fun release(owner: String, repo: String, id: Long): Release =
         GitHubClient.get("/repos/$owner/$repo/releases/$id", Release.serializer()).value
 
+    /** `POST /releases/generate-notes`: a changelog built from the PRs merged since the last tag. */
+    suspend fun generateReleaseNotes(
+        owner: String,
+        repo: String,
+        tagName: String,
+        targetCommitish: String? = null,
+        previousTagName: String? = null,
+    ): GeneratedNotes = GitHubClient.send(
+        "POST",
+        "/repos/$owner/$repo/releases/generate-notes",
+        WriteBodies.generateNotes(tagName, targetCommitish, previousTagName),
+        GeneratedNotes.serializer(),
+    ).value
+
+    /** `POST /releases`: creates a draft or publishes immediately. */
+    suspend fun createRelease(
+        owner: String,
+        repo: String,
+        tagName: String,
+        targetCommitish: String?,
+        name: String,
+        body: String,
+        draft: Boolean,
+        prerelease: Boolean,
+    ): Release = GitHubClient.send(
+        "POST",
+        "/repos/$owner/$repo/releases",
+        WriteBodies.release(
+            tagName = tagName,
+            targetCommitish = targetCommitish,
+            name = name,
+            body = body,
+            draft = draft,
+            prerelease = prerelease,
+        ),
+        Release.serializer(),
+    ).value
+
+    /**
+     * `PATCH /releases/{id}`. Every editable field is sent, so clearing the name/body really clears
+     * it; `tagName` is only sent when it changed (GitHub rejects a retag on a published release).
+     */
+    suspend fun updateRelease(
+        owner: String,
+        repo: String,
+        id: Long,
+        tagName: String?,
+        targetCommitish: String?,
+        name: String,
+        body: String,
+        draft: Boolean,
+        prerelease: Boolean,
+    ): Release = GitHubClient.send(
+        "PATCH",
+        "/repos/$owner/$repo/releases/$id",
+        WriteBodies.release(
+            tagName = tagName,
+            targetCommitish = targetCommitish,
+            name = name,
+            body = body,
+            draft = draft,
+            prerelease = prerelease,
+        ),
+        Release.serializer(),
+    ).value
+
+    suspend fun deleteRelease(owner: String, repo: String, id: Long) =
+        GitHubClient.sendNoContent("DELETE", "/repos/$owner/$repo/releases/$id")
+
+    suspend fun deleteReleaseAsset(owner: String, repo: String, assetId: Long) =
+        GitHubClient.sendNoContent("DELETE", "/repos/$owner/$repo/releases/assets/$assetId")
+
+    /** `GET /compare/{base}...{head}`: commits and files between two refs. */
+    suspend fun compare(owner: String, repo: String, base: String, head: String): CompareResult =
+        GitHubClient.get(
+            "/repos/$owner/$repo/compare/${encodePath("$base...$head")}",
+            CompareResult.serializer(),
+        ).value
+
     /**
      * Directory contents (`GET .../contents/{path}`) as a raw answer: the endpoint returns an array
      * for a directory and an object for a file, and GitHub rejects a malformed path with 404.
@@ -927,6 +1186,56 @@ object GitHubApi {
         return StatsOutcome.Data(parse(raw.body))
     }
 
+    // ------------------------------------------------- maintainer dashboard
+
+    /** `GET /traffic/views`: needs push access; GitHub keeps 14 days. */
+    suspend fun trafficViews(owner: String, repo: String): TrafficSeries =
+        GitHubClient.get(
+            "/repos/$owner/$repo/traffic/views",
+            TrafficSeries.serializer(),
+        ).value
+
+    /** `GET /traffic/clones`; same shape as views, under the `clones` key. */
+    suspend fun trafficClones(owner: String, repo: String): TrafficSeries =
+        GitHubClient.get(
+            "/repos/$owner/$repo/traffic/clones",
+            TrafficSeries.serializer(),
+        ).value
+
+    suspend fun trafficReferrers(owner: String, repo: String): List<TrafficReferrer> =
+        GitHubClient.get(
+            "/repos/$owner/$repo/traffic/popular/referrers",
+            ListSerializer(TrafficReferrer.serializer()),
+        ).value
+
+    suspend fun trafficPaths(owner: String, repo: String): List<TrafficPath> =
+        GitHubClient.get(
+            "/repos/$owner/$repo/traffic/popular/paths",
+            ListSerializer(TrafficPath.serializer()),
+        ).value
+
+    /**
+     * `GET /dependabot/alerts`. A classic token without `security_events` (and a fine-grained token
+     * without Dependabot read) gets a 403; callers show "not available" instead of failing the page.
+     */
+    suspend fun dependabotAlerts(owner: String, repo: String): List<DependabotAlert> =
+        GitHubClient.get(
+            "/repos/$owner/$repo/dependabot/alerts",
+            ListSerializer(DependabotAlert.serializer()),
+            query = mapOf("state" to "open", "per_page" to "100"),
+        ).value
+
+    /** Open issues untouched for [days] days, oldest first — the "stale backlog" list. */
+    suspend fun staleIssues(owner: String, repo: String, days: Int): List<Issue> {
+        val before = java.time.LocalDate.now().minusDays(days.toLong()).toString()
+        return searchIssues(
+            query = "repo:$owner/$repo is:issue is:open updated:<$before",
+            page = 1,
+            sort = "updated",
+            order = "asc",
+        ).value.items
+    }
+
     /** Percent-encodes each path segment; `+` is not valid in a path, so spaces become `%20`. */
     private fun encodePath(path: String): String = path.trim('/').split('/')
         .filter { it.isNotEmpty() }
@@ -987,6 +1296,30 @@ object GitHubApi {
             "/repos/$owner/$repo/actions/runs/$runId/cancel",
             JsonObject(emptyMap()),
         )
+
+    /** Re-runs only the failed jobs of a completed run (`rerun-failed-jobs`). */
+    suspend fun rerunFailedJobs(owner: String, repo: String, runId: Long) =
+        GitHubClient.sendNoContent(
+            "POST",
+            "/repos/$owner/$repo/actions/runs/$runId/rerun-failed-jobs",
+            JsonObject(emptyMap()),
+        )
+
+    /**
+     * `POST /actions/workflows/{id}/dispatches`: the mobile "run it now" button. GitHub answers 204
+     * whether or not the workflow declared `workflow_dispatch`; a non-dispatchable workflow is a 422.
+     */
+    suspend fun dispatchWorkflow(
+        owner: String,
+        repo: String,
+        workflowId: Long,
+        ref: String,
+        inputs: Map<String, String>,
+    ) = GitHubClient.sendNoContent(
+        "POST",
+        "/repos/$owner/$repo/actions/workflows/$workflowId/dispatches",
+        WriteBodies.dispatch(ref, inputs),
+    )
 
     suspend fun discussions(
         owner: String,

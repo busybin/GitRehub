@@ -30,6 +30,13 @@ object NotificationPrefs {
     /** Foreground (per-second) service toggle. */
     private const val KEY_FOREGROUND = PrefGetter.NOTIFICATION_FOREGROUND
 
+    private const val KEY_QUIET_ENABLED = "m3_quiet_hours_enabled"
+    private const val KEY_QUIET_START = "m3_quiet_hours_start"
+    private const val KEY_QUIET_END = "m3_quiet_hours_end"
+
+    const val DEFAULT_QUIET_START = 22
+    const val DEFAULT_QUIET_END = 7
+
     /** Interval options in minutes. A 1-minute value really means 1: the job reschedules itself
      *  instead of using `setPeriodic`, which the system clamps to 15 minutes. Doze may still delay it. */
     val intervals: List<Int> = listOf(1, 2, 5, 10, 15, 30, 60)
@@ -112,6 +119,54 @@ object NotificationPrefs {
             // The job may have been re-armed by App.onCreate before this ran; only one poller may live.
             NotificationSchedulerJobTask.cancelAll(context)
         }
+    }
+
+    // ------------------------------------------------------------------ quiet hours
+
+    private val _quietEnabled = MutableStateFlow(
+        PrefHelper.isExist<Boolean>(KEY_QUIET_ENABLED) && PrefHelper.getBoolean(KEY_QUIET_ENABLED)
+    )
+    val quietEnabled: StateFlow<Boolean> = _quietEnabled.asStateFlow()
+
+    private val _quietStart = MutableStateFlow(
+        PrefHelper.getString(KEY_QUIET_START)?.toIntOrNull() ?: DEFAULT_QUIET_START
+    )
+    val quietStart: StateFlow<Int> = _quietStart.asStateFlow()
+
+    private val _quietEnd = MutableStateFlow(
+        PrefHelper.getString(KEY_QUIET_END)?.toIntOrNull() ?: DEFAULT_QUIET_END
+    )
+    val quietEnd: StateFlow<Int> = _quietEnd.asStateFlow()
+
+    fun setQuietEnabled(enabled: Boolean) {
+        PrefHelper.putAny(KEY_QUIET_ENABLED, enabled)
+        _quietEnabled.value = enabled
+    }
+
+    fun setQuietStart(hour: Int) {
+        val clean = hour.coerceIn(0, 23)
+        PrefHelper.putAny(KEY_QUIET_START, clean.toString())
+        _quietStart.value = clean
+    }
+
+    fun setQuietEnd(hour: Int) {
+        val clean = hour.coerceIn(0, 23)
+        PrefHelper.putAny(KEY_QUIET_END, clean.toString())
+        _quietEnd.value = clean
+    }
+
+    /**
+     * Whether notifications should be held right now. A window whose end is earlier than its start
+     * wraps midnight (22 -> 07); start == end means "always quiet", which is what a user picking the
+     * same hour twice means.
+     */
+    fun isQuietNow(hour: Int = java.time.LocalTime.now().hour): Boolean {
+        if (!_quietEnabled.value) return false
+        val start = _quietStart.value
+        val end = _quietEnd.value
+        return if (start == end) true
+        else if (start < end) hour >= start && hour < end
+        else hour >= start || hour < end
     }
 
     /** Label resource for a settings chip (follows the system language). */

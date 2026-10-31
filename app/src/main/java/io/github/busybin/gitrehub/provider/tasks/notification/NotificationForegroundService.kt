@@ -14,6 +14,7 @@ import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import io.github.busybin.gitrehub.R
 import io.github.busybin.gitrehub.compose.MainComposeActivity
+import io.github.busybin.gitrehub.compose.notifications.NotificationPrefs
 import io.github.busybin.gitrehub.core.auth.Session
 import io.github.busybin.gitrehub.core.model.Notification
 import io.github.busybin.gitrehub.core.net.GitHubApi
@@ -90,6 +91,12 @@ class NotificationForegroundService : Service() {
             firstRound = false
             NotifiedThreads.remember(unreadIds)
         } else {
+            // Quiet hours: keep the baseline untouched, so everything that arrived overnight still
+            // pops once the window ends (a single summary, not one alarm per thread).
+            if (NotificationPrefs.isQuietNow()) {
+                updatePersistent(unread.size)
+                return
+            }
             // Skip what the interval job already showed: after an Android 15 timeout the two pollers
             // hand over to each other, and nothing should pop up twice.
             val shown = NotifiedThreads.ids()
@@ -115,15 +122,18 @@ class NotificationForegroundService : Service() {
         items.take(5).forEach { thread ->
             val title = thread.subject?.title ?: thread.repoFullName ?: getString(R.string.m3_notification)
             val text = thread.repoFullName.orEmpty()
-            val notification = NotificationCompat.Builder(this, CHANNEL_NEW)
+            val builder = NotificationCompat.Builder(this, CHANNEL_NEW)
                 .setSmallIcon(R.drawable.ic_notification)
                 .setContentTitle(title)
                 .setContentText(text)
                 .setAutoCancel(true)
                 .setContentIntent(open)
                 .setGroup(CHANNEL_NEW)
-                .build()
-            manager.notify(InputHelper.getSafeIntId(thread.numericId), notification)
+            NotificationActions.attach(
+                this, builder, thread,
+                NotificationActions.readIntent(this, thread.numericId),
+            )
+            manager.notify(InputHelper.getSafeIntId(thread.numericId), builder.build())
         }
         if (items.size > 1) {
             val summary = NotificationCompat.Builder(this, CHANNEL_NEW)

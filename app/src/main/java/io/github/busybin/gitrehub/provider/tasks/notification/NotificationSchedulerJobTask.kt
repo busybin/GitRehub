@@ -18,6 +18,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import io.github.busybin.gitrehub.R
 import io.github.busybin.gitrehub.compose.MainComposeActivity
+import io.github.busybin.gitrehub.compose.notifications.NotificationPrefs
 import io.github.busybin.gitrehub.core.auth.Session
 import io.github.busybin.gitrehub.core.model.Comment
 import io.github.busybin.gitrehub.core.model.Notification
@@ -89,6 +90,11 @@ class NotificationSchedulerJobTask : JobService() {
             finishJob(job)
             return
         }
+        // Quiet hours: leave the backlog untouched so it pops after the window instead of vanishing.
+        if (NotificationPrefs.isQuietNow()) {
+            finishJob(job)
+            return
+        }
         val context = applicationContext
         val accentColor = ContextCompat.getColor(this, R.color.material_blue_700)
         val first = items[0]
@@ -130,23 +136,17 @@ class NotificationSchedulerJobTask : JobService() {
     private fun showWithoutComment(context: Context, accentColor: Int, thread: Notification) {
         val title = thread.subject?.title ?: getString(R.string.m3_notification)
         val url = thread.subject?.url ?: thread.url.orEmpty()
-        val toAdd = getNotification(title, thread.repoFullName ?: "general", thread.repoFullName ?: "general")
+        val builder = getNotification(title, thread.repoFullName ?: "general", thread.repoFullName ?: "general")
             .setLargeIcon(BitmapFactory.decodeResource(resources, R.mipmap.ic_launcher))
             .setContentIntent(getPendingIntent(thread.numericId, url))
-            .addAction(
-                R.drawable.ic_open, context.getString(R.string.open),
-                getPendingIntent(thread.numericId, url),
-            )
-            .addAction(
-                R.drawable.ic_eye_off, context.getString(R.string.mark_as_read),
-                getReadOnlyPendingIntent(thread.numericId, url),
-            )
             .setWhen(thread.updatedAt?.toEpochMilli() ?: System.currentTimeMillis())
             .setShowWhen(true)
             .setColor(accentColor)
             .setGroup(NOTIFICATION_GROUP_ID)
-            .build()
-        showNotification(thread.numericId, toAdd)
+        NotificationActions.attach(
+            context, builder, thread, NotificationActions.readIntent(context, thread.numericId),
+        )
+        showNotification(thread.numericId, builder.build())
     }
 
     private fun showWithComment(
@@ -158,7 +158,7 @@ class NotificationSchedulerJobTask : JobService() {
         val login = comment.user?.login.orEmpty()
         val body = MarkDownProvider.stripMdText(comment.body)
         val url = thread.subject?.url ?: thread.url.orEmpty()
-        @SuppressLint("LaunchActivityFromNotification") val toAdd = getNotification(
+        @SuppressLint("LaunchActivityFromNotification") val builder = getNotification(
             login,
             body,
             thread.repoFullName ?: "general",
@@ -172,19 +172,13 @@ class NotificationSchedulerJobTask : JobService() {
             )
             .setWhen(comment.createdAt?.toEpochMilli() ?: System.currentTimeMillis())
             .setShowWhen(true)
-            .addAction(
-                R.drawable.ic_open, context.getString(R.string.open),
-                getPendingIntent(thread.numericId, url),
-            )
-            .addAction(
-                R.drawable.ic_eye_off, context.getString(R.string.mark_as_read),
-                getReadOnlyPendingIntent(thread.numericId, url),
-            )
             .setContentIntent(getPendingIntent(thread.numericId, url))
             .setColor(accentColor)
             .setGroup(NOTIFICATION_GROUP_ID)
-            .build()
-        showNotification(thread.numericId, toAdd)
+        NotificationActions.attach(
+            context, builder, thread, NotificationActions.readIntent(context, thread.numericId),
+        )
+        showNotification(thread.numericId, builder.build())
     }
 
     private fun getSummaryGroupNotification(
@@ -206,14 +200,6 @@ class NotificationSchedulerJobTask : JobService() {
         )
             .setContentIntent(
                 if (toNotificationActivity) pendingIntent else getPendingIntent(thread.numericId, url),
-            )
-            .addAction(
-                R.drawable.ic_open, getString(R.string.open),
-                getPendingIntent(thread.numericId, url),
-            )
-            .addAction(
-                R.drawable.ic_eye_off, getString(R.string.mark_as_read),
-                getReadOnlyPendingIntent(thread.numericId, url),
             )
             .setWhen(thread.updatedAt?.toEpochMilli() ?: System.currentTimeMillis())
             .setShowWhen(true)
@@ -252,15 +238,6 @@ class NotificationSchedulerJobTask : JobService() {
             notificationManager.createNotificationChannel(notificationChannel)
         }
         notificationManager.notify(InputHelper.getSafeIntId(id), notification)
-    }
-
-    @SuppressLint("UnspecifiedImmutableFlag")
-    private fun getReadOnlyPendingIntent(id: Long, url: String): PendingIntent {
-        val intent = ReadNotificationService.start(applicationContext, id, url, true)
-        return PendingIntent.getService(
-            applicationContext, InputHelper.getSafeIntId(id) / 2, intent,
-            PendingIntent.FLAG_UPDATE_CURRENT,
-        )
     }
 
     @SuppressLint("UnspecifiedImmutableFlag")

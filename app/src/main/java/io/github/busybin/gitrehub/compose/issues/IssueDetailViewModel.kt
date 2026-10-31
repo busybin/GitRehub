@@ -281,6 +281,39 @@ class IssueDetailViewModel : ViewModel() {
         }
     }
 
+    /** Ask people to review (`POST .../requested_reviewers`). */
+    fun requestReviewers(owner: String, repo: String, number: Int, reviewers: List<String>) {
+        if (reviewers.isEmpty()) return
+        write(owner, repo, number, UiText.res(R.string.m3_pr_reviewers_sent)) {
+            GitHubApi.requestReviewers(owner, repo, number, reviewers)
+        }
+    }
+
+    /** Merge the base branch into the PR branch; GitHub answers 202 and the page reloads. */
+    fun updateBranch(owner: String, repo: String, number: Int, expectedHeadSha: String?) {
+        write(owner, repo, number, UiText.res(R.string.m3_pr_update_branch_done)) {
+            GitHubApi.updatePullBranch(owner, repo, number, expectedHeadSha)
+        }
+    }
+
+    /** Draft <-> ready for review (GraphQL mutation keyed by node id). */
+    fun setDraft(owner: String, repo: String, number: Int, draft: Boolean) {
+        write(
+            owner, repo, number,
+            UiText.res(if (draft) R.string.m3_pr_draft_done else R.string.m3_pr_ready_done),
+        ) {
+            GitHubApi.setPullDraft(owner, repo, number, draft)
+        }
+    }
+
+    /** Delete the PR's source branch after a merge. */
+    fun deleteBranch(owner: String, repo: String, number: Int, branch: String) {
+        if (branch.isBlank()) return
+        write(owner, repo, number, UiText.res(R.string.m3_pr_branch_deleted)) {
+            GitHubApi.deleteBranch(owner, repo, branch)
+        }
+    }
+
     /**
      * Toggle a reaction: read the true state first, then add or delete my own entry.
      * The summary's `total_count` does not say whether I reacted, so list by content and look for me.

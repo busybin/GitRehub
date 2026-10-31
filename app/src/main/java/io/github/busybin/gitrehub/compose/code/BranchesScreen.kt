@@ -29,6 +29,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -65,6 +66,7 @@ fun BranchesScreen(
     repo: String,
     initialKind: RefKind = RefKind.BRANCH,
     onOpenRef: (String) -> Unit = {},
+    onNewPull: () -> Unit = {},
 ) {
     val vm: BranchesViewModel = viewModel()
     val state by vm.state.collectAsStateWithLifecycle()
@@ -108,6 +110,12 @@ fun BranchesScreen(
                 label = { Text(stringResource(R.string.m3_tag)) },
                 leadingIcon = { Icon(Icons.Outlined.Label, contentDescription = null, modifier = Modifier.size(16.dp)) },
             )
+            Spacer(Modifier.weight(1f))
+            if (kind == RefKind.BRANCH) {
+                TextButton(onClick = onNewPull) {
+                    Text(stringResource(R.string.m3_new_pull))
+                }
+            }
         }
 
         PullToRefreshBox(isRefreshing = refreshing, onRefresh = { vm.refresh() }) {

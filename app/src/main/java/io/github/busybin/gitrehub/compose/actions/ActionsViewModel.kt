@@ -11,6 +11,7 @@ import io.github.busybin.gitrehub.compose.common.launchLoad
 import io.github.busybin.gitrehub.compose.data.Actions
 import io.github.busybin.gitrehub.core.model.Workflow
 import io.github.busybin.gitrehub.core.model.WorkflowJob
+import io.github.busybin.gitrehub.core.net.GitHubApi
 import io.github.busybin.gitrehub.core.model.WorkflowRun
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -36,6 +37,13 @@ class ActionsViewModel : PagedViewModel<WorkflowRun>() {
     private val _workflows = MutableStateFlow<LoadState<List<Workflow>>>(LoadState.Loading)
     val workflows: StateFlow<LoadState<List<Workflow>>> = _workflows.asStateFlow()
 
+    /** Write access + default branch, needed by the "Run workflow" dialog. */
+    private val _canWrite = MutableStateFlow(false)
+    val canWrite: StateFlow<Boolean> = _canWrite.asStateFlow()
+
+    private val _defaultBranch = MutableStateFlow("main")
+    val defaultBranch: StateFlow<String> = _defaultBranch.asStateFlow()
+
     private val _jobs = MutableStateFlow<Map<Long, LoadState<List<WorkflowJob>>>>(emptyMap())
     val jobs: StateFlow<Map<Long, LoadState<List<WorkflowJob>>>> = _jobs.asStateFlow()
 
@@ -47,6 +55,13 @@ class ActionsViewModel : PagedViewModel<WorkflowRun>() {
         this.repo = repo
         loadWorkflows()
         refresh()
+        viewModelScope.launch {
+            val info = runCatching {
+                withContext(Dispatchers.IO) { GitHubApi.repo(owner, repo) }
+            }.getOrNull() ?: return@launch
+            _canWrite.value = info.permissions?.canWrite == true
+            _defaultBranch.value = info.defaultBranch ?: "main"
+        }
     }
 
     /** null = every workflow of the repository. */
@@ -76,7 +91,29 @@ class ActionsViewModel : PagedViewModel<WorkflowRun>() {
 
     fun rerun(runId: Long) = act(runId) { Actions.rerun(owner, repo, runId) }
 
+    fun rerunFailed(runId: Long) = act(runId) { Actions.rerunFailed(owner, repo, runId) }
+
     fun cancel(runId: Long) = act(runId) { Actions.cancel(owner, repo, runId) }
+
+    /** Manual `workflow_dispatch`; the dialog collects the ref and free-form inputs. */
+    fun dispatch(workflowId: Long, ref: String, inputs: Map<String, String>) {
+        if (_acting.value != null) return
+        _acting.value = workflowId
+        viewModelScope.launch {
+            val result = runCatching {
+                withContext(Dispatchers.IO) {
+                    Actions.dispatch(owner, repo, workflowId, ref.ifBlank { "main" }, inputs)
+                }
+            }
+            _acting.value = null
+            if (result.isSuccess) {
+                _message.value = UiText.res(R.string.m3_actions_dispatched)
+                refresh()
+            } else {
+                _message.value = result.exceptionOrNull()?.toUiText()
+            }
+        }
+    }
 
     private fun act(runId: Long, block: suspend () -> Unit) {
         if (_acting.value != null) return

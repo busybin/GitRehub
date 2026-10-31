@@ -141,4 +141,77 @@ internal object WriteBodies {
         put("event", JsonPrimitive(event))
         if (comments.isNotEmpty()) put("comments", JsonArray(comments))
     }
+
+    /** `POST/DELETE /pulls/{n}/requested_reviewers`; an empty list is a no-op and is rejected. */
+    fun reviewers(logins: List<String>): JsonObject =
+        buildJsonObject { put("reviewers", JsonArray(logins.map(::JsonPrimitive))) }
+
+    /** `PUT /pulls/{n}/update-branch`: the sha guards against merging a base the user did not see. */
+    fun updateBranch(expectedHeadSha: String?): JsonObject = buildJsonObject {
+        if (!expectedHeadSha.isNullOrBlank()) put("expected_head_sha", JsonPrimitive(expectedHeadSha))
+    }
+
+    /**
+     * `POST/PATCH /releases`. Only fields the caller changed are sent: on edit, an absent field keeps
+     * the existing value, while an empty name/body really clears it.
+     */
+    fun release(
+        tagName: String? = null,
+        targetCommitish: String? = null,
+        name: String? = null,
+        body: String? = null,
+        draft: Boolean? = null,
+        prerelease: Boolean? = null,
+    ): JsonObject = buildJsonObject {
+        if (tagName != null) put("tag_name", JsonPrimitive(tagName))
+        if (!targetCommitish.isNullOrBlank()) put("target_commitish", JsonPrimitive(targetCommitish))
+        if (name != null) put("name", JsonPrimitive(name))
+        if (body != null) put("body", JsonPrimitive(body))
+        if (draft != null) put("draft", JsonPrimitive(draft))
+        if (prerelease != null) put("prerelease", JsonPrimitive(prerelease))
+    }
+
+    /** `POST /releases/generate-notes`: [previousTagName] limits the changelog to what came after it. */
+    fun generateNotes(tagName: String, targetCommitish: String?, previousTagName: String?): JsonObject =
+        buildJsonObject {
+            put("tag_name", JsonPrimitive(tagName))
+            if (!targetCommitish.isNullOrBlank()) {
+                put("target_commitish", JsonPrimitive(targetCommitish))
+            }
+            if (!previousTagName.isNullOrBlank()) {
+                put("previous_tag_name", JsonPrimitive(previousTagName))
+            }
+        }
+
+    /** `PATCH /repos/{o}/{r}`: description/homepage; an empty string clears the field. */
+    fun repoEdit(description: String, homepage: String): JsonObject = buildJsonObject {
+        put("description", JsonPrimitive(description))
+        put("homepage", JsonPrimitive(homepage))
+    }
+
+    /** `PUT /repos/{o}/{r}/topics` (custom media type, same JSON shape in practice). */
+    fun topics(names: List<String>): JsonObject =
+        buildJsonObject { put("names", JsonArray(names.map(::JsonPrimitive))) }
+
+    /** `POST/PATCH /gists`: each entry is `{content}`; a `null` value deletes that file on edit. */
+    fun gist(description: String, public: Boolean, files: Map<String, String?>): JsonObject =
+        buildJsonObject {
+            put("description", JsonPrimitive(description))
+            put("public", JsonPrimitive(public))
+            put("files", JsonObject(
+                files.mapValues { (_, content) ->
+                    if (content == null) JsonNull else buildJsonObject {
+                        put("content", JsonPrimitive(content))
+                    }
+                }
+            ))
+        }
+
+    /** `POST /actions/workflows/{id}/dispatches`: [inputs] must match the workflow's own schema. */
+    fun dispatch(ref: String, inputs: Map<String, String>): JsonObject = buildJsonObject {
+        put("ref", JsonPrimitive(ref))
+        if (inputs.isNotEmpty()) {
+            put("inputs", JsonObject(inputs.mapValues { JsonPrimitive(it.value) }))
+        }
+    }
 }

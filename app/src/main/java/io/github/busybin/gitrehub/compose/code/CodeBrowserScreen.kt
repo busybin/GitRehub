@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -27,6 +29,7 @@ import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.InsertDriveFile
+import androidx.compose.material.icons.outlined.ManageSearch
 import androidx.compose.material.icons.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.Card
@@ -63,6 +66,7 @@ import io.github.busybin.gitrehub.compose.common.AsyncContent
 import io.github.busybin.gitrehub.compose.common.Avatar
 import io.github.busybin.gitrehub.compose.common.LocalTokens
 import io.github.busybin.gitrehub.compose.common.EmptyView
+import io.github.busybin.gitrehub.compose.common.isWideLayout
 import io.github.busybin.gitrehub.compose.common.MetaText
 import io.github.busybin.gitrehub.compose.common.LoadState
 import io.github.busybin.gitrehub.compose.common.render
@@ -88,10 +92,57 @@ fun CodeBrowserScreen(
     ref: String? = null,
     onOpenFile: (path: String) -> Unit = {},
     onOpenBranches: () -> Unit = {},
+    onOpenCommit: (sha: String) -> Unit = {},
+    onOpenCommits: (resolvedRef: String) -> Unit = {},
+    onSearchCode: () -> Unit = {},
+) {
+    // On a tablet the tree and the file belong side by side; tapping a file previews it in place
+    // instead of pushing another screen (the phone keeps the tap-through behaviour).
+    if (!isWideLayout()) {
+        CodeBrowserContent(
+            owner, repo, ref, onOpenFile, onOpenBranches, onOpenCommit, onOpenCommits, onSearchCode,
+        )
+        return
+    }
+    var selected by rememberSaveable { mutableStateOf<String?>(null) }
+    Row(Modifier.fillMaxSize()) {
+        Box(Modifier.weight(0.42f)) {
+            CodeBrowserContent(
+                owner = owner,
+                repo = repo,
+                ref = ref,
+                onOpenFile = { selected = it },
+                onOpenBranches = onOpenBranches,
+                onOpenCommit = onOpenCommit,
+                onOpenCommits = onOpenCommits,
+                onSearchCode = onSearchCode,
+            )
+        }
+        VerticalDivider()
+        Box(Modifier.weight(0.58f)) {
+            val path = selected
+            if (path.isNullOrBlank()) {
+                EmptyView(stringResource(R.string.m3_repo_pick_one))
+            } else {
+                FileViewerScreen(owner = owner, repo = repo, path = path, ref = ref)
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CodeBrowserContent(
+    owner: String,
+    repo: String,
+    ref: String? = null,
+    onOpenFile: (path: String) -> Unit = {},
+    onOpenBranches: () -> Unit = {},
     /** Tapping the "latest commit" line of the listing opens that commit's diff. */
     onOpenCommit: (sha: String) -> Unit = {},
     /** See the commit history of this ref (`resolvedRef` already resolved the default branch). */
     onOpenCommits: (resolvedRef: String) -> Unit = {},
+    onSearchCode: () -> Unit = {},
 ) {
     val vm: CodeBrowserViewModel = viewModel()
     val state by vm.state.collectAsStateWithLifecycle()
@@ -159,6 +210,13 @@ fun CodeBrowserScreen(
                         Icon(
                             Icons.Outlined.Search,
                             contentDescription = stringResource(R.string.m3_find_file),
+                            modifier = Modifier.size(18.dp),
+                        )
+                    }
+                    IconButton(onClick = onSearchCode) {
+                        Icon(
+                            Icons.Outlined.ManageSearch,
+                            contentDescription = stringResource(R.string.m3_code_search),
                             modifier = Modifier.size(18.dp),
                         )
                     }

@@ -2,12 +2,15 @@ package io.github.busybin.gitrehub.compose.actions
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -24,16 +27,21 @@ import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.OpenInNew
+import androidx.compose.material.icons.outlined.PlayArrow
+import androidx.compose.material.icons.outlined.Replay
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -91,6 +99,9 @@ fun ActionsScreen(owner: String, repo: String, onOpenLogs: (Long) -> Unit = {}) 
     KeepTopOnRefresh(listState, refreshing)
     val tokens = LocalTokens.current
     val selectedWorkflow = vm.currentWorkflowId()
+    val canWrite by vm.canWrite.collectAsStateWithLifecycle()
+    val defaultBranch by vm.defaultBranch.collectAsStateWithLifecycle()
+    var showDispatch by rememberSaveable { mutableStateOf(false) }
     val acting by vm.acting.collectAsStateWithLifecycle()
     val message by vm.message.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -115,6 +126,7 @@ fun ActionsScreen(owner: String, repo: String, onOpenLogs: (Long) -> Unit = {}) 
         if (shouldLoadMore && hasMore) vm.loadMore()
     }
 
+    Box(Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxWidth()) {
         val workflowList = (workflows as? LoadState.Ready)?.value.orEmpty()
         if (workflowList.isNotEmpty()) {
@@ -172,6 +184,7 @@ fun ActionsScreen(owner: String, repo: String, onOpenLogs: (Long) -> Unit = {}) 
                                     busy = acting == run.id,
                                     onExpand = { vm.loadJobs(run.id) },
                                     onRerun = { vm.rerun(run.id) },
+                                    onRerunFailed = { vm.rerunFailed(run.id) },
                                     onCancel = { vm.cancel(run.id) },
                                     onOpenLogs = { onOpenLogs(run.id) },
                                 )
@@ -192,6 +205,112 @@ fun ActionsScreen(owner: String, repo: String, onOpenLogs: (Long) -> Unit = {}) 
             }
         }
     }
+        if (canWrite) {
+            ExtendedFloatingActionButton(
+                onClick = { showDispatch = true },
+                icon = { Icon(Icons.Outlined.PlayArrow, contentDescription = null) },
+                text = { Text(stringResource(R.string.m3_actions_run_workflow)) },
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(18.dp),
+            )
+        }
+    }
+
+    if (showDispatch) {
+        DispatchDialog(
+            workflows = (workflows as? LoadState.Ready)?.value.orEmpty(),
+            defaultRef = defaultBranch,
+            onDismiss = { showDispatch = false },
+            onSubmit = { workflowId, ref, inputs ->
+                showDispatch = false
+                vm.dispatch(workflowId, ref, inputs)
+            },
+        )
+    }
+}
+
+/**
+ * `workflow_dispatch` from the phone: pick an active workflow, a ref and optional `key=value`
+ * inputs (GitHub validates them against the workflow file and answers 422 on a mismatch).
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun DispatchDialog(
+    workflows: List<io.github.busybin.gitrehub.core.model.Workflow>,
+    defaultRef: String,
+    onDismiss: () -> Unit,
+    onSubmit: (Long, String, Map<String, String>) -> Unit,
+) {
+    val active = workflows.filter { it.isActive }
+    var selected by remember { mutableStateOf(active.firstOrNull()?.id) }
+    var ref by rememberSaveable { mutableStateOf(defaultRef) }
+    var inputs by rememberSaveable { mutableStateOf("") }
+    val parsed = remember(inputs) {
+        inputs.lineSequence().mapNotNull { line ->
+            val at = line.indexOf('=')
+            if (at <= 0) null else line.take(at).trim() to line.substring(at + 1).trim()
+        }.toMap()
+    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.m3_actions_run_workflow)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (active.isEmpty()) {
+                    Text(
+                        stringResource(R.string.m3_actions_no_dispatch),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                } else {
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        active.forEach { workflow ->
+                            FilterChip(
+                                selected = selected == workflow.id,
+                                onClick = { selected = workflow.id },
+                                label = {
+                                    Text(
+                                        workflow.name ?: workflow.path.orEmpty(),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                },
+                            )
+                        }
+                    }
+                    OutlinedTextField(
+                        value = ref,
+                        onValueChange = { ref = it },
+                        label = { Text(stringResource(R.string.m3_actions_ref)) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    OutlinedTextField(
+                        value = inputs,
+                        onValueChange = { inputs = it },
+                        label = { Text(stringResource(R.string.m3_actions_inputs)) },
+                        placeholder = { Text(stringResource(R.string.m3_actions_inputs_hint)) },
+                        minLines = 2,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    if (parsed.isNotEmpty()) {
+                        MetaText(stringResource(R.string.m3_actions_inputs_count, parsed.size))
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { selected?.let { onSubmit(it, ref.trim(), parsed) } },
+                enabled = selected != null && ref.isNotBlank(),
+            ) { Text(stringResource(R.string.m3_actions_run)) }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.m3_cancel)) }
+        },
+    )
 }
 
 @Composable
@@ -201,6 +320,7 @@ private fun RunCard(
     busy: Boolean,
     onExpand: () -> Unit,
     onRerun: () -> Unit,
+    onRerunFailed: () -> Unit,
     onCancel: () -> Unit,
     onOpenLogs: () -> Unit,
 ) {
@@ -293,6 +413,13 @@ private fun RunCard(
                                 Icon(Icons.Outlined.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
                                 Spacer(Modifier.width(6.dp))
                                 Text(stringResource(R.string.m3_actions_rerun))
+                            }
+                            if (run.conclusion == "failure") {
+                                TextButton(onClick = onRerunFailed, enabled = !busy) {
+                                    Icon(Icons.Outlined.Replay, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Spacer(Modifier.width(6.dp))
+                                    Text(stringResource(R.string.m3_actions_rerun_failed))
+                                }
                             }
                         }
                         run.htmlUrl?.let { url ->

@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -17,8 +18,12 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
@@ -49,6 +54,7 @@ import io.github.busybin.gitrehub.core.model.Gist
 fun GistsScreen(
     login: String? = null,
     onOpenGist: (Gist) -> Unit,
+    onNewGist: () -> Unit = {},
 ) {
     val vm: GistsViewModel = viewModel(key = "gists-${login.orEmpty()}")
     val state by vm.state.collectAsStateWithLifecycle()
@@ -71,6 +77,7 @@ fun GistsScreen(
         if (shouldLoadMore && hasMore) vm.loadMore()
     }
 
+    Box(Modifier.fillMaxSize()) {
     PullToRefreshBox(isRefreshing = refreshing, onRefresh = { vm.refresh() }) {
         AsyncContent(state = state, onRetry = { vm.refresh() }) { gists ->
             if (gists.isEmpty()) {
@@ -102,6 +109,17 @@ fun GistsScreen(
                     }
                 }
             }
+        }
+    }
+        if (login == null) {
+            ExtendedFloatingActionButton(
+                onClick = onNewGist,
+                icon = { Icon(Icons.Outlined.Add, contentDescription = null) },
+                text = { Text(stringResource(R.string.m3_gist_new)) },
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(18.dp),
+            )
         }
     }
 }

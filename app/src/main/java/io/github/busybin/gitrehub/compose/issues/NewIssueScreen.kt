@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.busybin.gitrehub.R
+import io.github.busybin.gitrehub.compose.common.PendingText
 import io.github.busybin.gitrehub.compose.common.MetaText
 import io.github.busybin.gitrehub.compose.common.render
 
@@ -55,7 +56,8 @@ fun NewIssueScreen(owner: String, repo: String, onCreated: (Int) -> Unit) {
     val created by vm.created.collectAsStateWithLifecycle()
 
     var title by remember { mutableStateOf("") }
-    var body by remember { mutableStateOf("") }
+    var body by remember { mutableStateOf(PendingText.issueBody.orEmpty()) }
+    LaunchedEffect(Unit) { PendingText.issueBody = null }
     var labels by remember { mutableStateOf(emptySet<String>()) }
     var assignees by remember { mutableStateOf(emptySet<String>()) }
     var milestone by remember { mutableStateOf<Int?>(null) }

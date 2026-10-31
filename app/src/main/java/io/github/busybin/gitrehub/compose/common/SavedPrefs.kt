@@ -57,6 +57,13 @@ object SavedPrefs {
 
     fun isFavorite(fullName: String): Boolean = fullName in _favorites.value
 
+    /** Replace both lists at once (settings import). */
+    fun replaceAll(searches: List<SavedSearch>, favorites: Set<String>) {
+        writeSearches(searches.take(MAX_SEARCHES))
+        PrefHelper.putStringSet(KEY_FAVORITES, favorites)
+        _favorites.value = favorites
+    }
+
     private fun writeSearches(value: List<SavedSearch>) {
         PrefHelper.putAny(KEY_SEARCHES, json.encodeToString(value))
         _searches.value = value

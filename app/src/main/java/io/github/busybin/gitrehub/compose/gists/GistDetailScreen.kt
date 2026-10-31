@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material3.Card
@@ -70,6 +71,7 @@ private const val MAX_INLINE_LINES = 400
 fun GistDetailScreen(
     id: String,
     onDeleted: () -> Unit,
+    onEdit: () -> Unit = {},
 ) {
     val vm: GistDetailViewModel = viewModel(key = "gist-$id")
     val state by vm.state.collectAsStateWithLifecycle()
@@ -114,6 +116,8 @@ fun GistDetailScreen(
                 GistHeader(
                     gist = gist,
                     canDelete = mine,
+                    canEdit = mine,
+                    onEdit = onEdit,
                     onOpenBrowser = {
                         gist.htmlUrl?.let { BrowserLauncher.open(context, it) }
                     },
@@ -142,7 +146,9 @@ fun GistDetailScreen(
 private fun GistHeader(
     gist: Gist,
     canDelete: Boolean,
+    canEdit: Boolean,
     onOpenBrowser: () -> Unit,
+    onEdit: () -> Unit,
     onDelete: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -186,6 +192,14 @@ private fun GistHeader(
                         Icons.Outlined.ContentCopy,
                         contentDescription = stringResource(R.string.m3_gist_copy_all),
                     )
+                }
+                if (canEdit) {
+                    IconButton(onClick = onEdit) {
+                        Icon(
+                            Icons.Outlined.Edit,
+                            contentDescription = stringResource(R.string.m3_gist_edit),
+                        )
+                    }
                 }
                 if (canDelete) {
                     IconButton(onClick = onDelete) {

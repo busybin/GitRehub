@@ -104,6 +104,25 @@ class RepoDetailViewModel : ViewModel() {
         }
     }
 
+    /** Description / homepage / topics (`PATCH /repos` + `PUT /topics`). */
+    fun editRepo(description: String, homepage: String, topics: List<String>) {
+        if (_editBusy.value) return
+        _editBusy.value = true
+        viewModelScope.launch {
+            val result = runCatching {
+                GitHubApi.editRepo(owner, name, description, homepage, topics)
+            }
+            _editBusy.value = false
+            result.onSuccess {
+                _message.value = UiText.res(R.string.m3_repo_edit_saved)
+                load(owner, name, force = true)
+            }.onFailure { _message.value = UiText.res(R.string.m3_action_failed) }
+        }
+    }
+
+    private val _editBusy = MutableStateFlow(false)
+    val editBusy: StateFlow<Boolean> = _editBusy.asStateFlow()
+
     fun toggleStar() {
         val current = (_state.value as? LoadState.Ready)?.value ?: return
         if (_starBusy.value) return

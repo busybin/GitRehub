@@ -387,12 +387,12 @@ fun Pill(
 }
 
 @Composable
-fun MetaText(text: String, modifier: Modifier = Modifier) {
+fun MetaText(text: String, modifier: Modifier = Modifier, maxLines: Int = 1) {
     Text(
         text = text,
         style = MaterialTheme.typography.labelMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
-        maxLines = 1,
+        maxLines = maxLines,
         overflow = TextOverflow.Ellipsis,
         modifier = modifier,
     )

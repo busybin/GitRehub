@@ -843,4 +843,160 @@ github 不给第三方客户端推送通道，所以这是真的轮询：最短 
     <string name="m3_draft_blocked">尚未发送</string>
     <string name="m3_edit_conflict">文件在 GitHub 上已更新。再次保存将覆盖它。</string>
     <string name="m3_draft_not_sent">未发送：该讨论已锁定或你没有权限。已存为草稿。</string>
+
+    <string name="m3_pr_update_branch">更新分支</string>
+    <string name="m3_pr_update_branch_done">分支已更新</string>
+    <string name="m3_pr_ready">标记为可评审</string>
+    <string name="m3_pr_to_draft">转为草稿</string>
+    <string name="m3_pr_draft_done">已转为草稿</string>
+    <string name="m3_pr_ready_done">已标记为可评审</string>
+    <string name="m3_pr_request_review">请求评审</string>
+    <string name="m3_pr_request_review_title">请求评审</string>
+    <string name="m3_pr_reviewers_hint">选择一个或多个协作者。</string>
+    <string name="m3_pr_reviewers_empty">没有可选的协作者。</string>
+    <string name="m3_pr_send_review_request">发送请求</string>
+    <string name="m3_pr_reviewers_sent">已请求评审</string>
+    <string name="m3_pr_delete_branch">删除分支</string>
+    <string name="m3_pr_delete_branch_title">删除 %1$s？</string>
+    <string name="m3_pr_delete_branch_message">分支会从 GitHub 删除，无法撤销。</string>
+    <string name="m3_pr_branch_deleted">分支已删除</string>
+    <string name="m3_pr_threads_open">%1$d 条未解决会话</string>
+    <string name="m3_pr_threads_all_resolved">所有会话已解决</string>
+    <string name="m3_pr_thread_resolve">解决</string>
+    <string name="m3_pr_thread_unresolve">重新打开</string>
+    <string name="m3_pr_thread_resolved">会话已解决</string>
+    <string name="m3_pr_thread_reopened">会话已重新打开</string>
+    <string name="m3_pr_threads_more">另有 %1$d 条</string>
+
+    <string name="m3_notif_done">完成</string>
+    <string name="m3_notif_reply">回复</string>
+    <string name="m3_notif_reply_hint">回复这个会话</string>
+
+    <string name="m3_quiet_title">免打扰时段</string>
+    <string name="m3_quiet_desc">这段时间不弹通知，结束后一起补上。</string>
+    <string name="m3_quiet_start">开始时间</string>
+    <string name="m3_quiet_end">结束时间</string>
+
+    <string name="m3_actions_run_workflow">手动运行工作流</string>
+    <string name="m3_actions_rerun_failed">只重跑失败任务</string>
+    <string name="m3_actions_dispatched">工作流已启动</string>
+    <string name="m3_actions_no_dispatch">这个仓库没有可手动触发的工作流。</string>
+    <string name="m3_actions_ref">分支或标签</string>
+    <string name="m3_actions_inputs">参数（每行 key=value）</string>
+    <string name="m3_actions_inputs_count">%1$d 个参数</string>
+    <string name="m3_actions_run">运行</string>
+
+    <string name="m3_release_new">新建 Release</string>
+    <string name="m3_release_edit">编辑 Release</string>
+    <string name="m3_release_compare">查看变更</string>
+    <string name="m3_release_delete">删除 Release</string>
+    <string name="m3_release_delete_title">删除「%1$s」？</string>
+    <string name="m3_release_delete_asset">删除附件</string>
+    <string name="m3_release_asset_deleted">附件已删除</string>
+    <string name="m3_release_saved">Release 已保存</string>
+    <string name="m3_release_deleted">Release 已删除</string>
+    <string name="m3_release_tag">标签</string>
+    <string name="m3_release_target">目标分支或提交</string>
+    <string name="m3_release_title">标题</string>
+    <string name="m3_release_body">更新说明</string>
+    <string name="m3_release_body_hint">支持 Markdown</string>
+    <string name="m3_release_previous_tag">上一版标签</string>
+    <string name="m3_release_auto">自动</string>
+    <string name="m3_release_draft">存为草稿</string>
+    <string name="m3_release_generate">生成说明</string>
+    <string name="m3_release_save">保存</string>
+    <string name="m3_release_tag_required">必须填标签。</string>
+
+    <string name="m3_compare">对比</string>
+    <string name="m3_compare_empty">%1$s 和 %2$s 之间没有差异。</string>
+    <string name="m3_compare_summary">%1$d 个提交 · %2$d 个文件变更</string>
+    <string name="m3_compare_ahead_behind">领先 %1$d · 落后 %2$d</string>
+    <string name="m3_compare_create_pull">创建 PR</string>
+    <string name="m3_compare_files">%1$d 个文件</string>
+    <string name="m3_pr_diff_too_large">GitHub 没有返回这段 diff（太大）。</string>
+
+    <string name="m3_delete">删除</string>
+
+    <string name="m3_insights">维护者面板</string>
+    <string name="m3_insights_views">浏览（14 天）</string>
+    <string name="m3_insights_clones">克隆（14 天）</string>
+    <string name="m3_insights_total">共 %1$d 次</string>
+    <string name="m3_insights_uniques">%1$d 个独立访客</string>
+    <string name="m3_insights_referrers">访客来源</string>
+    <string name="m3_insights_paths">访问最多的页面</string>
+    <string name="m3_insights_direct">直接访问</string>
+    <string name="m3_insights_alerts">Dependabot 告警</string>
+    <string name="m3_insights_alerts_unavailable">当前 token 读不到 Dependabot 告警（需要 security_events 权限）。</string>
+    <string name="m3_insights_alerts_none">没有未处理告警。</string>
+    <string name="m3_insights_stale">90 天没动的 Issue</string>
+    <string name="m3_insights_stale_unavailable">拉不到陈旧 Issue。</string>
+    <string name="m3_insights_stale_none">没有陈旧的 Issue。</string>
+    <string name="m3_insights_unavailable">流量数据需要该仓库的写权限。</string>
+
+    <string name="m3_write_preview">预览</string>
+    <string name="m3_write_edit_mode">编辑</string>
+    <string name="m3_write_preview_empty">还没有可预览的内容。</string>
+    <string name="m3_write_snippets">快捷回复</string>
+    <string name="m3_write_snippets_hint">点一条插入；也可以把当前内容存成快捷回复。</string>
+    <string name="m3_write_snippet_save">把当前内容存为快捷回复</string>
+    <string name="m3_write_snippets_empty">还没有快捷回复。</string>
+    <string name="m3_issue_new_comments">%1$d 条新评论</string>
+    <string name="m3_issue_jump_new">跳过去</string>
+
+    <string name="m3_code_search">搜代码</string>
+    <string name="m3_code_search_hint">在这个仓库里搜内容</string>
+    <string name="m3_code_search_empty">没有匹配的代码。</string>
+    <string name="m3_search_action">搜索</string>
+    <string name="m3_repo_edit">编辑仓库</string>
+    <string name="m3_repo_edit_saved">仓库已更新</string>
+    <string name="m3_repo_description">描述</string>
+    <string name="m3_repo_homepage">主页</string>
+    <string name="m3_repo_topics">Topics（逗号分隔）</string>
+
+    <string name="m3_gist_new">新建 Gist</string>
+    <string name="m3_gist_edit">编辑 Gist</string>
+    <string name="m3_gist_description">描述</string>
+    <string name="m3_gist_filename">文件名</string>
+    <string name="m3_gist_content">文件内容</string>
+    <string name="m3_gist_public">公开 Gist</string>
+    <string name="m3_gist_save">保存 Gist</string>
+    <string name="m3_gist_saved">Gist 已保存</string>
+    <string name="m3_gist_empty">先写点内容。</string>
+    <string name="m3_share_title">分享到 GitRehub</string>
+    <string name="m3_share_open_link">打开链接</string>
+    <string name="m3_share_repo_hint">新建 Issue 的仓库（owner/repo）</string>
+    <string name="m3_share_new_issue">用这段文字建 Issue</string>
+    <string name="m3_share_new_gist">存为 Gist</string>
+    <string name="m3_share_copy">复制文字</string>
+    <string name="m3_share_copied">已复制</string>
+
+    <string name="m3_copy_permalink">复制行链接</string>
+    <string name="m3_copy_markdown">复制为 Markdown</string>
+
+    <string name="m3_wifi_only_images">仅 Wi-Fi 加载图片</string>
+    <string name="m3_wifi_only_images_desc">移动数据下不加载头像和截图，正文照常。</string>
+
+    <string name="m3_section_backup">备份</string>
+    <string name="m3_backup_hint">把主题、字号、保存的搜索、收藏和快捷回复迁到另一台手机；不含 token。</string>
+    <string name="m3_backup_export">导出</string>
+    <string name="m3_backup_import">导入</string>
+    <string name="m3_backup_exported">设置已导出</string>
+    <string name="m3_backup_imported">设置已导入</string>
+    <string name="m3_backup_failed">这个文件导入失败。</string>
+
+    <string name="m3_theme_amoled">AMOLED 纯黑</string>
+    <string name="m3_theme_amoled_desc">OLED 屏幕用的纯黑背景</string>
+
+    <string name="m3_line_height">行高</string>
+
+    <string name="m3_print">打印</string>
+
+    <string name="m3_new_pull">新建 PR</string>
+    <string name="m3_new_pull_base">目标分支</string>
+    <string name="m3_new_pull_head">来源分支</string>
+    <string name="m3_new_pull_draft">草稿</string>
+    <string name="m3_new_pull_create">创建 PR</string>
+
+    <string name="m3_actions_inputs_hint">key=value</string>
+    <string name="m3_repo_topics_hint">android, kotlin</string>
 </resources>

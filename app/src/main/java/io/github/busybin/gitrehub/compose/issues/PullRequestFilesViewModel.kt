@@ -14,6 +14,7 @@ import io.github.busybin.gitrehub.core.model.PullRequest
 import io.github.busybin.gitrehub.core.model.RepoPermissions
 import io.github.busybin.gitrehub.core.model.Review
 import io.github.busybin.gitrehub.core.model.ReviewComment
+import io.github.busybin.gitrehub.core.model.ReviewThread
 import io.github.busybin.gitrehub.core.net.ApiException
 import io.github.busybin.gitrehub.core.net.GitHubApi
 import io.github.busybin.gitrehub.core.net.WriteBodies
@@ -45,6 +46,8 @@ data class PullRequestFilesData(
     val myLogin: String?,
     /** What the signed-in account may do here; null when the repo lookup failed. */
     val permissions: RepoPermissions? = null,
+    /** Review conversations; resolving one is GraphQL-only (REST has no thread ids). */
+    val threads: List<ReviewThread> = emptyList(),
 )
 
 /** One-shot result shown above the list (green on success, red on failure). */
@@ -110,6 +113,8 @@ class PullRequestFilesViewModel : ViewModel() {
         val myLogin = runCatching { Session.currentAccount()?.login }.getOrNull()
         // Reviewing needs write access; a read-only visitor must not see live review controls.
         val permissions = runCatching { GitHubApi.repo(owner, repo).permissions }.getOrNull()
+        val threads = runCatching { GitHubApi.reviewThreads(owner, repo, number) }
+            .getOrDefault(emptyList())
 
         return PullRequestFilesData(
             pullRequest = pull,
@@ -120,6 +125,7 @@ class PullRequestFilesViewModel : ViewModel() {
             truncated = truncated,
             myLogin = myLogin,
             permissions = permissions,
+            threads = threads,
         )
     }
 
@@ -162,6 +168,18 @@ class PullRequestFilesViewModel : ViewModel() {
 
     fun consumeMessage() {
         _message.value = null
+    }
+
+    /** Resolve / unresolve one review conversation (GraphQL `resolveReviewThread`). */
+    fun setThreadResolved(owner: String, repo: String, number: Int, thread: ReviewThread) {
+        if (_busy.value) return
+        write(owner, repo, number) {
+            GitHubApi.setReviewThreadResolved(thread.id, !thread.isResolved)
+            UiText.res(
+                if (thread.isResolved) R.string.m3_pr_thread_reopened
+                else R.string.m3_pr_thread_resolved
+            )
+        }
     }
 
     /**
