@@ -739,7 +739,7 @@ GitHub has no push channel for third-party clients, so this is real polling: the
     <string name="m3_edit_file_readonly">read-only</string>
     <string name="m3_edit_file_content">File content</string>
     <string name="m3_edit_commit_message">Commit message</string>
-    <string name="m3_edit_direct">Default branch</string>
+    <string name="m3_edit_direct">Commit to %1$s</string>
     <string name="m3_edit_new_branch">New branch + PR</string>
     <string name="m3_edit_branch_name">Branch name</string>
     <string name="m3_edit_pr_title">Pull request title</string>

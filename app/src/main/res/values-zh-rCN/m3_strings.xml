@@ -736,7 +736,7 @@ github 不给第三方客户端推送通道，所以这是真的轮询：最短 
     <string name="m3_edit_file_readonly">只读</string>
     <string name="m3_edit_file_content">文件内容</string>
     <string name="m3_edit_commit_message">提交信息</string>
-    <string name="m3_edit_direct">默认分支</string>
+    <string name="m3_edit_direct">直接提交到 %1$s</string>
     <string name="m3_edit_new_branch">新分支 + PR</string>
     <string name="m3_edit_branch_name">分支名</string>
     <string name="m3_edit_pr_title">PR 标题</string>

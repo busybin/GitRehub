@@ -738,7 +738,7 @@ GitHub n\'a pas de canal push pour les clients tiers, il s\'agit donc d\'une vé
     <string name="m3_edit_file_readonly">lecture seule</string>
     <string name="m3_edit_file_content">Contenu du fichier</string>
     <string name="m3_edit_commit_message">Message de commit</string>
-    <string name="m3_edit_direct">Branche par défaut</string>
+    <string name="m3_edit_direct">Valider sur %1$s</string>
     <string name="m3_edit_new_branch">Nouvelle branche + PR</string>
     <string name="m3_edit_branch_name">Nom de la branche</string>
     <string name="m3_edit_pr_title">Titre de la PR</string>

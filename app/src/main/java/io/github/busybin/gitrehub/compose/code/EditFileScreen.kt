@@ -72,12 +72,21 @@ fun EditFileScreen(
     var content by rememberSaveable(stateSaver = EditContentSaver) { mutableStateOf<String?>(null) }
     var message by rememberSaveable { mutableStateOf("") }
     var newBranch by rememberSaveable { mutableStateOf("patch-${path.substringAfterLast('/').substringBeforeLast('.').ifBlank { "file" }}") }
-    var prMode by rememberSaveable { mutableStateOf(true) }
+    // Default to a direct commit when the file sits on a branch the account can write to; opening a
+    // tag/SHA (or a read-only repository) has no branch to commit onto, so that starts in PR mode.
+    var prMode by rememberSaveable { mutableStateOf(false) }
+    var modeInitialized by rememberSaveable { mutableStateOf(false) }
     var prTitle by rememberSaveable { mutableStateOf("") }
     var prBody by rememberSaveable { mutableStateOf("") }
     var confirmDiscard by remember { mutableStateOf(false) }
 
     LaunchedEffect(owner, repo, path, ref) { vm.load(owner, repo, path, ref) }
+    LaunchedEffect(state.loading, state.refIsBranch, state.canWrite) {
+        if (!state.loading && !modeInitialized) {
+            prMode = !state.refIsBranch
+            modeInitialized = true
+        }
+    }
     LaunchedEffect(state.text, state.loading) {
         if (!state.loading && content == null) content = state.draft ?: state.text
     }
@@ -181,11 +190,12 @@ fun EditFileScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
+                val branchLabel = state.ref ?: state.defaultBranch
                 FilterChip(
                     selected = !prMode,
                     onClick = { prMode = false },
                     enabled = state.refIsBranch || state.ref == null,
-                    label = { Text(stringResource(R.string.m3_edit_direct)) },
+                    label = { Text(stringResource(R.string.m3_edit_direct, branchLabel)) },
                 )
                 FilterChip(
                     selected = prMode,

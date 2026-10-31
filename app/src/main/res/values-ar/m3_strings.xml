@@ -738,7 +738,7 @@
     <string name="m3_edit_file_readonly">للقراءة فقط</string>
     <string name="m3_edit_file_content">محتوى الملف</string>
     <string name="m3_edit_commit_message">رسالة الالتزام</string>
-    <string name="m3_edit_direct">الفرع الافتراضي</string>
+    <string name="m3_edit_direct">الالتزام إلى %1$s</string>
     <string name="m3_edit_new_branch">فرع جديد + PR</string>
     <string name="m3_edit_branch_name">اسم الفرع</string>
     <string name="m3_edit_pr_title">عنوان طلب السحب</string>

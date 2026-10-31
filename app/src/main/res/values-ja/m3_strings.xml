@@ -738,7 +738,7 @@ GitHub にはサードパーティ製クライアント向けのプッシュチ�
     <string name="m3_edit_file_readonly">読み取り専用</string>
     <string name="m3_edit_file_content">ファイルの内容</string>
     <string name="m3_edit_commit_message">コミットメッセージ</string>
-    <string name="m3_edit_direct">デフォルトブランチ</string>
+    <string name="m3_edit_direct">%1$s にコミット</string>
     <string name="m3_edit_new_branch">新しいブランチ + PR</string>
     <string name="m3_edit_branch_name">ブランチ名</string>
     <string name="m3_edit_pr_title">PR タイトル</string>
