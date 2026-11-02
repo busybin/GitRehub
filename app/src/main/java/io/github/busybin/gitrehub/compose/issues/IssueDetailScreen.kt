@@ -107,6 +107,7 @@ import kotlinx.coroutines.launch
  *
  * Writes show a button block, a thin progress bar and a one-shot banner, then reload the screen.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun IssueDetailScreen(
     owner: String,
@@ -452,7 +453,9 @@ fun IssueDetailScreen(
                 item {
                     val canonical = issue.htmlUrl
                         ?: "https://github.com/$owner/$repo/issues/$number"
-                    Row {
+                    // Four labels do not fit one phone line. A plain Row squeezed them until the CJK
+                    // text wrapped one character per line ("print" was stacking vertically).
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         TextButton(onClick = { vm.saveOffline(context, owner, repo, number) }) {
                             Text(
                                 stringResource(
