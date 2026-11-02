@@ -22,6 +22,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material.icons.outlined.AddReaction
 import androidx.compose.material.icons.outlined.CallMerge
 import androidx.compose.material.icons.outlined.ContentCopy
@@ -457,6 +459,16 @@ fun IssueDetailScreen(
                     // text wrapped one character per line ("print" was stacking vertically).
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         TextButton(onClick = { vm.saveOffline(context, owner, repo, number) }) {
+                            Icon(
+                                imageVector = if (savedOffline) {
+                                    Icons.Filled.Bookmark
+                                } else {
+                                    Icons.Outlined.BookmarkBorder
+                                },
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                            )
+                            Spacer(Modifier.width(6.dp))
                             Text(
                                 stringResource(
                                     if (savedOffline) R.string.m3_save_offline_done else R.string.m3_save_offline,
