@@ -1,5 +1,6 @@
 package io.github.busybin.gitrehub.compose.common
 
+import io.github.busybin.gitrehub.helper.LocalAccountTraces
 import io.github.busybin.gitrehub.helper.PrefHelper
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -23,6 +24,12 @@ import kotlinx.coroutines.flow.asStateFlow
  * Keys are `m3_` prefixed and stored through [PrefHelper]. All three tables are bounded.
  */
 object ReadState {
+
+    init {
+        // Sign-out clears the MMKV keys; without this the process-lifetime sets would be written
+        // back by the next mark-read and the previous account's private repo names would survive.
+        LocalAccountTraces.addClearHook { clear() }
+    }
 
     private const val KEY_READ_IDS = "m3_feed_read_ids"
     private const val KEY_READ_KEYS = "m3_read_thread_keys"

@@ -4,7 +4,6 @@ import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.busybin.gitrehub.R
-import io.github.busybin.gitrehub.compose.common.DraftQueue
 import io.github.busybin.gitrehub.compose.common.LoadState
 import io.github.busybin.gitrehub.compose.common.UiText
 import io.github.busybin.gitrehub.compose.common.launchLoad
@@ -13,6 +12,7 @@ import io.github.busybin.gitrehub.core.auth.Session
 import io.github.busybin.gitrehub.core.model.Comment
 import io.github.busybin.gitrehub.core.model.Issue
 import io.github.busybin.gitrehub.core.model.AutoMergeRequest
+import io.github.busybin.gitrehub.core.offline.DraftQueue
 import io.github.busybin.gitrehub.core.offline.OfflineSaves
 import io.github.busybin.gitrehub.core.model.CheckRun
 import io.github.busybin.gitrehub.core.model.Label

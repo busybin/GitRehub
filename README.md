@@ -60,7 +60,8 @@ Taken on an Android 14 emulator at 1080×2400.
 
 **Offline**
 - OkHttp disk cache so browsed screens still open without a network
-- Save an issue or pull request for offline reading; the copy is deleted when the account signs out
+- Save a whole repository: metadata, rendered README, text files and (optionally) issues/PRs, with automatic refresh when the default branch moves and a per-account quota shown on the Saved screen
+- Save an issue or pull request for offline reading; copies are deleted when the account signs out
 
 **Accounts and data**
 - Access-token login, device-code login (needs your own OAuth app), multiple accounts with switching, profile editing

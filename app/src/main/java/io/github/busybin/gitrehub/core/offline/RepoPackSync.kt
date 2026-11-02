@@ -134,7 +134,15 @@ class RepoPackTaskQueue {
 
     fun enqueue(task: RepoPackTask) {
         val index = items.indexOfFirst { it.fullName == task.fullName }
-        if (index >= 0) items[index] = task else items += task
+        if (index < 0) {
+            items += task
+            return
+        }
+        val existing = items[index]
+        // A watcher refresh must never downgrade the options the user explicitly chose: keep a
+        // manual task, and if only an automatic one is queued replace it with the manual request.
+        if (task.auto && !existing.auto) return
+        items[index] = if (existing.auto && !task.auto) task.copy(auto = false) else task
     }
 
     fun snapshot(): List<RepoPackTask> = items.toList()
@@ -273,17 +281,34 @@ object RepoPackSyncer {
         val result: Enqueue
         synchronized(lock) {
             appContext = app
-            if (_state.value.running?.fullName == task.fullName) return Enqueue.ALREADY_RUNNING
-            queue.enqueue(task)
-            _state.update { it.copy(queued = queue.snapshot(), outcome = null) }
-            result = if (worker?.isActive == true) Enqueue.QUEUED else Enqueue.STARTED
-            if (worker?.isActive != true) {
-                // A cancelled worker may still be deleting its staging tree. Wait for it before the
-                // next drain starts, or the new task's staging directory could be the one deleted.
+            val running = _state.value.running
+            if (running?.fullName == task.fullName) {
+                // A manual tap may supersede an automatic refresh of the same repository, but a
+                // watcher refresh must never replace what the user explicitly asked for.
+                if (!running.auto || auto) return Enqueue.ALREADY_RUNNING
+                generation += 1
                 val previous = worker
+                previous?.cancel()
+                _state.update { it.copy(running = null, progress = null) }
+                queue.enqueue(task)
+                _state.update { it.copy(queued = queue.snapshot(), outcome = null) }
+                result = if (queue.snapshot().size > 1) Enqueue.QUEUED else Enqueue.STARTED
                 worker = scope.launch {
                     previous?.join()
                     drain(app)
+                }
+            } else {
+                queue.enqueue(task)
+                _state.update { it.copy(queued = queue.snapshot(), outcome = null) }
+                result = if (worker?.isActive == true) Enqueue.QUEUED else Enqueue.STARTED
+                if (worker?.isActive != true) {
+                    // A cancelled worker may still be deleting its staging tree. Wait for it before
+                    // the next drain starts, or the new task's staging could be the one deleted.
+                    val previous = worker
+                    worker = scope.launch {
+                        previous?.join()
+                        drain(app)
+                    }
                 }
             }
         }
@@ -293,19 +318,36 @@ object RepoPackSyncer {
 
     /** Drops the running task and everything queued. [silent] skips the "cancelled" toast. */
     fun cancelAll(silent: Boolean = false) {
-        synchronized(lock) {
-            val active = _state.value.running ?: queue.snapshot().firstOrNull()
-            generation += 1
-            queue.clear()
-            worker?.cancel()
-            _state.value = State(
-                outcome = if (silent || active == null) {
-                    null
-                } else {
-                    Outcome(active.fullName, saved = false, cancelled = true)
-                },
-            )
-        }
+        synchronized(lock) { cancelLocked(silent) }
+    }
+
+    /** Caller holds [lock]; returns the worker that was cancelled. */
+    private fun cancelLocked(silent: Boolean): Job? {
+        val active = _state.value.running ?: queue.snapshot().firstOrNull()
+        generation += 1
+        queue.clear()
+        val cancelled = worker
+        cancelled?.cancel()
+        _state.value = State(
+            outcome = if (silent || active == null) {
+                null
+            } else {
+                Outcome(active.fullName, saved = false, cancelled = true)
+            },
+        )
+        return cancelled
+    }
+
+    /**
+     * Cancels everything and waits until the worker has really stopped.
+     *
+     * Account transitions must not clear a pack directory while a cancelled worker is still
+     * extracting into its staging tree: the worker would recreate it after the wipe. Waiting also
+     * lets [RepoPacks.abort] finish before the next account is authorized.
+     */
+    suspend fun cancelAndJoin(silent: Boolean = false) {
+        val cancelled = synchronized(lock) { cancelLocked(silent) }
+        cancelled?.join()
     }
 
     /**
@@ -536,12 +578,14 @@ object RepoPackSyncer {
                 }
             }
             report(task, Phase.CODE, 0, planned.size, 0)
+            val job = currentCoroutineContext()[Job]
             RepoPackZip.extract(
                 archive = archive,
                 candidates = planned.associateBy { it.path },
                 maxBytes = RepoPacks.MAX_REPO_BYTES,
                 write = { path, data -> RepoPacks.writeBytes(context, meta, path, data) },
                 onProgress = { done, total, bytes -> report(task, Phase.CODE, done, total, bytes) },
+                shouldContinue = { job?.isActive != false },
             )
         } catch (cancelled: CancellationException) {
             throw cancelled

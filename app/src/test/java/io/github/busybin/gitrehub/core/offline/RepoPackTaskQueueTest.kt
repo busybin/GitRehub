@@ -52,4 +52,28 @@ class RepoPackTaskQueueTest {
         assertEquals(listOf("me/manual"), queue.snapshot().map { it.fullName })
         assertFalse(queue.removeAuto())
     }
+
+    @Test
+    fun watcherRefreshCannotReplaceAManualSave() {
+        val queue = RepoPackTaskQueue()
+        queue.enqueue(RepoPackTask("me", "r", RepoPackOptions(includeSmall = true, includeLarge = true)))
+        queue.enqueue(
+            RepoPackTask("me", "r", RepoPackOptions(includeSmall = false), auto = true),
+        )
+        val kept = queue.snapshot().single()
+        assertTrue(kept.options.includeLarge)
+        assertFalse(kept.auto)
+    }
+
+    @Test
+    fun manualSaveReplacesAQueuedAutomaticRefresh() {
+        val queue = RepoPackTaskQueue()
+        queue.enqueue(RepoPackTask("me", "r", RepoPackOptions(includeSmall = true), auto = true))
+        queue.enqueue(
+            RepoPackTask("me", "r", RepoPackOptions(includeSmall = true, includeLarge = true)),
+        )
+        val kept = queue.snapshot().single()
+        assertTrue(kept.options.includeLarge)
+        assertFalse(kept.auto)
+    }
 }

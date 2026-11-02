@@ -1,4 +1,4 @@
-package io.github.busybin.gitrehub.compose.common
+package io.github.busybin.gitrehub.core.offline
 
 import io.github.busybin.gitrehub.core.net.ApiException
 import io.github.busybin.gitrehub.core.net.GitHubApi
@@ -58,8 +58,21 @@ object DraftQueue {
 
     fun remove(id: String) = write(_drafts.value.filterNot { it.id == id })
 
+    /**
+     * Drops every draft, in memory and on disk. Called on any account change: drafts carry the
+     * user's text and another account must never see them, and a draft left in memory would be
+     * written back after [io.github.busybin.gitrehub.helper.LocalAccountTraces.clear].
+     */
+    fun clear() {
+        _drafts.value = emptyList()
+        PrefHelper.clearKey<String>(KEY)
+    }
+
     /** Sends one draft; returns true when it is gone from the queue (sent, or rejected by GitHub). */
     suspend fun send(draft: DraftComment): Boolean = withContext(Dispatchers.IO) {
+        // The account may have changed (and cleared the queue) while this draft waited in a
+        // coroutine: never post another account's text with the new token.
+        if (_drafts.value.none { it.id == draft.id }) return@withContext false
         val result = runCatching {
             GitHubApi.createComment(draft.owner, draft.repo, draft.number, draft.body)
         }

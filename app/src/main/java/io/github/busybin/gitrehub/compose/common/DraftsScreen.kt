@@ -28,6 +28,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.busybin.gitrehub.R
+import io.github.busybin.gitrehub.core.offline.DraftQueue
 import kotlinx.coroutines.launch
 
 /** Comments that failed to send while offline: retry one, retry all, or delete. */

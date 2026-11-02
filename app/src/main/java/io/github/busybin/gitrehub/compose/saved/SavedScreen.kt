@@ -34,6 +34,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -56,6 +57,7 @@ import io.github.busybin.gitrehub.core.offline.RepoPackSyncer
 import io.github.busybin.gitrehub.core.offline.RepoPacks
 import io.github.busybin.gitrehub.core.offline.SavedThreadMeta
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.Date
 
@@ -73,6 +75,7 @@ fun SavedScreen(
     refreshKey: Int = 0,
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     var threads by remember { mutableStateOf<List<SavedThreadMeta>>(emptyList()) }
     var packs by remember { mutableStateOf<List<RepoPackMeta>>(emptyList()) }
     var previews by remember { mutableStateOf<Map<String, List<String>>>(emptyMap()) }
@@ -127,9 +130,11 @@ fun SavedScreen(
             confirmLabel = stringResource(R.string.m3_pack_remove),
             destructive = true,
             onConfirm = {
-                RepoPacks.remove(context, pack)
-                packs = packs.filterNot { it.fullName == pack.fullName }
                 pendingPack = null
+                scope.launch {
+                    withContext(Dispatchers.IO) { RepoPacks.remove(context, pack) }
+                    packs = packs.filterNot { it.fullName == pack.fullName }
+                }
             },
             onDismiss = { pendingPack = null },
         )
@@ -182,7 +187,13 @@ fun SavedScreen(
                             running = running,
                             progress = if (running) sync.progress else null,
                             onOpen = { onOpenRepo(pack.owner, pack.repo) },
-                            onAutoSync = { enabled -> RepoPacks.setAutoSync(context, pack, enabled) },
+                            onAutoSync = { enabled ->
+                                scope.launch {
+                                    withContext(Dispatchers.IO) {
+                                        RepoPacks.setAutoSync(context, pack, enabled)
+                                    }
+                                }
+                            },
                             onRemove = { pendingPack = pack },
                         )
                     }

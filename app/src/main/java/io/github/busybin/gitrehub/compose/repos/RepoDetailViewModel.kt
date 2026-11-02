@@ -105,6 +105,7 @@ class RepoDetailViewModel : ViewModel() {
         if (pack != null && OfflineStatus.isOnline) {
             viewModelScope.launch {
                 if (pack.autoSync && RepoPackPrefs.isEnabled() &&
+                    !RepoPackSyncer.isKnown("$owner/$name") &&
                     runCatching { RepoPackSyncer.isStale(pack) }.getOrDefault(false)
                 ) {
                     RepoPackSyncer.enqueue(

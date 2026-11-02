@@ -29,6 +29,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -46,6 +47,9 @@ import io.github.busybin.gitrehub.core.offline.RepoPackMeta
 import io.github.busybin.gitrehub.core.offline.RepoPackOptions
 import io.github.busybin.gitrehub.core.offline.RepoPackSyncer
 import io.github.busybin.gitrehub.core.offline.RepoPacks
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.Date
 
 /**
@@ -58,6 +62,7 @@ import java.util.Date
 @Composable
 fun RepoPackAction(owner: String, repo: String) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val revision by RepoPacks.revision.collectAsStateWithLifecycle()
     val sync by RepoPackSyncer.state.collectAsStateWithLifecycle()
     var account by remember { mutableStateOf<String?>(null) }
@@ -107,8 +112,13 @@ fun RepoPackAction(owner: String, repo: String) {
                 }
             },
             onRemove = {
-                pack?.let { RepoPacks.remove(context, it) }
+                val removing = pack
                 showDialog = false
+                if (removing != null) {
+                    scope.launch {
+                        withContext(Dispatchers.IO) { RepoPacks.remove(context, removing) }
+                    }
+                }
             },
         )
     }

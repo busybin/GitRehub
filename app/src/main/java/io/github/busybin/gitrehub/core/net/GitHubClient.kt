@@ -3,7 +3,12 @@ package io.github.busybin.gitrehub.core.net
 import io.github.busybin.gitrehub.BuildConfig
 import io.github.busybin.gitrehub.provider.rest.HttpProvider
 import io.github.busybin.gitrehub.provider.rest.interceptors.AuthenticationInterceptor
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
@@ -231,23 +236,28 @@ object GitHubClient {
         onProgress: (downloaded: Long, total: Long) -> Unit = { _, _ -> },
     ): Long = withContext(Dispatchers.IO) {
         val request = Request.Builder().url(apiRoot + path).get().build()
-        val response = try {
-            downloadClient.newCall(request).execute()
-        } catch (e: IOException) {
-            throw ApiException(ApiError(0, e.message ?: e.javaClass.simpleName), e)
-        }
-        response.use { r ->
-            if (!r.isSuccessful) throw errorFor(r.code, r.body?.string().orEmpty(), r.headers)
-            val body = r.body ?: throw ApiException(0, "Empty response")
-            val declared = body.contentLength()
-            if (declared > maxBytes) throw ApiException(413, "Response is too large")
-            target.parentFile?.mkdirs()
-            var total = 0L
-            try {
+        val call = downloadClient.newCall(request)
+        // Cancelling the coroutine must abort the socket, not just ignore its bytes until EOF.
+        val cancellation = currentCoroutineContext()[Job]?.invokeOnCompletion { call.cancel() }
+        try {
+            val response = try {
+                call.execute()
+            } catch (e: IOException) {
+                if (!currentCoroutineContext().isActive) throw CancellationException("Download cancelled")
+                throw ApiException(ApiError(0, e.message ?: e.javaClass.simpleName), e)
+            }
+            response.use { r ->
+                if (!r.isSuccessful) throw errorFor(r.code, r.body?.string().orEmpty(), r.headers)
+                val body = r.body ?: throw ApiException(0, "Empty response")
+                val declared = body.contentLength()
+                if (declared > maxBytes) throw ApiException(413, "Response is too large")
+                target.parentFile?.mkdirs()
+                var total = 0L
                 body.byteStream().use { input ->
                     target.outputStream().buffered(64 * 1024).use { output ->
                         val buffer = ByteArray(64 * 1024)
                         while (true) {
+                            currentCoroutineContext().ensureActive()
                             val read = input.read(buffer)
                             if (read < 0) break
                             total += read
@@ -257,11 +267,15 @@ object GitHubClient {
                         }
                     }
                 }
-            } catch (t: Throwable) {
-                runCatching { target.delete() }
-                throw t
+                total
             }
-            total
+        } catch (t: Throwable) {
+            runCatching { target.delete() }
+            if (t is CancellationException) throw t
+            if (!currentCoroutineContext().isActive) throw CancellationException("Download cancelled")
+            throw t
+        } finally {
+            cancellation?.dispose()
         }
     }
 

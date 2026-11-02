@@ -109,7 +109,7 @@ class CodeBrowserViewModel : ViewModel() {
         viewModelScope.launch {
             // Offline + a pack of this branch: list the packaged tree instead of hitting the network.
             if (!OfflineStatus.isOnline) {
-                val local = localListing(newPath)
+                val local = withContext(Dispatchers.IO) { localListing(newPath) }
                 if (local != null) {
                     listings[key] = local
                     _state.value = LoadState.Ready(local)

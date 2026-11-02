@@ -6,6 +6,7 @@ import java.io.File
 import java.io.FileInputStream
 import java.io.InputStream
 import java.util.zip.ZipInputStream
+import kotlin.coroutines.cancellation.CancellationException
 
 /**
  * Streaming extractor for a repository zipball.
@@ -38,6 +39,7 @@ object RepoPackZip {
         maxBytes: Long,
         write: (path: String, bytes: ByteArray) -> Unit,
         onProgress: (done: Int, total: Int, bytes: Long) -> Unit = { _, _, _ -> },
+        shouldContinue: () -> Boolean = { true },
     ): Result {
         if (candidates.isEmpty()) return Result()
         val total = candidates.size
@@ -47,6 +49,7 @@ object RepoPackZip {
 
         ZipInputStream(BufferedInputStream(FileInputStream(archive), 64 * 1024)).use { zip ->
             while (true) {
+                if (!shouldContinue()) throw CancellationException("Pack extraction cancelled")
                 val entry = zip.nextEntry ?: break
                 try {
                     if (entry.isDirectory) continue
@@ -54,7 +57,7 @@ object RepoPackZip {
                     if (written.containsKey(path)) continue
                     processed += 1
                     val planned = candidates.getValue(path)
-                    val data = readAtMost(zip, RepoPackRules.LARGE_MAX_BYTES)
+                    val data = readAtMost(zip, RepoPackRules.LARGE_MAX_BYTES, shouldContinue)
                     if (data != null && data.isNotEmpty() && bytes + data.size <= maxBytes) {
                         write(path, data)
                         bytes += data.size
@@ -90,11 +93,16 @@ object RepoPackZip {
     }
 
     /** Reads one entry, refusing anything above [limit]; `null` means "too large". */
-    private fun readAtMost(input: InputStream, limit: Long): ByteArray? {
+    private fun readAtMost(
+        input: InputStream,
+        limit: Long,
+        shouldContinue: () -> Boolean,
+    ): ByteArray? {
         val out = ByteArrayOutputStream()
         val buffer = ByteArray(16 * 1024)
         var total = 0L
         while (true) {
+            if (!shouldContinue()) throw CancellationException("Pack extraction cancelled")
             val read = input.read(buffer)
             if (read < 0) break
             total += read

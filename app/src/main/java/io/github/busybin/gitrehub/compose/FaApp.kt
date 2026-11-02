@@ -123,7 +123,7 @@ import io.github.busybin.gitrehub.compose.common.isWideLayout
 import io.github.busybin.gitrehub.compose.common.Avatar
 import io.github.busybin.gitrehub.compose.common.AvatarVersions
 import io.github.busybin.gitrehub.compose.common.ConfirmDialog
-import io.github.busybin.gitrehub.compose.common.DraftQueue
+import io.github.busybin.gitrehub.core.offline.DraftQueue
 import io.github.busybin.gitrehub.compose.common.DraftsScreen
 import io.github.busybin.gitrehub.compose.common.OfflineBanner
 import io.github.busybin.gitrehub.compose.common.PackSyncBar

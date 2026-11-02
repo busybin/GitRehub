@@ -31,6 +31,7 @@ data class RepoPackMeta(
     val branch: String = "",
     val headSha: String = "",
     val syncedAt: Long = 0L,
+    /** Total size on disk: packed file bytes plus the JSON/README metadata written with them. */
     val bytes: Long = 0L,
     val fileCount: Int = 0,
     val skipped: Int = 0,
@@ -68,7 +69,11 @@ object RepoPacks {
     /** Bumped whenever a pack is added or removed, so the UI can re-read the index. */
     val revision: StateFlow<Int> = _revision.asStateFlow()
     const val MAX_REPO_BYTES = 200L * 1024 * 1024
+    /** Per account: one account saving packs must never evict another account's packs. */
     const val MAX_TOTAL_BYTES = 1024L * 1024 * 1024
+
+    /** Serializes the read-modify-write of the index and file deletion with publishing. */
+    private val lock = Any()
 
     /** In-progress download. Never indexed and never read; only renamed into place on success. */
     private const val STAGING_SUFFIX = ".staging"
@@ -197,14 +202,16 @@ object RepoPacks {
 
     /** Flips auto-sync for one published pack without touching its files. */
     fun setAutoSync(context: Context, meta: RepoPackMeta, enabled: Boolean) {
-        val next = readIndex().map {
-            if (it.account == meta.account && it.owner == meta.owner && it.repo == meta.repo) {
-                it.copy(autoSync = enabled)
-            } else {
-                it
+        synchronized(lock) {
+            val next = readIndex().map {
+                if (it.account == meta.account && it.owner == meta.owner && it.repo == meta.repo) {
+                    it.copy(autoSync = enabled)
+                } else {
+                    it
+                }
             }
+            writeIndex(next, context)
         }
-        writeIndex(next, context)
     }
 
     /** Drops the staged download after a failure or a cancel. Published packs are untouched. */
@@ -223,12 +230,21 @@ object RepoPacks {
     ) {
         val staging = stagingDir(context, meta)
         if (!staging.isDirectory) File(staging, "files").mkdirs()
-        File(staging, "meta.json").writeText(json.encodeToString(meta))
-        File(staging, "repo.json").writeText(json.encodeToString(repo))
-        File(staging, "tree.json").writeText(json.encodeToString(RepoPackTree(files)))
+        val repoJson = json.encodeToString(repo)
+        val treeJson = json.encodeToString(RepoPackTree(files))
+        val issuesJson = json.encodeToString(issues)
+        val readme = readmeHtml.orEmpty()
+        // The quota must cover the metadata too: an issues-only pack has no file bytes and would
+        // otherwise be free, and tree.json grows with every file in the repository.
+        val metadataBytes = listOf(repoJson, treeJson, issuesJson, readme)
+            .sumOf { it.toByteArray(Charsets.UTF_8).size.toLong() } + 512
+        val finalMeta = meta.copy(bytes = meta.bytes + metadataBytes)
+        File(staging, "meta.json").writeText(json.encodeToString(finalMeta))
+        File(staging, "repo.json").writeText(repoJson)
+        File(staging, "tree.json").writeText(treeJson)
         readmeHtml?.let { File(staging, "readme.html").writeText(it) }
-        File(staging, "issues.json").writeText(json.encodeToString(issues))
-        publish(context, meta)
+        File(staging, "issues.json").writeText(issuesJson)
+        publish(context, finalMeta)
     }
 
     /**
@@ -236,56 +252,64 @@ object RepoPacks {
      * is restored if it did not, so a crash mid-publish leaves a recoverable copy (see [recover]).
      */
     private fun publish(context: Context, meta: RepoPackMeta) {
-        val staging = stagingDir(context, meta)
-        val target = dir(context, meta)
-        val backup = backupDir(context, meta)
-        runCatching { backup.deleteRecursively() }
-        val hadTarget = target.exists()
-        if (hadTarget && !target.renameTo(backup)) {
-            throw IllegalStateException("Cannot replace the offline pack")
+        synchronized(lock) {
+            val staging = stagingDir(context, meta)
+            val target = dir(context, meta)
+            val backup = backupDir(context, meta)
+            runCatching { backup.deleteRecursively() }
+            val hadTarget = target.exists()
+            if (hadTarget && !target.renameTo(backup)) {
+                throw IllegalStateException("Cannot replace the offline pack")
+            }
+            if (!staging.renameTo(target)) {
+                if (hadTarget) runCatching { backup.renameTo(target) }
+                throw IllegalStateException("Cannot publish the offline pack")
+            }
+            runCatching { backup.deleteRecursively() }
+            val next = (readIndex().filterNot {
+                it.account == meta.account && it.owner == meta.owner && it.repo == meta.repo
+            } + meta).sortedByDescending { it.syncedAt }
+            writeIndex(next, context)
         }
-        if (!staging.renameTo(target)) {
-            if (hadTarget) runCatching { backup.renameTo(target) }
-            throw IllegalStateException("Cannot publish the offline pack")
-        }
-        runCatching { backup.deleteRecursively() }
-        val next = (readIndex().filterNot {
-            it.account == meta.account && it.owner == meta.owner && it.repo == meta.repo
-        } + meta).sortedByDescending { it.syncedAt }
-        writeIndex(next, context)
     }
 
     fun remove(context: Context, meta: RepoPackMeta) {
-        deleteFiles(context, meta)
-        writeIndex(
-            readIndex().filterNot {
-                it.account == meta.account && it.owner == meta.owner && it.repo == meta.repo
-            },
-            context,
-        )
+        synchronized(lock) {
+            deleteFiles(context, meta)
+            writeIndex(
+                readIndex().filterNot {
+                    it.account == meta.account && it.owner == meta.owner && it.repo == meta.repo
+                },
+                context,
+            )
+        }
     }
 
     /** Drops every pack of [account]; called whenever the account changes or signs out. */
     fun clearAccount(account: String) {
-        val context = App.getInstance()
-        readIndex().filter { it.account == account }.forEach { meta -> deleteFiles(context, meta) }
-        // A download killed by the process leaves a directory that is not in the index yet. Its
-        // meta.json names the account once publishing started; without one it is deleted on the
-        // next [recover] instead of being published for an account that is gone.
-        File(context.filesDir, "offline/repos").listFiles()?.forEach { file ->
-            if (!file.isDirectory) return@forEach
-            val owner = runCatching {
-                json.decodeFromString(RepoPackMeta.serializer(), File(file, "meta.json").readText()).account
-            }.getOrNull()
-            if (owner == account) runCatching { file.deleteRecursively() }
+        synchronized(lock) {
+            val context = App.getInstance()
+            readIndex().filter { it.account == account }.forEach { meta -> deleteFiles(context, meta) }
+            // A download killed by the process leaves a directory that is not in the index yet. Its
+            // meta.json names the account once publishing started; without one it is deleted on the
+            // next [recover] instead of being published for an account that is gone.
+            File(context.filesDir, "offline/repos").listFiles()?.forEach { file ->
+                if (!file.isDirectory) return@forEach
+                val owner = runCatching {
+                    json.decodeFromString(RepoPackMeta.serializer(), File(file, "meta.json").readText()).account
+                }.getOrNull()
+                if (owner == account) runCatching { file.deleteRecursively() }
+            }
+            writeIndex(readIndex().filterNot { it.account == account }, context)
         }
-        writeIndex(readIndex().filterNot { it.account == account }, context)
     }
 
     fun clearAll() {
-        val context = App.getInstance()
-        runCatching { File(context.filesDir, "offline/repos").deleteRecursively() }
-        writeIndex(emptyList(), context)
+        synchronized(lock) {
+            val context = App.getInstance()
+            runCatching { File(context.filesDir, "offline/repos").deleteRecursively() }
+            writeIndex(emptyList(), context)
+        }
     }
 
     /**
@@ -313,6 +337,22 @@ object RepoPacks {
                 runCatching { backup.renameTo(target) }
             }
         }
+        // A crash between the rename and the index write leaves a complete pack that the index
+        // does not know about. It would be invisible and impossible to delete from the UI, so put
+        // it back into the index (writeIndex applies the per-account quota).
+        val known = readIndex()
+        val orphans = root.listFiles()?.filter {
+            it.isDirectory && !it.name.endsWith(STAGING_SUFFIX) && !it.name.endsWith(BACKUP_SUFFIX)
+        }.orEmpty().mapNotNull { dir ->
+            runCatching {
+                json.decodeFromString(RepoPackMeta.serializer(), File(dir, "meta.json").readText())
+            }.getOrNull()
+        }.filter { meta ->
+            known.none {
+                it.account == meta.account && it.owner == meta.owner && it.repo == meta.repo
+            }
+        }
+        if (orphans.isNotEmpty()) writeIndex(known + orphans, context)
     }
 
     private fun deleteFiles(context: Context, meta: RepoPackMeta) {
@@ -330,16 +370,24 @@ object RepoPacks {
     }
 
     private fun writeIndex(items: List<RepoPackMeta>, context: Context) {
-        _revision.value = _revision.value + 1
-        val kept = items.sortedByDescending { it.syncedAt }
-        // Enforce the global quota: keep the newest packs until the budget is used up, delete the rest.
-        var used = 0L
-        val survivors = kept.filter { meta ->
-            val fits = used + meta.bytes <= MAX_TOTAL_BYTES
-            if (fits) used += meta.bytes else deleteFiles(context, meta)
-            fits
+        synchronized(lock) {
+            _revision.value = _revision.value + 1
+            val kept = items.sortedByDescending { it.syncedAt }
+            // Enforce the quota per account: one account saving packs must never delete another
+            // account's packs. Within an account keep the newest until the budget is used up.
+            val used = HashMap<String, Long>()
+            val survivors = kept.filter { meta ->
+                val current = used[meta.account] ?: 0L
+                val fits = current + meta.bytes <= MAX_TOTAL_BYTES
+                if (fits) {
+                    used[meta.account] = current + meta.bytes
+                } else {
+                    deleteFiles(context, meta)
+                }
+                fits
+            }
+            runCatching { PrefHelper.putAny(INDEX_KEY, json.encodeToString(survivors)) }
         }
-        runCatching { PrefHelper.putAny(INDEX_KEY, json.encodeToString(survivors)) }
     }
 
     private fun readIndex(): List<RepoPackMeta> = runCatching {

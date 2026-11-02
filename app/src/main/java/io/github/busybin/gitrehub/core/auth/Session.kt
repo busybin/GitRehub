@@ -2,15 +2,18 @@ package io.github.busybin.gitrehub.core.auth
 
 import io.github.busybin.gitrehub.core.model.User
 import io.github.busybin.gitrehub.core.net.GitHubApi
+import io.github.busybin.gitrehub.core.offline.DraftQueue
 import io.github.busybin.gitrehub.core.offline.RepoPackSyncer
 import io.github.busybin.gitrehub.core.offline.OfflineSaves
 import io.github.busybin.gitrehub.core.offline.RepoPacks
 import io.github.busybin.gitrehub.helper.LocalAccountTraces
 import io.github.busybin.gitrehub.helper.PrefGetter
 import io.github.busybin.gitrehub.provider.rest.HttpCache
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.withContext
 
 /** What the account switcher shows: the account in use plus the other stored ones. */
 data class StoredAccounts(
@@ -93,10 +96,13 @@ object Session {
             scopes = response.scopes?.toList().orEmpty(),
         )
         // A download belongs to the account that started it; stop it before the token changes.
-        RepoPackSyncer.cancelAll(silent = true)
+        RepoPackSyncer.cancelAndJoin(silent = true)
         val previous = TokenStore.current()?.login
         TokenStore.upsert(account, makeCurrent = true)
-        if (previous != null && previous != account.login) clearOfflineCopies(previous)
+        if (previous != null && previous != account.login) {
+            clearOfflineCopies(previous)
+            DraftQueue.clear()
+        }
         HttpCache.clear()
         PrefGetter.token = account.token
         _accountRevision.value = _accountRevision.value + 1
@@ -152,10 +158,12 @@ object Session {
      * of the account just left must not be answerable for the one being entered.
      */
     suspend fun switchTo(login: String): Boolean {
-        RepoPackSyncer.cancelAll(silent = true)
+        RepoPackSyncer.cancelAndJoin(silent = true)
         val previous = TokenStore.current()?.login
         if (!TokenStore.setCurrent(login)) return false
         previous?.let { clearOfflineCopies(it) }
+        // Drafts are the account's own text; they must not be shown or sent under the next account.
+        DraftQueue.clear()
         HttpCache.clear()
         PrefGetter.token = TokenStore.current()?.token
         _accountRevision.value = _accountRevision.value + 1
@@ -170,6 +178,7 @@ object Session {
         // the browsing traces here so "no accounts left" really means "nothing readable left".
         if (removed && TokenStore.accounts().isEmpty()) {
             runCatching { LocalAccountTraces.clear() }
+            runCatching { DraftQueue.clear() }
             runCatching { OfflineSaves.clearAll() }
             runCatching { RepoPacks.clearAll() }
         }
@@ -178,11 +187,13 @@ object Session {
 
     /** Signs out: the account leaves the encrypted store and the in-memory token with it. */
     suspend fun logout() {
-        RepoPackSyncer.cancelAll(silent = true)
+        RepoPackSyncer.cancelAndJoin(silent = true)
         val previous = TokenStore.current()?.login
         previous?.let { clearOfflineCopies(it) }
         // Signing out wipes the browsing traces too: their keys name private repositories.
         runCatching { LocalAccountTraces.clear() }
+        // The MMKV key is gone, but the in-memory queue would write it back on the next login.
+        runCatching { DraftQueue.clear() }
         HttpCache.clear()
         TokenStore.clearCurrent()
         // Signing out of the last account leaves no readable copy anywhere on the device.
@@ -198,7 +209,7 @@ object Session {
      * Browsing traces are handled separately: they are wiped on sign-out ([logout]) but kept across
      * switches, because they are what keeps already-read threads from turning unread again.
      */
-    private fun clearOfflineCopies(login: String) {
+    private suspend fun clearOfflineCopies(login: String) = withContext(Dispatchers.IO) {
         runCatching { OfflineSaves.clearAccount(login) }
         runCatching { RepoPacks.clearAccount(login) }
     }
