@@ -1062,4 +1062,8 @@ GitHub にはサードパーティ製クライアント向けのプッシュチ�
     <string name="m3_saved_open_online">オンライン版を開く</string>
     <string name="m3_save_offline">オフライン保存</string>
     <string name="m3_save_offline_done">オフライン保存済み</string>
+
+    <!-- bulk close confirmation -->
+    <string name="m3_bulk_close_confirm_title">%1$d 件をクローズしますか？</string>
+    <string name="m3_bulk_close_confirm_message">GitHub 上でクローズされます。あとで再オープンできます。</string>
 </resources>

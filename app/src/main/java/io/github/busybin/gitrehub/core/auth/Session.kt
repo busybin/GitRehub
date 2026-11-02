@@ -3,6 +3,7 @@ package io.github.busybin.gitrehub.core.auth
 import io.github.busybin.gitrehub.core.model.User
 import io.github.busybin.gitrehub.core.net.GitHubApi
 import io.github.busybin.gitrehub.core.offline.OfflineSaves
+import io.github.busybin.gitrehub.helper.LocalAccountTraces
 import io.github.busybin.gitrehub.helper.PrefGetter
 import io.github.busybin.gitrehub.provider.rest.HttpCache
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -89,7 +90,9 @@ object Session {
             token = clean,
             scopes = response.scopes?.toList().orEmpty(),
         )
+        val previous = TokenStore.current()?.login
         TokenStore.upsert(account, makeCurrent = true)
+        if (previous != null && previous != account.login) clearOfflineCopies(previous)
         HttpCache.clear()
         PrefGetter.token = account.token
         _accountRevision.value = _accountRevision.value + 1
@@ -147,8 +150,7 @@ object Session {
     suspend fun switchTo(login: String): Boolean {
         val previous = TokenStore.current()?.login
         if (!TokenStore.setCurrent(login)) return false
-        // Offline copies are private to an account; they must not survive a switch.
-        previous?.let { runCatching { OfflineSaves.clearAccount(it) } }
+        previous?.let { clearOfflineCopies(it) }
         HttpCache.clear()
         PrefGetter.token = TokenStore.current()?.token
         _accountRevision.value = _accountRevision.value + 1
@@ -157,16 +159,39 @@ object Session {
 
     /** Forgets a stored account; the current one can only be left through [logout]. */
     suspend fun removeAccount(login: String): Boolean {
-        runCatching { OfflineSaves.clearAccount(login) }
-        return TokenStore.remove(login)
+        clearOfflineCopies(login)
+        val removed = TokenStore.remove(login)
+        // Removing the last account leaves the app signed out, and logout() will never run: wipe
+        // the browsing traces here so "no accounts left" really means "nothing readable left".
+        if (removed && TokenStore.accounts().isEmpty()) {
+            runCatching { LocalAccountTraces.clear() }
+            runCatching { OfflineSaves.clearAll() }
+        }
+        return removed
     }
 
     /** Signs out: the account leaves the encrypted store and the in-memory token with it. */
     suspend fun logout() {
-        TokenStore.current()?.login?.let { runCatching { OfflineSaves.clearAccount(it) } }
+        val previous = TokenStore.current()?.login
+        previous?.let { clearOfflineCopies(it) }
+        // Signing out wipes the browsing traces too: their keys name private repositories.
+        runCatching { LocalAccountTraces.clear() }
         HttpCache.clear()
         TokenStore.clearCurrent()
+        // Signing out of the last account leaves no readable copy anywhere on the device.
+        if (TokenStore.accounts().isEmpty()) runCatching { OfflineSaves.clearAll() }
         PrefGetter.clearCredentials()
         _accountRevision.value = _accountRevision.value + 1
+    }
+
+    /**
+     * Saved threads are private content, so they never outlive the account that saved them — even
+     * when the user only switches to another account for a minute.
+     *
+     * Browsing traces are handled separately: they are wiped on sign-out ([logout]) but kept across
+     * switches, because they are what keeps already-read threads from turning unread again.
+     */
+    private fun clearOfflineCopies(login: String) {
+        runCatching { OfflineSaves.clearAccount(login) }
     }
 }

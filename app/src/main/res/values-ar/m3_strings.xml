@@ -1062,4 +1062,8 @@
     <string name="m3_saved_open_online">فتح النسخة المباشرة</string>
     <string name="m3_save_offline">حفظ دون اتصال</string>
     <string name="m3_save_offline_done">محفوظ دون اتصال</string>
+
+    <!-- bulk close confirmation -->
+    <string name="m3_bulk_close_confirm_title">هل تريد إغلاق %1$d؟</string>
+    <string name="m3_bulk_close_confirm_message">سيتم إغلاقها على GitHub ويمكنك إعادة فتحها لاحقًا.</string>
 </resources>

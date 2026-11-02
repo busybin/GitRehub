@@ -55,14 +55,19 @@ object OfflineSaves {
     private fun dir(context: Context): File =
         File(context.filesDir, "offline").apply { mkdirs() }
 
-    private fun file(context: Context, meta: SavedThreadMeta): File = File(
-        dir(context),
-        "${sanitize(meta.account)}_${sanitize(meta.owner)}_${sanitize(meta.repo)}_${meta.number}.json",
-    )
+    /**
+     * File name is a hash: a plain `octocat_private-repo_42.json` would leak the account and the
+     * private repository name to anything that can list the app's files directory.
+     */
+    private fun file(context: Context, meta: SavedThreadMeta): File =
+        File(dir(context), "${digest(meta)}.json")
 
-    private fun sanitize(value: String): String =
-        value.map { if (it.isLetterOrDigit() || it == '-' || it == '_' || it == '.') it else '_' }
-            .joinToString("")
+    private fun digest(meta: SavedThreadMeta): String {
+        val raw = "${meta.account}|${meta.owner}/${meta.repo}#${meta.number}"
+        val bytes = java.security.MessageDigest.getInstance("SHA-256")
+            .digest(raw.toByteArray(Charsets.UTF_8))
+        return bytes.joinToString("") { "%02x".format(it) }.take(32)
+    }
 
     /** Every saved thread of [account], newest first. */
     fun index(account: String): List<SavedThreadMeta> = readIndex()
@@ -117,7 +122,23 @@ object OfflineSaves {
         readIndex().filter { it.account == account }.forEach { meta ->
             runCatching { file(context, meta).delete() }
         }
-        writeIndex(readIndex().filterNot { it.account == account }, context)
+        val remaining = readIndex().filterNot { it.account == account }
+        writeIndex(remaining, context)
+        // Delete files the index no longer knows about (a crash between writing the file and the
+        // index would otherwise leave a readable orphan forever).
+        sweep(context, remaining)
+    }
+
+    /** Removes every `.json` whose hash is not referenced by [keep]. */
+    private fun sweep(context: Context, keep: List<SavedThreadMeta>) {
+        val expected = keep.map { "${digest(it)}.json" }.toSet()
+        runCatching {
+            dir(context).listFiles()?.forEach { file ->
+                if (file.isFile && file.name.endsWith(".json") && file.name !in expected) {
+                    file.delete()
+                }
+            }
+        }
     }
 
     /** Drop everything: signing out of the last account leaves no readable copy behind. */

@@ -1076,4 +1076,8 @@ github 不给第三方客户端推送通道，所以这是真的轮询：最短 
     <string name="m3_saved_open_online">打开在线版本</string>
     <string name="m3_save_offline">离线保存</string>
     <string name="m3_save_offline_done">已离线保存</string>
+
+    <!-- bulk close confirmation -->
+    <string name="m3_bulk_close_confirm_title">关闭 %1$d 条？</string>
+    <string name="m3_bulk_close_confirm_message">它们会在 GitHub 上被关闭，之后可以重新打开。</string>
 </resources>

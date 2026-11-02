@@ -1062,4 +1062,8 @@ O GitHub não tem canal de push para clientes de terceiros, então isto é uma c
     <string name="m3_saved_open_online">Abrir a versão online</string>
     <string name="m3_save_offline">Salvar offline</string>
     <string name="m3_save_offline_done">Salvo offline</string>
+
+    <!-- bulk close confirmation -->
+    <string name="m3_bulk_close_confirm_title">Fechar %1$d itens?</string>
+    <string name="m3_bulk_close_confirm_message">Eles serão fechados no GitHub. Você pode reabri-los depois.</string>
 </resources>

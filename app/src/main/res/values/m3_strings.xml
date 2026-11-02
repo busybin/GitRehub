@@ -1079,4 +1079,8 @@ GitHub has no push channel for third-party clients, so this is real polling: the
     <string name="m3_saved_open_online">Open the live page</string>
     <string name="m3_save_offline">Save offline</string>
     <string name="m3_save_offline_done">Saved offline</string>
+
+    <!-- bulk close confirmation -->
+    <string name="m3_bulk_close_confirm_title">Close %1$d threads?</string>
+    <string name="m3_bulk_close_confirm_message">They will be closed on GitHub. You can reopen them later.</string>
 </resources>

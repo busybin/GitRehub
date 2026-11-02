@@ -70,4 +70,16 @@ object PrefHelper {
     }
 
     inline fun <reified T> isExist(key: String): Boolean = mmkv().contains(typed<T>(key))
+
+    /**
+     * Drops every value whose key contains [prefix] (the type tag in front of the key is ignored).
+     * Used when leaving an account: keys such as `m3_repo_seen_owner/repo` name private repositories
+     * and must not outlive the account they belong to.
+     */
+    fun removeAllWithPrefix(prefix: String) {
+        val needle = "@$prefix"
+        mmkv().allKeys()?.forEach { key ->
+            if (key.contains(needle)) mmkv().remove(key)
+        }
+    }
 }

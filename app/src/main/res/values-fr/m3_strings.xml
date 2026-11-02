@@ -1062,4 +1062,8 @@ GitHub n\'a pas de canal push pour les clients tiers, il s\'agit donc d\'une vé
     <string name="m3_saved_open_online">Ouvrir la version en ligne</string>
     <string name="m3_save_offline">Enregistrer hors ligne</string>
     <string name="m3_save_offline_done">Enregistré hors ligne</string>
+
+    <!-- bulk close confirmation -->
+    <string name="m3_bulk_close_confirm_title">Fermer %1$d tickets ?</string>
+    <string name="m3_bulk_close_confirm_message">Ils seront fermés sur GitHub. Vous pourrez les rouvrir.</string>
 </resources>

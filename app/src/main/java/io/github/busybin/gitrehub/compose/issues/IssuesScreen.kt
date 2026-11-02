@@ -67,6 +67,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.busybin.gitrehub.R
 import io.github.busybin.gitrehub.compose.common.AsyncContent
+import io.github.busybin.gitrehub.compose.common.ConfirmDialog
 import io.github.busybin.gitrehub.compose.common.EmptyView
 import io.github.busybin.gitrehub.compose.common.LoadState
 import io.github.busybin.gitrehub.compose.common.LocalTokens
@@ -164,6 +165,7 @@ private fun IssuesList(
     val bulkMessage by vm.message.collectAsStateWithLifecycle()
     var checked by remember { mutableStateOf<Set<Int>>(emptySet()) }
     var showLabelPicker by remember { mutableStateOf(false) }
+    var confirmBulkClose by remember { mutableStateOf(false) }
     var showAssigneePicker by remember { mutableStateOf(false) }
     val tokens = LocalTokens.current
 
@@ -237,6 +239,14 @@ private fun IssuesList(
                     },
                 )
             }
+            bulkMessage?.let { text ->
+                Text(
+                    text = text.render(),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp),
+                )
+            }
             PullToRefreshBox(
                 isRefreshing = refreshing,
                 onRefresh = { vm.refresh() },
@@ -295,8 +305,7 @@ private fun IssuesList(
             BulkBar(
                 count = checked.size,
                 busy = bulkBusy,
-                message = bulkMessage?.render(),
-                onClose = { vm.bulkClose(checked, closed = true) },
+                onClose = { confirmBulkClose = true },
                 onReopen = { vm.bulkClose(checked, closed = false) },
                 onLabel = {
                     vm.loadOptions()
@@ -325,6 +334,20 @@ private fun IssuesList(
                 Icon(Icons.Outlined.Add, contentDescription = stringResource(R.string.m3_new_issue))
             }
         }
+    }
+    if (confirmBulkClose) {
+        ConfirmDialog(
+            title = stringResource(R.string.m3_bulk_close_confirm_title, checked.size),
+            message = stringResource(R.string.m3_bulk_close_confirm_message),
+            confirmLabel = stringResource(R.string.m3_bulk_close),
+            destructive = true,
+            onConfirm = {
+                confirmBulkClose = false
+                vm.bulkClose(checked, closed = true)
+                checked = emptySet()
+            },
+            onDismiss = { confirmBulkClose = false },
+        )
     }
     if (showLabelPicker) {
         BulkPickerDialog(
@@ -631,7 +654,6 @@ fun IssueRow(
 private fun BulkBar(
     count: Int,
     busy: Boolean,
-    message: String?,
     onClose: () -> Unit,
     onReopen: () -> Unit,
     onLabel: () -> Unit,
@@ -653,13 +675,6 @@ private fun BulkBar(
                     modifier = Modifier.weight(1f),
                 )
                 TextButton(onClick = onClear) { Text(stringResource(R.string.m3_bulk_clear)) }
-            }
-            if (message != null) {
-                Text(
-                    text = message,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary,
-                )
             }
             Row(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),

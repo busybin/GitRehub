@@ -1060,4 +1060,8 @@
     <string name="m3_saved_open_online">Открыть актуальную версию</string>
     <string name="m3_save_offline">Сохранить офлайн</string>
     <string name="m3_save_offline_done">Сохранено офлайн</string>
+
+    <!-- bulk close confirmation -->
+    <string name="m3_bulk_close_confirm_title">Закрыть %1$d?</string>
+    <string name="m3_bulk_close_confirm_message">Они будут закрыты на GitHub. Позже их можно открыть снова.</string>
 </resources>
