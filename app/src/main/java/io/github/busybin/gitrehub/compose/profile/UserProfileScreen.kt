@@ -107,7 +107,7 @@ fun UserProfileScreen(
                     user = user,
                     onOpenUrl = { url -> openInBrowser(context, url) },
                     actions = {
-                        if (!page.isSelf) {
+                        if (!page.isSelf && !page.isOrg) {
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 ToggleActionButton(
                                     active = page.following,

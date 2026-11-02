@@ -54,6 +54,7 @@ import io.github.busybin.gitrehub.compose.common.MarkdownText
 import io.github.busybin.gitrehub.compose.common.MetaText
 import io.github.busybin.gitrehub.compose.common.Pill
 import io.github.busybin.gitrehub.compose.common.relativeTime
+import io.github.busybin.gitrehub.compose.common.render
 import io.github.busybin.gitrehub.compose.common.repoBlobBaseUrl
 import io.github.busybin.gitrehub.compose.common.repoRawBaseUrl
 import io.github.busybin.gitrehub.core.model.Discussion
@@ -74,10 +75,19 @@ fun DiscussionDetailScreen(
     val commentsLoadingMore by vm.commentsLoadingMore.collectAsStateWithLifecycle()
     val commentsHasMore by vm.commentsHasMore.collectAsStateWithLifecycle()
     val commentsRefreshing by vm.commentsRefreshing.collectAsStateWithLifecycle()
+    val answer by vm.answer.collectAsStateWithLifecycle()
+    val message by vm.message.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
     val tokens = LocalTokens.current
 
     LaunchedEffect(owner, repo, number) { vm.load(owner, repo, number) }
+    // A failed answer toggle has nowhere else to show; clear it so it does not stick forever.
+    LaunchedEffect(message) {
+        if (message != null) {
+            kotlinx.coroutines.delay(4000)
+            vm.consumeMessage()
+        }
+    }
 
     val shouldLoadMore by remember {
         derivedStateOf {
@@ -107,6 +117,16 @@ fun DiscussionDetailScreen(
                     DiscussionHeader(discussion, owner, repo)
                 }
 
+                message?.let { text ->
+                    item(key = "answer-message") {
+                        Text(
+                            text = text.render(),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
+                }
+
                 when (val current = comments) {
                     is LoadState.Loading -> item(key = "comments-loading") {
                         Box(
@@ -127,7 +147,17 @@ fun DiscussionDetailScreen(
                     }
 
                     is LoadState.Ready -> items(current.value, key = { it.id }) { comment ->
-                        CommentCard(comment, owner, repo, onOpenUser)
+                        CommentCard(
+                            comment = comment,
+                            owner = owner,
+                            repo = repo,
+                            onOpenUser = onOpenUser,
+                            accepted = answer?.answerCommentId == comment.id,
+                            canMark = discussion.category?.isAnswerable == true && answer != null,
+                            onToggleAnswer = {
+                                vm.markAnswer(comment, answer?.answerCommentId != comment.id)
+                            },
+                        )
                     }
                 }
 
@@ -223,6 +253,9 @@ private fun CommentCard(
     owner: String,
     repo: String,
     onOpenUser: (String) -> Unit,
+    accepted: Boolean = false,
+    canMark: Boolean = false,
+    onToggleAnswer: () -> Unit = {},
 ) {
     val tokens = LocalTokens.current
     Card(
@@ -247,7 +280,13 @@ private fun CommentCard(
                     )
                     MetaText(relativeTime(comment.createdAt))
                 }
-                // The chosen answer has no marker in the REST payload, so only the association is shown.
+                if (accepted) {
+                    Pill(stringResource(R.string.m3_discussion_answered))
+                } else if (canMark) {
+                    TextButton(onClick = onToggleAnswer) {
+                        Text(stringResource(R.string.m3_discussion_answer))
+                    }
+                }
                 associationLabel(comment.authorAssociation)?.let { Pill(it) }
             }
             if (!comment.body.isNullOrBlank()) {

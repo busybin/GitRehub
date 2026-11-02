@@ -37,6 +37,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -125,6 +126,7 @@ fun IssueDetailScreen(
     val myLogin by vm.myLogin.collectAsStateWithLifecycle()
     val myReactions by vm.myReactions.collectAsStateWithLifecycle()
     val options by vm.options.collectAsStateWithLifecycle()
+    val savedOffline by vm.saved.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
 
@@ -136,6 +138,7 @@ fun IssueDetailScreen(
     var confirmToggle by rememberSaveable { mutableStateOf(false) }
     var showMergeDialog by rememberSaveable { mutableStateOf(false) }
     var showReviewers by rememberSaveable { mutableStateOf(false) }
+    var showChecks by rememberSaveable { mutableStateOf(false) }
     var confirmDeleteBranch by rememberSaveable { mutableStateOf(false) }
     var linkToCopy by remember { mutableStateOf<String?>(null) }
 
@@ -183,11 +186,18 @@ fun IssueDetailScreen(
             DisposableEffect(threadKey) {
                 onDispose { ThreadSeen.markSeen(threadKey) }
             }
-            val firstUnread = remember(data.comments, seenAt) {
+            val rows = remember(data.comments, data.events) {
+                mergeTimeline(data.comments, data.events)
+            }
+            val firstUnread = remember(rows, seenAt) {
                 if (seenAt <= 0L) -1
-                else data.comments.indexOfFirst {
-                    (it.createdAt?.toEpochMilli() ?: 0L) > seenAt
-                }
+                else rows.indexOfFirst { it.comment != null && it.at > seenAt }
+            }
+            val newComments = remember(rows, firstUnread) {
+                if (firstUnread < 0) 0 else rows.drop(firstUnread).count { it.comment != null }
+            }
+            if (showChecks) {
+                ChecksDialog(data.checks) { showChecks = false }
             }
             val listState = androidx.compose.foundation.lazy.rememberLazyListState()
             val scope = rememberCoroutineScope()
@@ -205,6 +215,12 @@ fun IssueDetailScreen(
                     )
                 }
                 item { StateRow(issue, data.pullRequest, number) }
+
+                if (pr != null && data.checks.isNotEmpty()) {
+                    item {
+                        ChecksSummary(data.checks) { showChecks = true }
+                    }
+                }
 
                 item {
                     WriteActions(
@@ -235,6 +251,29 @@ fun IssueDetailScreen(
                         onRequestReview = { showReviewers = true },
                         onDeleteBranch = { confirmDeleteBranch = true },
                     )
+                }
+
+                if (pr != null && data.autoMerge != null) {
+                    item {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = stringResource(R.string.m3_auto_merge_on),
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.weight(1f),
+                            )
+                            TextButton(
+                                onClick = {
+                                    vm.setAutoMerge(
+                                        owner, repo, number, pr.nodeId, false, MergeMethod.MERGE,
+                                    )
+                                },
+                                enabled = !busy && canWrite,
+                            ) {
+                                Text(stringResource(R.string.m3_auto_merge_cancel))
+                            }
+                        }
+                    }
                 }
 
                 item {
@@ -283,7 +322,7 @@ fun IssueDetailScreen(
                     }
                 }
 
-                if (data.comments.isNotEmpty()) {
+                if (rows.isNotEmpty()) {
                     item {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             HorizontalDivider(Modifier.weight(1f))
@@ -304,7 +343,7 @@ fun IssueDetailScreen(
                                 Text(
                                     text = stringResource(
                                         R.string.m3_issue_new_comments,
-                                        data.comments.size - firstUnread,
+                                        newComments,
                                     ),
                                     style = MaterialTheme.typography.labelLarge,
                                     color = MaterialTheme.colorScheme.primary,
@@ -323,25 +362,31 @@ fun IssueDetailScreen(
                             }
                         }
                     }
-                    items(data.comments, key = { it.id }) { comment ->
-                        CommentCard(
-                            comment = comment,
-                            mine = myLogin != null &&
-                                comment.user?.login.equals(myLogin, ignoreCase = true),
-                            imageBaseUrl = repoRawBaseUrl(owner, repo),
-                            linkBaseUrl = repoBlobBaseUrl(owner, repo),
-                            repo = "$owner/$repo",
-                            reactionsMine = myReactions,
-                            busy = busy,
-                            onEdit = { editingComment = comment },
-                            onDelete = { deletingComment = comment },
-                            onReact = { kind ->
-                                vm.toggleReaction(
-                                    owner, repo,
-                                    ReactionTarget.CommentLevel(comment.id), kind,
-                                )
-                            },
-                        )
+                    items(rows, key = { it.key }) { row ->
+                        val event = row.event
+                        if (event != null) {
+                            TimelineEventRow(event)
+                        } else {
+                            val comment = row.comment ?: return@items
+                            CommentCard(
+                                comment = comment,
+                                mine = myLogin != null &&
+                                    comment.user?.login.equals(myLogin, ignoreCase = true),
+                                imageBaseUrl = repoRawBaseUrl(owner, repo),
+                                linkBaseUrl = repoBlobBaseUrl(owner, repo),
+                                repo = "$owner/$repo",
+                                reactionsMine = myReactions,
+                                busy = busy,
+                                onEdit = { editingComment = comment },
+                                onDelete = { deletingComment = comment },
+                                onReact = { kind ->
+                                    vm.toggleReaction(
+                                        owner, repo,
+                                        ReactionTarget.CommentLevel(comment.id), kind,
+                                    )
+                                },
+                            )
+                        }
                     }
                 }
 
@@ -408,6 +453,13 @@ fun IssueDetailScreen(
                     val canonical = issue.htmlUrl
                         ?: "https://github.com/$owner/$repo/issues/$number"
                     Row {
+                        TextButton(onClick = { vm.saveOffline(context, owner, repo, number) }) {
+                            Text(
+                                stringResource(
+                                    if (savedOffline) R.string.m3_save_offline_done else R.string.m3_save_offline,
+                                ),
+                            )
+                        }
                         TextButton(
                             onClick = {
                                 // Use BrowserLauncher: the app declares a github.com filter, so a raw VIEW intent loops back.
@@ -580,9 +632,14 @@ fun IssueDetailScreen(
         MergeDialog(
             number = number,
             onDismiss = { showMergeDialog = false },
-            onConfirm = { method, commitMessage ->
+            onConfirm = { method, commitMessage, autoMerge ->
                 showMergeDialog = false
-                vm.mergePullRequest(owner, repo, number, method, commitMessage)
+                if (autoMerge) {
+                    val nodeId = (state as? LoadState.Ready)?.value?.pullRequest?.nodeId
+                    vm.setAutoMerge(owner, repo, number, nodeId, true, method)
+                } else {
+                    vm.mergePullRequest(owner, repo, number, method, commitMessage)
+                }
             },
         )
     }
@@ -1265,10 +1322,11 @@ private fun ReviewerSheet(
 private fun MergeDialog(
     number: Int,
     onDismiss: () -> Unit,
-    onConfirm: (MergeMethod, String?) -> Unit,
+    onConfirm: (MergeMethod, String?, Boolean) -> Unit,
 ) {
     var method by rememberSaveable { mutableStateOf(MergeMethod.MERGE) }
     var commitMessage by rememberSaveable { mutableStateOf("") }
+    var autoMerge by rememberSaveable { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -1297,11 +1355,30 @@ private fun MergeDialog(
                     placeholder = { Text(stringResource(R.string.m3_write_merge_message_hint)) },
                     minLines = 2,
                 )
+                Spacer(Modifier.height(12.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(checked = autoMerge, onCheckedChange = { autoMerge = it })
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.m3_auto_merge_enable),
+                            style = MaterialTheme.typography.labelLarge,
+                        )
+                        Text(
+                            text = stringResource(R.string.m3_auto_merge_hint),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
             }
         },
         confirmButton = {
-            TextButton(onClick = { onConfirm(method, commitMessage) }) {
-                Text(stringResource(R.string.m3_write_merge))
+            TextButton(onClick = { onConfirm(method, commitMessage, autoMerge) }) {
+                Text(
+                    stringResource(
+                        if (autoMerge) R.string.m3_auto_merge_enable else R.string.m3_write_merge,
+                    ),
+                )
             }
         },
         dismissButton = {

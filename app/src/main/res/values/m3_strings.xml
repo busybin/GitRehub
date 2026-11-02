@@ -350,6 +350,11 @@
     <string name="m3_section_about">About</string>
     
     <string name="m3_notif_new_title">New message notifications</string>
+    <string name="m3_notif_channel_mention">Mentions</string>
+    <string name="m3_notif_channel_review">Review requests</string>
+    <string name="m3_notif_channel_ci">CI activity</string>
+    <string name="m3_notif_channel_comment">Comments and updates</string>
+    <string name="m3_notif_channel_other">Other notifications</string>
     <string name="m3_notif_new_desc">Checks your unread notifications in the background and shows a system notification when something new arrives (tap it to open the app).
 
 GitHub has no push channel for third-party clients, so this is real polling: the shortest interval is 1 minute, but the system will delay it in deep sleep to save battery.</string>
@@ -1002,4 +1007,76 @@ GitHub has no push channel for third-party clients, so this is real polling: the
 
     <string name="m3_actions_inputs_hint">key=value</string>
     <string name="m3_repo_topics_hint">android, kotlin</string>
+
+    <!-- issue/PR timeline state changes -->
+    <string name="m3_tl_someone">Someone</string>
+    <string name="m3_tl_closed">%1$s closed this</string>
+    <string name="m3_tl_reopened">%1$s reopened this</string>
+    <string name="m3_tl_labeled">%1$s added the %2$s label</string>
+    <string name="m3_tl_unlabeled">%1$s removed the %2$s label</string>
+    <string name="m3_tl_assigned">%1$s assigned %2$s</string>
+    <string name="m3_tl_unassigned">%1$s unassigned %2$s</string>
+    <string name="m3_tl_milestoned">%1$s added this to the %2$s milestone</string>
+    <string name="m3_tl_demilestoned">%1$s removed this from the %2$s milestone</string>
+    <string name="m3_tl_renamed">%1$s renamed this from %2$s to %3$s</string>
+    <string name="m3_tl_referenced">%1$s referenced this in %2$s</string>
+    <string name="m3_tl_cross_referenced">%1$s referenced this from %2$s</string>
+    <string name="m3_tl_merged">%1$s merged this</string>
+    <string name="m3_tl_review_requested">%1$s requested a review from %2$s</string>
+    <string name="m3_tl_draft">%1$s converted this to a draft</string>
+    <string name="m3_tl_ready">%1$s marked this ready for review</string>
+    <string name="m3_tl_locked">%1$s locked this</string>
+    <string name="m3_tl_unlocked">%1$s unlocked this</string>
+
+    <!-- pull request checks / auto-merge -->
+    <string name="m3_checks_title">Checks</string>
+    <string name="m3_checks_summary_passed">%1$d passed</string>
+    <string name="m3_checks_summary_failed">%1$d failed</string>
+    <string name="m3_checks_summary_running">%1$d running</string>
+    <string name="m3_auto_merge_enable">Enable auto-merge</string>
+    <string name="m3_auto_merge_hint">GitHub merges this pull request once the required checks pass.</string>
+    <string name="m3_auto_merge_on">Auto-merge is on</string>
+    <string name="m3_auto_merge_cancel">Cancel auto-merge</string>
+    <string name="m3_auto_merge_enabled">Auto-merge enabled</string>
+    <string name="m3_auto_merge_disabled">Auto-merge cancelled</string>
+
+    <!-- discussions: accepted answer -->
+    <string name="m3_discussion_answer">Mark as answer</string>
+    <string name="m3_discussion_answer_failed">Could not update the answer.</string>
+
+    <!-- gists: star, comments, revisions -->
+    <string name="m3_gist_star">Star</string>
+    <string name="m3_gist_unstar">Starred</string>
+    <string name="m3_gist_comment_hint">Write a comment</string>
+    <string name="m3_gist_comment_send">Send</string>
+    <string name="m3_gist_history">History (%1$d)</string>
+    <string name="m3_gist_history_title">Version history</string>
+
+    <!-- repository digest -->
+    <string name="m3_digest_title">Since your last visit</string>
+    <string name="m3_digest_commits">%1$d commits</string>
+    <string name="m3_digest_commits_more">100+ commits</string>
+    <string name="m3_digest_threads">%1$d issues/PRs</string>
+    <string name="m3_digest_release">New release %1$s</string>
+
+    <!-- bulk triage -->
+    <string name="m3_bulk_selected">%1$d selected</string>
+    <string name="m3_bulk_clear">Clear</string>
+    <string name="m3_bulk_close">Close</string>
+    <string name="m3_bulk_reopen">Reopen</string>
+    <string name="m3_bulk_label">Add label</string>
+    <string name="m3_bulk_assign">Assign</string>
+    <string name="m3_bulk_no_options">Nothing to choose here.</string>
+    <string name="m3_bulk_done">%1$d done</string>
+    <string name="m3_bulk_partial">%1$d done, %2$d failed</string>
+
+    <!-- offline saved threads -->
+    <string name="m3_saved">Saved offline</string>
+    <string name="m3_saved_empty">Nothing saved yet. Open an issue or pull request and tap “Save offline”.</string>
+    <string name="m3_saved_at">Saved %1$s</string>
+    <string name="m3_saved_missing">This saved copy is gone.</string>
+    <string name="m3_saved_offline_banner">Offline copy — content is from when you saved it.</string>
+    <string name="m3_saved_open_online">Open the live page</string>
+    <string name="m3_save_offline">Save offline</string>
+    <string name="m3_save_offline_done">Saved offline</string>
 </resources>

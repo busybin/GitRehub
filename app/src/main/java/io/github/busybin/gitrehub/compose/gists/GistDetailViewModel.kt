@@ -9,13 +9,17 @@ import io.github.busybin.gitrehub.compose.common.launchLoad
 import io.github.busybin.gitrehub.compose.common.toUiText
 import io.github.busybin.gitrehub.core.auth.Session
 import io.github.busybin.gitrehub.core.model.Gist
+import io.github.busybin.gitrehub.core.model.GistComment
 import io.github.busybin.gitrehub.core.model.GistFile
+import io.github.busybin.gitrehub.core.model.GistRevision
 import io.github.busybin.gitrehub.core.net.GitHubApi
 import io.github.busybin.gitrehub.core.net.GitHubClient
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * One gist. The list response already has every file, so this only re-reads when opened from a
@@ -40,6 +44,20 @@ class GistDetailViewModel : ViewModel() {
     private val _message = MutableStateFlow<UiText?>(null)
     val message: StateFlow<UiText?> = _message.asStateFlow()
 
+    /** Whether this gist is starred by the signed-in account. */
+    private val _starred = MutableStateFlow(false)
+    val starred: StateFlow<Boolean> = _starred.asStateFlow()
+
+    private val _starBusy = MutableStateFlow(false)
+    val starBusy: StateFlow<Boolean> = _starBusy.asStateFlow()
+
+    /** Comments of the gist; the detail payload only carries their count. */
+    private val _comments = MutableStateFlow<List<GistComment>>(emptyList())
+    val comments: StateFlow<List<GistComment>> = _comments.asStateFlow()
+
+    private val _revisions = MutableStateFlow<List<GistRevision>>(emptyList())
+    val revisions: StateFlow<List<GistRevision>> = _revisions.asStateFlow()
+
     /** Login of the signed-in account, so the delete action only shows on own gists. */
     private val _myLogin = MutableStateFlow<String?>(null)
     val myLogin: StateFlow<String?> = _myLogin.asStateFlow()
@@ -58,6 +76,9 @@ class GistDetailViewModel : ViewModel() {
         _full.value = emptyMap()
         viewModelScope.launch {
             _myLogin.value = runCatching { Session.currentAccount()?.login }.getOrNull()
+            _starred.value = runCatching { GitHubApi.gistStarred(id) }.getOrDefault(false)
+            _comments.value = runCatching { GitHubApi.gistComments(id, 1).value }.getOrDefault(emptyList())
+            _revisions.value = runCatching { GitHubApi.gistRevisions(id) }.getOrDefault(emptyList())
         }
         viewModelScope.launchLoad({ _state.value = it }) { GitHubApi.gist(id) }
     }
@@ -83,6 +104,38 @@ class GistDetailViewModel : ViewModel() {
             result.onSuccess { _deleted.value = true }
             result.onFailure { _message.value = UiText.res(R.string.m3_gist_delete_failed) }
             deleting = false
+        }
+    }
+
+    /** Star / unstar; the button flips immediately and rolls back when the call fails. */
+    fun toggleStar() {
+        if (_starBusy.value) return
+        val target = !_starred.value
+        _starBusy.value = true
+        viewModelScope.launch {
+            val ok = runCatching { withContext(Dispatchers.IO) {
+                GitHubApi.setGistStarred(id, target)
+            } }.isSuccess
+            if (ok) {
+                _starred.value = target
+            } else {
+                _message.value = UiText.res(R.string.m3_action_failed)
+            }
+            _starBusy.value = false
+        }
+    }
+
+    /** Post a comment and reload the list; a blank comment is a no-op. */
+    fun addComment(body: String) {
+        if (body.isBlank()) return
+        viewModelScope.launch {
+            val result = runCatching { withContext(Dispatchers.IO) {
+                GitHubApi.createGistComment(id, body.trim())
+            } }
+            result.onSuccess {
+                _comments.value = runCatching { GitHubApi.gistComments(id, 1).value }
+                    .getOrDefault(_comments.value)
+            }.onFailure { _message.value = it.toUiText() }
         }
     }
 }

@@ -12,9 +12,13 @@ import io.github.busybin.gitrehub.compose.common.toUiText
 import io.github.busybin.gitrehub.core.auth.Session
 import io.github.busybin.gitrehub.core.model.Comment
 import io.github.busybin.gitrehub.core.model.Issue
+import io.github.busybin.gitrehub.core.model.AutoMergeRequest
+import io.github.busybin.gitrehub.core.offline.OfflineSaves
+import io.github.busybin.gitrehub.core.model.CheckRun
 import io.github.busybin.gitrehub.core.model.Label
 import io.github.busybin.gitrehub.core.model.Milestone
 import io.github.busybin.gitrehub.core.model.PullRequest
+import io.github.busybin.gitrehub.core.model.TimelineEvent
 import io.github.busybin.gitrehub.core.model.RepoPermissions
 import io.github.busybin.gitrehub.core.model.User
 import io.github.busybin.gitrehub.core.net.ApiException
@@ -64,6 +68,12 @@ data class IssueDetailData(
     val pullRequest: PullRequest?,
     val comments: List<Comment>,
     val commits: List<Commit> = emptyList(),
+    /** State changes (closed, labeled, referenced, ...) without the comment entries. */
+    val events: List<TimelineEvent> = emptyList(),
+    /** CI checks of the PR head commit; empty for issues and for repos without checks. */
+    val checks: List<CheckRun> = emptyList(),
+    /** Pending auto-merge, when one was requested; null means "none". */
+    val autoMerge: AutoMergeRequest? = null,
     /** What the signed-in account may do here; null when the repo lookup failed. */
     val permissions: RepoPermissions? = null,
 )
@@ -105,6 +115,10 @@ class IssueDetailViewModel : ViewModel() {
      */
     private val _myReactions = MutableStateFlow<Set<String>>(emptySet())
     val myReactions: StateFlow<Set<String>> = _myReactions.asStateFlow()
+
+    /** Whether this thread already has a local copy for offline reading. */
+    private val _saved = MutableStateFlow(false)
+    val saved: StateFlow<Boolean> = _saved.asStateFlow()
 
     private val _options = MutableStateFlow(ManageOptions())
     val options: StateFlow<ManageOptions> = _options.asStateFlow()
@@ -306,6 +320,47 @@ class IssueDetailViewModel : ViewModel() {
         }
     }
 
+    /**
+     * Store the issue/PR and its comments on disk so it can be read without a network. The copy is
+     * keyed to the current account and is wiped when that account signs out.
+     */
+    fun saveOffline(context: android.content.Context, owner: String, repo: String, number: Int) {
+        val data = (_state.value as? LoadState.Ready)?.value ?: return
+        viewModelScope.launch {
+            val account = Session.currentAccount()?.login ?: return@launch
+            val ok = runCatching {
+                withContext(Dispatchers.IO) {
+                    OfflineSaves.save(
+                        context.applicationContext, account, data.issue, data.pullRequest, data.comments,
+                    )
+                }
+            }.isSuccess
+            _saved.value = ok
+            _message.value = WriteMessage(
+                UiText.res(if (ok) R.string.m3_save_offline_done else R.string.m3_action_failed),
+                error = !ok,
+            )
+        }
+    }
+
+    /** Turn "merge when ready" on or off; GitHub merges once the required checks pass. */
+    fun setAutoMerge(
+        owner: String,
+        repo: String,
+        number: Int,
+        nodeId: String?,
+        enabled: Boolean,
+        method: MergeMethod,
+    ) {
+        if (nodeId.isNullOrBlank()) return
+        write(
+            owner, repo, number,
+            UiText.res(if (enabled) R.string.m3_auto_merge_enabled else R.string.m3_auto_merge_disabled),
+        ) {
+            GitHubApi.setAutoMerge(nodeId, enabled, method.name)
+        }
+    }
+
     /** Delete the PR's source branch after a merge. */
     fun deleteBranch(owner: String, repo: String, number: Int, branch: String) {
         if (branch.isBlank()) return
@@ -408,10 +463,23 @@ class IssueDetailViewModel : ViewModel() {
         } else {
             emptyList()
         }
+        // Timeline state changes. Comment entries are dropped: they are already in `comments`.
+        // A failure here (permissions, preview changes) must not blank the screen.
+        val events = runCatching {
+            GitHubApi.issueTimeline(owner, repo, number, 1).value
+                .filter { it.event !in setOf("commented", "reviewed", "committed") }
+        }.getOrDefault(emptyList())
+        val checks = pr?.head?.sha?.let { sha ->
+            runCatching { GitHubApi.checkRuns(owner, repo, sha) }.getOrNull()
+        }.orEmpty()
+        val autoMerge = pr?.nodeId?.let { runCatching { GitHubApi.autoMergeRequest(it) }.getOrNull() }
+        _saved.value = Session.currentAccount()?.login?.let { account ->
+            OfflineSaves.has(account, owner, repo, number)
+        } ?: false
         // Who may edit each comment; fetched once, the account cannot change mid-screen.
         if (_myLogin.value == null) {
             _myLogin.value = runCatching { Session.currentAccount()?.login }.getOrNull()
         }
-        return IssueDetailData(issue, pr, comments, commits, permissions)
+        return IssueDetailData(issue, pr, comments, commits, events, checks, autoMerge, permissions)
     }
 }

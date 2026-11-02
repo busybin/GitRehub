@@ -42,3 +42,28 @@ data class GistFile(
     val content: String? = null,
     val truncated: Boolean = false,
 )
+
+/** One comment on a gist (`GET /gists/{id}/comments`). */
+@Serializable
+data class GistComment(
+    val id: Long = 0,
+    val body: String? = null,
+    val user: User? = null,
+    @SerialName("created_at") @Serializable(with = InstantSerializer::class) val createdAt: Instant? = null,
+    @SerialName("updated_at") @Serializable(with = InstantSerializer::class) val updatedAt: Instant? = null,
+)
+
+/** One revision of a gist (`GET /gists/{id}/commits`); [version] is the commit sha. */
+@Serializable
+data class GistRevision(
+    val version: String = "",
+    @SerialName("committed_at") @Serializable(with = InstantSerializer::class) val committedAt: Instant? = null,
+    @SerialName("change_status") val changeStatus: GistChangeStatus? = null,
+)
+
+@Serializable
+data class GistChangeStatus(
+    val additions: Int = 0,
+    val deletions: Int = 0,
+    val total: Int = 0,
+)

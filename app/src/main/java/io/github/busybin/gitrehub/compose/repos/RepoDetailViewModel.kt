@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.busybin.gitrehub.R
 import io.github.busybin.gitrehub.compose.common.LoadState
+import io.github.busybin.gitrehub.compose.common.RepoSeen
 import io.github.busybin.gitrehub.compose.common.UiText
 import io.github.busybin.gitrehub.compose.common.launchLoad
 import io.github.busybin.gitrehub.compose.data.LanguageSlice
@@ -30,6 +31,18 @@ data class RepoDetail(
     val languages: List<LanguageSlice> = emptyList(),
     val contributors: List<User> = emptyList(),
     val counts: RepoStats.RepoCounts = RepoStats.RepoCounts(),
+    /** What changed since the user last opened this repository; null on the first visit. */
+    val digest: RepoDigest? = null,
+)
+
+/** "Since your last visit": commits, issue/PR activity and a release, all from local bookkeeping. */
+data class RepoDigest(
+    val since: Long,
+    val commits: Int,
+    /** The commit query is capped at 100; the card shows "100+" instead of pretending to know. */
+    val commitsCapped: Boolean = false,
+    val threads: Int = 0,
+    val releaseTag: String? = null,
 )
 
 class RepoDetailViewModel : ViewModel() {
@@ -82,6 +95,7 @@ class RepoDetailViewModel : ViewModel() {
             val contributorsDeferred = async {
                 runCatching { GitHubApi.contributors(owner, name, 1).value }.getOrDefault(emptyList())
             }
+            val digestDeferred = async { runCatching { loadDigest(repo.nameWithOwner) }.getOrNull() }
             val countsDeferred = async {
                 runCatching { RepoStats.counts(owner, name, repo.openIssuesCount) }
                     .getOrDefault(RepoStats.RepoCounts())
@@ -100,6 +114,7 @@ class RepoDetailViewModel : ViewModel() {
                 languages = languagesDeferred.await(),
                 contributors = contributorsDeferred.await(),
                 counts = countsDeferred.await(),
+                digest = digestDeferred.await(),
             )
         }
     }
@@ -200,5 +215,34 @@ class RepoDetailViewModel : ViewModel() {
             }
             _watchBusy.value = false
         }
+    }
+
+    /**
+     * Reads the previous visit's timestamp, then records this one. Three cheap requests: commits,
+     * one page of "issues updated since" (total from the Link header) and the latest release.
+     */
+    private suspend fun loadDigest(fullName: String): RepoDigest? {
+        val since = RepoSeen.lastSeen(fullName)
+        if (since <= 0L) {
+            RepoSeen.markSeen(fullName)
+            return null
+        }
+        val iso = java.time.Instant.ofEpochMilli(since).toString()
+        val commits = runCatching { GitHubApi.commitsSince(owner, name, iso) }.getOrNull()
+        val threads = runCatching { GitHubApi.issuesSince(owner, name, iso) }.getOrNull()
+        val release = runCatching { GitHubApi.releases(owner, name, 1).value.firstOrNull() }
+            .getOrNull()
+            ?.takeIf { (it.published?.toEpochMilli() ?: 0L) > since }
+        RepoSeen.markSeen(fullName)
+        val commitCount = commits?.value?.size ?: 0
+        val threadCount = threads?.let { it.links.last ?: it.value.size } ?: 0
+        if (commitCount == 0 && threadCount == 0 && release == null) return null
+        return RepoDigest(
+            since = since,
+            commits = commitCount,
+            commitsCapped = commitCount >= 100,
+            threads = threadCount,
+            releaseTag = release?.title,
+        )
     }
 }

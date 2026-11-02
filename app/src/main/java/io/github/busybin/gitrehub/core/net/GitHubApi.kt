@@ -4,6 +4,7 @@ import io.github.busybin.gitrehub.core.model.Branch
 import io.github.busybin.gitrehub.core.model.CheckRun
 import io.github.busybin.gitrehub.core.model.CheckRuns
 import io.github.busybin.gitrehub.core.model.CodeFrequency
+import io.github.busybin.gitrehub.core.model.AutoMergeRequest
 import io.github.busybin.gitrehub.core.model.Comment
 import io.github.busybin.gitrehub.core.model.Commit
 import io.github.busybin.gitrehub.core.model.CommitFile
@@ -13,10 +14,13 @@ import io.github.busybin.gitrehub.core.model.ContributorStat
 import io.github.busybin.gitrehub.core.model.CreatedPullRequest
 import io.github.busybin.gitrehub.core.model.DependabotAlert
 import io.github.busybin.gitrehub.core.model.Discussion
+import io.github.busybin.gitrehub.core.model.DiscussionAnswerInfo
 import io.github.busybin.gitrehub.core.model.DiscussionComment
 import io.github.busybin.gitrehub.core.model.Event
 import io.github.busybin.gitrehub.core.model.GeneratedNotes
 import io.github.busybin.gitrehub.core.model.Gist
+import io.github.busybin.gitrehub.core.model.GistComment
+import io.github.busybin.gitrehub.core.model.GistRevision
 import io.github.busybin.gitrehub.core.model.GitTree
 import io.github.busybin.gitrehub.core.model.Issue
 import io.github.busybin.gitrehub.core.model.Label
@@ -37,6 +41,7 @@ import io.github.busybin.gitrehub.core.model.SearchResult
 import io.github.busybin.gitrehub.core.model.StatsOutcome
 import io.github.busybin.gitrehub.core.model.Tag
 import io.github.busybin.gitrehub.core.model.ThreadSubscription
+import io.github.busybin.gitrehub.core.model.TimelineEvent
 import io.github.busybin.gitrehub.core.model.TrafficPath
 import io.github.busybin.gitrehub.core.model.TrafficReferrer
 import io.github.busybin.gitrehub.core.model.TrafficSeries
@@ -63,9 +68,14 @@ import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.MapSerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
 
 /**
  * Every REST/GraphQL call the rewritten data layer makes, one `suspend fun` each.
@@ -148,6 +158,35 @@ object GitHubApi {
             ListSerializer(Gist.serializer()),
             query = mapOf("page" to "$page", "per_page" to "$PAGE_SIZE"),
         )
+
+    /** `GET /gists/{id}/comments`; paginated like every list endpoint. */
+    suspend fun gistComments(id: String, page: Int): ApiResponse<List<GistComment>> = GitHubClient.get(
+        "/gists/$id/comments",
+        ListSerializer(GistComment.serializer()),
+        query = mapOf("page" to "$page", "per_page" to "100"),
+    )
+
+    suspend fun createGistComment(id: String, body: String): GistComment = GitHubClient.send(
+        "POST",
+        "/gists/$id/comments",
+        buildJsonObject { put("body", JsonPrimitive(body)) },
+        GistComment.serializer(),
+    ).value
+
+    /** `GET /gists/{id}/commits`: newest first, the sha in [GistRevision.version]. */
+    suspend fun gistRevisions(id: String): List<GistRevision> = GitHubClient.get(
+        "/gists/$id/commits",
+        ListSerializer(GistRevision.serializer()),
+        query = mapOf("per_page" to "100"),
+    ).value
+
+    /** `PUT/DELETE /gists/{id}/star`; the GET answers 204 when starred and 404 when not. */
+    suspend fun gistStarred(id: String): Boolean = runCatching {
+        GitHubClient.sendNoContent("GET", "/gists/$id/star")
+    }.isSuccess
+
+    suspend fun setGistStarred(id: String, starred: Boolean) =
+        GitHubClient.sendNoContent(if (starred) "PUT" else "DELETE", "/gists/$id/star")
 
     // ---------------------------------------------------------------- repos
 
@@ -483,6 +522,22 @@ object GitHubApi {
         query = mapOf("page" to "$page", "per_page" to "$COMMENTS_PER_PAGE"),
     )
 
+    /**
+     * State changes of a thread (`closed`, `labeled`, `referenced`, ...). Comments arrive from
+     * their own endpoint; `commented`/`reviewed` entries are dropped by the caller.
+     * Failures are non-fatal: the detail screen keeps working without the timeline.
+     */
+    suspend fun issueTimeline(
+        owner: String,
+        repo: String,
+        number: Int,
+        page: Int,
+    ): ApiResponse<List<TimelineEvent>> = GitHubClient.get(
+        "/repos/$owner/$repo/issues/$number/timeline",
+        ListSerializer(TimelineEvent.serializer()),
+        query = mapOf("page" to "$page", "per_page" to "$COMMENTS_PER_PAGE"),
+    )
+
     suspend fun pullRequest(owner: String, repo: String, number: Int): PullRequest =
         GitHubClient.get("/repos/$owner/$repo/pulls/$number", PullRequest.serializer()).value
 
@@ -589,6 +644,58 @@ object GitHubApi {
             "mutation SetDraft(${'$'}id: ID!) { $field(input: {pullRequestId: ${'$'}id}) { pullRequest { isDraft } } }",
             buildJsonObject { put("id", JsonPrimitive(nodeId)) },
         )
+    }
+
+    private const val AUTO_MERGE_QUERY = """
+        query AutoMerge(${'$'}id: ID!) {
+          node(id: ${'$'}id) { ... on PullRequest { autoMergeRequest { enabledAt mergeMethod } } }
+        }
+    """
+
+    /**
+     * Read the pending auto-merge of a PR. Null means "not requested"; a REST PR object cannot tell
+     * us this because `auto_merge` is GraphQL-only.
+     */
+    suspend fun autoMergeRequest(nodeId: String?): AutoMergeRequest? {
+        if (nodeId.isNullOrBlank()) return null
+        val data = GitHubClient.graphQl(
+            AUTO_MERGE_QUERY,
+            buildJsonObject { put("id", JsonPrimitive(nodeId)) },
+        )
+        val request = data["node"]?.jsonObject?.get("autoMergeRequest") ?: return null
+        if (request is JsonNull) return null
+        return runCatching {
+            GitHubClient.json.decodeFromJsonElement(AutoMergeRequest.serializer(), request)
+        }.getOrNull()
+    }
+
+    /**
+     * `enablePullRequestAutoMerge` / `disablePullRequestAutoMerge`. [method] is GitHub's enum
+     * (`MERGE` / `SQUASH` / `REBASE`); the server rejects enabling without one.
+     */
+    suspend fun setAutoMerge(nodeId: String, enabled: Boolean, method: String) {
+        val query = if (enabled) {
+            """
+            mutation EnableAuto(${'$'}id: ID!, ${'$'}method: PullRequestMergeMethod!) {
+              enablePullRequestAutoMerge(input: {pullRequestId: ${'$'}id, mergeMethod: ${'$'}method}) {
+                pullRequest { autoMergeRequest { enabledAt mergeMethod } }
+              }
+            }
+            """
+        } else {
+            """
+            mutation DisableAuto(${'$'}id: ID!) {
+              disablePullRequestAutoMerge(input: {pullRequestId: ${'$'}id}) {
+                pullRequest { autoMergeRequest { enabledAt mergeMethod } }
+              }
+            }
+            """
+        }
+        val variables = buildJsonObject {
+            put("id", JsonPrimitive(nodeId))
+            if (enabled) put("method", JsonPrimitive(method))
+        }
+        GitHubClient.graphQl(query, variables)
     }
 
     private const val REVIEW_THREADS_QUERY = """
@@ -964,6 +1071,38 @@ object GitHubApi {
             put("per_page", "$PAGE_SIZE")
         },
         cacheOnly = cacheOnly,
+    )
+
+    /** Commits pushed since [since] (ISO 8601); the digest card counts them. */
+    suspend fun commitsSince(
+        owner: String,
+        repo: String,
+        since: String,
+        perPage: Int = 100,
+    ): ApiResponse<List<Commit>> = GitHubClient.get(
+        "/repos/$owner/$repo/commits",
+        ListSerializer(Commit.serializer()),
+        query = mapOf("since" to since, "per_page" to "$perPage"),
+    )
+
+    /**
+     * Issue/PR activity since [since]. `per_page=1` keeps the payload tiny: the exact total comes
+     * from the `Link` header's last page, which is what the digest card needs.
+     */
+    suspend fun issuesSince(
+        owner: String,
+        repo: String,
+        since: String,
+    ): ApiResponse<List<Issue>> = GitHubClient.get(
+        "/repos/$owner/$repo/issues",
+        ListSerializer(Issue.serializer()),
+        query = mapOf(
+            "state" to "all",
+            "since" to since,
+            "sort" to "updated",
+            "direction" to "desc",
+            "per_page" to "1",
+        ),
     )
 
     /** `GET /repos/{o}/{r}/commits/{sha}`: adds `stats` and `files[].patch` (the diff). */
@@ -1353,6 +1492,60 @@ object GitHubApi {
 
     /** Same page size the rest of the app uses; recorded rows already come 30 per page. */
     const val EVENTS_PER_PAGE = 30
+
+    private const val DISCUSSION_ANSWER_QUERY = """
+        query DiscussionAnswer(${'$'}owner: String!, ${'$'}repo: String!, ${'$'}number: Int!) {
+          repository(owner: ${'$'}owner, name: ${'$'}repo) {
+            discussion(number: ${'$'}number) {
+              id
+              answer { ... on DiscussionComment { fullDatabaseId } }
+              comments(first: 100) { nodes { id fullDatabaseId } }
+            }
+          }
+        }
+    """
+
+    /**
+     * Answer state of a discussion. REST does not expose it, GraphQL does; comments are matched by
+     * their database id so the ids already in the screen can be reused.
+     */
+    suspend fun discussionAnswerInfo(owner: String, repo: String, number: Int): DiscussionAnswerInfo? {
+        val data = GitHubClient.graphQl(
+            DISCUSSION_ANSWER_QUERY,
+            buildJsonObject {
+                put("owner", JsonPrimitive(owner))
+                put("repo", JsonPrimitive(repo))
+                put("number", JsonPrimitive(number))
+            },
+        )
+        val discussion = data["repository"]?.jsonObject?.get("discussion")
+            ?.takeIf { it !is JsonNull }?.jsonObject ?: return null
+        val discussionId = discussion["id"]?.asStringOrNull() ?: return null
+        val answerId = discussion["answer"]?.takeIf { it !is JsonNull }
+            ?.jsonObject?.get("fullDatabaseId")?.asStringOrNull()?.toLongOrNull()
+        val nodeIds = discussion["comments"]?.jsonObject?.get("nodes")?.jsonArray.orEmpty()
+            .mapNotNull { node ->
+                val obj = node.jsonObject
+                val databaseId = obj["fullDatabaseId"]?.asStringOrNull()?.toLongOrNull()
+                val nodeId = obj["id"]?.asStringOrNull()
+                if (databaseId != null && nodeId != null) databaseId to nodeId else null
+            }
+            .toMap()
+        return DiscussionAnswerInfo(discussionId, answerId, nodeIds)
+    }
+
+    /** `markDiscussionCommentAsAnswer` / `unmarkDiscussionCommentAsAnswer`. */
+    suspend fun setDiscussionAnswer(commentNodeId: String, answer: Boolean) {
+        val field = if (answer) "markDiscussionCommentAsAnswer" else "unmarkDiscussionCommentAsAnswer"
+        GitHubClient.graphQl(
+            "mutation SetAnswer(${'$'}id: ID!) { $field(input: {id: ${'$'}id}) { discussionComment { isAnswer } } }",
+            buildJsonObject { put("id", JsonPrimitive(commentNodeId)) },
+        )
+    }
+
+    /** GraphQL scalars arrive as strings, numbers or null; this keeps the parsing in one place. */
+    private fun JsonElement.asStringOrNull(): String? =
+        (this as? JsonPrimitive)?.takeIf { it.isString || it.contentOrNull != null }?.contentOrNull
 
     suspend fun receivedEvents(
         login: String,

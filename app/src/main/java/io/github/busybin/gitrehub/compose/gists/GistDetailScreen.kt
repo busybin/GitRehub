@@ -14,18 +14,25 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.ContentCopy
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -79,9 +86,15 @@ fun GistDetailScreen(
     val loadingFull by vm.loadingFull.collectAsStateWithLifecycle()
     val deleted by vm.deleted.collectAsStateWithLifecycle()
     val myLogin by vm.myLogin.collectAsStateWithLifecycle()
+    val starred by vm.starred.collectAsStateWithLifecycle()
+    val starBusy by vm.starBusy.collectAsStateWithLifecycle()
+    val comments by vm.comments.collectAsStateWithLifecycle()
+    val revisions by vm.revisions.collectAsStateWithLifecycle()
     val message by vm.message.collectAsStateWithLifecycle()
     val context = LocalContext.current
     var confirmDelete by remember { mutableStateOf(false) }
+    var showHistory by remember { mutableStateOf(false) }
+    var draft by remember { mutableStateOf("") }
 
     val messageText = message?.render()
     LaunchedEffect(messageText) {
@@ -117,6 +130,9 @@ fun GistDetailScreen(
                     gist = gist,
                     canDelete = mine,
                     canEdit = mine,
+                    starred = starred,
+                    starBusy = starBusy,
+                    onToggleStar = { vm.toggleStar() },
                     onEdit = onEdit,
                     onOpenBrowser = {
                         gist.htmlUrl?.let { BrowserLauncher.open(context, it) }
@@ -137,7 +153,99 @@ fun GistDetailScreen(
                     )
                 }
             }
+            if (comments.isNotEmpty()) {
+                item {
+                    Text(
+                        text = stringResource(R.string.m3_gist_comments, comments.size),
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                items(comments, key = { it.id }) { comment ->
+                    GistCommentCard(comment)
+                }
+            }
+
+            item {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    OutlinedTextField(
+                        value = draft,
+                        onValueChange = { draft = it },
+                        modifier = Modifier.weight(1f),
+                        placeholder = { Text(stringResource(R.string.m3_gist_comment_hint)) },
+                        maxLines = 4,
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Button(
+                        onClick = {
+                            vm.addComment(draft)
+                            draft = ""
+                        },
+                        enabled = draft.isNotBlank(),
+                    ) { Text(stringResource(R.string.m3_gist_comment_send)) }
+                }
+            }
+
+            item {
+                TextButton(onClick = { showHistory = true }, enabled = revisions.size > 1) {
+                    Text(stringResource(R.string.m3_gist_history, revisions.size))
+                }
+            }
+
             item { Spacer(Modifier.height(24.dp)) }
+        }
+    }
+
+    if (showHistory) {
+        AlertDialog(
+            onDismissRequest = { showHistory = false },
+            title = { Text(stringResource(R.string.m3_gist_history_title)) },
+            text = {
+                Column {
+                    revisions.take(20).forEach { revision ->
+                        Row(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                            Text(
+                                text = revision.version.take(7),
+                                style = MaterialTheme.typography.bodySmall,
+                                fontFamily = FontFamily.Monospace,
+                                modifier = Modifier.weight(1f),
+                            )
+                            MetaText(relativeTime(revision.committedAt))
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showHistory = false }) {
+                    Text(stringResource(R.string.m3_close))
+                }
+            },
+        )
+    }
+}
+
+@Composable
+private fun GistCommentCard(comment: io.github.busybin.gitrehub.core.model.GistComment) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        shape = RoundedCornerShape(14.dp),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(Modifier.padding(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Avatar(comment.user?.avatarUrl, size = 20.dp)
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = comment.user?.login.orEmpty(),
+                    style = MaterialTheme.typography.labelLarge,
+                    modifier = Modifier.weight(1f),
+                )
+                MetaText(relativeTime(comment.createdAt))
+            }
+            if (!comment.body.isNullOrBlank()) {
+                Spacer(Modifier.height(6.dp))
+                Text(comment.body.orEmpty(), style = MaterialTheme.typography.bodyMedium)
+            }
         }
     }
 }
@@ -147,6 +255,9 @@ private fun GistHeader(
     gist: Gist,
     canDelete: Boolean,
     canEdit: Boolean,
+    starred: Boolean,
+    starBusy: Boolean,
+    onToggleStar: () -> Unit,
     onOpenBrowser: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
@@ -174,6 +285,16 @@ private fun GistHeader(
                 MetaText(relativeTime(gist.updatedAt ?: gist.createdAt))
                 Spacer(Modifier.weight(1f))
                 if (!gist.public) Pill(stringResource(R.string.m3_gist_secret))
+                IconButton(onClick = onToggleStar, enabled = !starBusy) {
+                    Icon(
+                        Icons.Filled.Star,
+                        contentDescription = stringResource(
+                            if (starred) R.string.m3_gist_unstar else R.string.m3_gist_star,
+                        ),
+                        tint = if (starred) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
                 IconButton(onClick = onOpenBrowser) {
                     Icon(
                         Icons.Outlined.OpenInNew,

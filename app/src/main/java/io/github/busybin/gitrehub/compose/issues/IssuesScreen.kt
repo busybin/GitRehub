@@ -1,5 +1,6 @@
 package io.github.busybin.gitrehub.compose.issues
 
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -12,6 +13,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -28,8 +31,10 @@ import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.FilterList
 import androidx.compose.material.icons.outlined.TaskAlt
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -37,6 +42,7 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.VerticalDivider
@@ -62,7 +68,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.busybin.gitrehub.R
 import io.github.busybin.gitrehub.compose.common.AsyncContent
 import io.github.busybin.gitrehub.compose.common.EmptyView
+import io.github.busybin.gitrehub.compose.common.LoadState
 import io.github.busybin.gitrehub.compose.common.LocalTokens
+import io.github.busybin.gitrehub.compose.common.render
 import io.github.busybin.gitrehub.compose.common.Avatar
 import io.github.busybin.gitrehub.compose.common.MetaText
 import io.github.busybin.gitrehub.compose.common.Pill
@@ -152,9 +160,22 @@ private fun IssuesList(
     val query by vm.query.collectAsStateWithLifecycle()
     val options by vm.options.collectAsStateWithLifecycle()
     var showFilters by rememberSaveable { mutableStateOf(false) }
+    val bulkBusy by vm.bulkBusy.collectAsStateWithLifecycle()
+    val bulkMessage by vm.message.collectAsStateWithLifecycle()
+    var checked by remember { mutableStateOf<Set<Int>>(emptySet()) }
+    var showLabelPicker by remember { mutableStateOf(false) }
+    var showAssigneePicker by remember { mutableStateOf(false) }
     val tokens = LocalTokens.current
 
     LaunchedEffect(owner, repo, kind) { vm.setup(owner, repo, kind) }
+    LaunchedEffect(bulkMessage) {
+        if (bulkMessage != null) {
+            kotlinx.coroutines.delay(4000)
+            vm.consumeMessage()
+        }
+    }
+    // The selection starts empty again when the list is replaced (filter change, repo change).
+    LaunchedEffect(owner, repo, kind, query) { checked = emptySet() }
 
     // Coming back after creating an issue elsewhere: the list is stale, so refresh it.
     LaunchedEffect(refreshSignal) {
@@ -240,7 +261,22 @@ private fun IssuesList(
                             IssueRow(
                                 issue = issue,
                                 selected = issue.number == selectedNumber,
-                                onOpenIssue = onOpenIssue,
+                                checked = issue.number in checked,
+                                selectionMode = checked.isNotEmpty(),
+                                onLongPress = {
+                                    checked = if (issue.number in checked) {
+                                        checked - issue.number
+                                    } else {
+                                        checked + issue.number
+                                    }
+                                },
+                                onOpenIssue = { number ->
+                                    if (checked.isEmpty()) {
+                                        onOpenIssue(number)
+                                    } else {
+                                        checked = if (number in checked) checked - number else checked + number
+                                    }
+                                },
                             )
                         }
                         if (loadingMore) {
@@ -255,8 +291,29 @@ private fun IssuesList(
                 }
             }
         }
+        if (checked.isNotEmpty()) {
+            BulkBar(
+                count = checked.size,
+                busy = bulkBusy,
+                message = bulkMessage?.render(),
+                onClose = { vm.bulkClose(checked, closed = true) },
+                onReopen = { vm.bulkClose(checked, closed = false) },
+                onLabel = {
+                    vm.loadOptions()
+                    showLabelPicker = true
+                },
+                onAssign = {
+                    vm.loadOptions()
+                    showAssigneePicker = true
+                },
+                onClear = { checked = emptySet() },
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(12.dp),
+            )
+        }
         // New-issue FAB only makes sense on the issues tab; a PR cannot be created from here.
-        if (onNewIssue != null && kind == IssueKind.ISSUE) {
+        if (onNewIssue != null && kind == IssueKind.ISSUE && checked.isEmpty()) {
             FloatingActionButton(
                 onClick = onNewIssue,
                 modifier = Modifier
@@ -268,6 +325,33 @@ private fun IssuesList(
                 Icon(Icons.Outlined.Add, contentDescription = stringResource(R.string.m3_new_issue))
             }
         }
+    }
+    if (showLabelPicker) {
+        BulkPickerDialog(
+            title = stringResource(R.string.m3_bulk_label),
+            options = options.labels.map { it.name.orEmpty() }.filter { it.isNotBlank() },
+            onDismiss = { showLabelPicker = false },
+            onPick = { label ->
+                showLabelPicker = false
+                val existing = (state as? LoadState.Ready)?.value.orEmpty()
+                    .filter { it.number in checked }
+                    .associate { it.number to it.labels.mapNotNull { labelItem -> labelItem.name } }
+                vm.bulkAddLabel(checked, label, existing)
+                checked = emptySet()
+            },
+        )
+    }
+    if (showAssigneePicker) {
+        BulkPickerDialog(
+            title = stringResource(R.string.m3_bulk_assign),
+            options = options.assignees.mapNotNull { it.login },
+            onDismiss = { showAssigneePicker = false },
+            onPick = { login ->
+                showAssigneePicker = false
+                vm.bulkAssign(checked, listOf(login))
+                checked = emptySet()
+            },
+        )
     }
     if (showFilters) {
         IssueFilterSheet(
@@ -448,18 +532,32 @@ private fun FilterGroupTitle(text: String) {
 }
 
 @Composable
-fun IssueRow(issue: Issue, onOpenIssue: (Int) -> Unit, selected: Boolean = false) {
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+fun IssueRow(
+    issue: Issue,
+    onOpenIssue: (Int) -> Unit,
+    selected: Boolean = false,
+    checked: Boolean = false,
+    selectionMode: Boolean = false,
+    onLongPress: (() -> Unit)? = null,
+) {
     val tokens = LocalTokens.current
     val isPullRequest = issue.isPullRequest
     val closed = issue.isClosed
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onOpenIssue(issue.number) },
+            .combinedClickable(
+                onClick = { onOpenIssue(issue.number) },
+                onLongClick = onLongPress,
+            ),
         colors = CardDefaults.cardColors(
             // Highlight the row shown in the right column on wide screens.
-            containerColor = if (selected) MaterialTheme.colorScheme.secondaryContainer
-            else MaterialTheme.colorScheme.surfaceContainerLow,
+            containerColor = when {
+                checked -> MaterialTheme.colorScheme.primaryContainer
+                selected -> MaterialTheme.colorScheme.secondaryContainer
+                else -> MaterialTheme.colorScheme.surfaceContainerLow
+            },
         ),
         shape = tokens.cardShape,
     ) {
@@ -467,6 +565,10 @@ fun IssueRow(issue: Issue, onOpenIssue: (Int) -> Unit, selected: Boolean = false
             modifier = Modifier.padding(tokens.cardPadding),
             verticalAlignment = Alignment.Top,
         ) {
+            if (selectionMode) {
+                Checkbox(checked = checked, onCheckedChange = { onLongPress?.invoke() })
+                Spacer(Modifier.width(6.dp))
+            }
             Icon(
                 imageVector = if (closed) {
                     if (isPullRequest) Icons.Outlined.CallMerge else Icons.Outlined.TaskAlt
@@ -522,4 +624,99 @@ fun IssueRow(issue: Issue, onOpenIssue: (Int) -> Unit, selected: Boolean = false
             Avatar(issue.user?.avatarUrl, size = if (tokens.compact) 22.dp else 28.dp, modifier = Modifier.padding(top = 2.dp))
         }
     }
+}
+
+/** Bottom bar of the multi-select mode: every action applies to the whole selection. */
+@Composable
+private fun BulkBar(
+    count: Int,
+    busy: Boolean,
+    message: String?,
+    onClose: () -> Unit,
+    onReopen: () -> Unit,
+    onLabel: () -> Unit,
+    onAssign: () -> Unit,
+    onClear: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        tonalElevation = 4.dp,
+    ) {
+        Column(Modifier.padding(horizontal = 14.dp, vertical = 8.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = stringResource(R.string.m3_bulk_selected, count),
+                    style = MaterialTheme.typography.labelLarge,
+                    modifier = Modifier.weight(1f),
+                )
+                TextButton(onClick = onClear) { Text(stringResource(R.string.m3_bulk_clear)) }
+            }
+            if (message != null) {
+                Text(
+                    text = message,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                modifier = Modifier.horizontalScroll(rememberScrollState()),
+            ) {
+                TextButton(onClick = onClose, enabled = !busy) {
+                    Text(stringResource(R.string.m3_bulk_close))
+                }
+                TextButton(onClick = onReopen, enabled = !busy) {
+                    Text(stringResource(R.string.m3_bulk_reopen))
+                }
+                TextButton(onClick = onLabel, enabled = !busy) {
+                    Text(stringResource(R.string.m3_bulk_label))
+                }
+                TextButton(onClick = onAssign, enabled = !busy) {
+                    Text(stringResource(R.string.m3_bulk_assign))
+                }
+            }
+        }
+    }
+}
+
+/** Single-choice picker for the bulk label / assignee actions. */
+@Composable
+private fun BulkPickerDialog(
+    title: String,
+    options: List<String>,
+    onDismiss: () -> Unit,
+    onPick: (String) -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            if (options.isEmpty()) {
+                Text(stringResource(R.string.m3_bulk_no_options))
+            } else {
+                Column(
+                    Modifier
+                        .heightIn(max = 340.dp)
+                        .verticalScroll(rememberScrollState()),
+                ) {
+                    options.forEach { option ->
+                        Text(
+                            text = option,
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onPick(option) }
+                                .padding(vertical = 10.dp),
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.m3_cancel)) }
+        },
+    )
 }

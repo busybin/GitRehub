@@ -2,13 +2,17 @@ package io.github.busybin.gitrehub.compose.discussions
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import io.github.busybin.gitrehub.R
 import io.github.busybin.gitrehub.compose.common.LoadState
+import io.github.busybin.gitrehub.compose.common.UiText
 import io.github.busybin.gitrehub.compose.common.PageResult
 import io.github.busybin.gitrehub.compose.common.launchLoad
 import io.github.busybin.gitrehub.compose.common.toUiText
-import io.github.busybin.gitrehub.core.model.Discussion
-import io.github.busybin.gitrehub.core.model.DiscussionComment
 import io.github.busybin.gitrehub.compose.data.Discussions
+import io.github.busybin.gitrehub.core.model.Discussion
+import io.github.busybin.gitrehub.core.model.DiscussionAnswerInfo
+import io.github.busybin.gitrehub.core.model.DiscussionComment
+import io.github.busybin.gitrehub.core.net.GitHubApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -36,6 +40,12 @@ class DiscussionDetailViewModel : ViewModel() {
     private val _commentsHasMore = MutableStateFlow(false)
     val commentsHasMore: StateFlow<Boolean> = _commentsHasMore.asStateFlow()
 
+    private val _answer = MutableStateFlow<DiscussionAnswerInfo?>(null)
+    val answer: StateFlow<DiscussionAnswerInfo?> = _answer.asStateFlow()
+
+    private val _message = MutableStateFlow<UiText?>(null)
+    val message: StateFlow<UiText?> = _message.asStateFlow()
+
     private val _commentsRefreshing = MutableStateFlow(false)
     val commentsRefreshing: StateFlow<Boolean> = _commentsRefreshing.asStateFlow()
 
@@ -56,6 +66,9 @@ class DiscussionDetailViewModel : ViewModel() {
         this.repo = repo
         this.number = number
         loadComments()
+        viewModelScope.launch {
+            _answer.value = runCatching { GitHubApi.discussionAnswerInfo(owner, repo, number) }.getOrNull()
+        }
         viewModelScope.launchLoad({ _state.value = it }) { fetch(owner, repo, number) }
     }
 
@@ -114,4 +127,27 @@ class DiscussionDetailViewModel : ViewModel() {
         _commentsHasMore.value = result.hasMore
         _comments.value = LoadState.Ready(accumulated.toList())
     }
+
+    /**
+     * Accept / un-accept [comment]. The REST ids in the list are matched to GraphQL node ids by
+     * database id; without a node id the mutation cannot run, so the message explains the failure.
+     */
+    fun markAnswer(comment: DiscussionComment, accepted: Boolean) {
+        val info = _answer.value
+        val nodeId = info?.nodeIdOf(comment.id)
+        if (info == null || nodeId == null) {
+            _message.value = UiText.res(R.string.m3_discussion_answer_failed)
+            return
+        }
+        viewModelScope.launch {
+            val result = runCatching { withContext(Dispatchers.IO) {
+                GitHubApi.setDiscussionAnswer(nodeId, accepted)
+            } }
+            result
+                .onSuccess { _answer.value = info.copy(answerCommentId = if (accepted) comment.id else null) }
+                .onFailure { _message.value = it.toUiText() }
+        }
+    }
+
+    fun consumeMessage() { _message.value = null }
 }

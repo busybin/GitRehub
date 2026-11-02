@@ -349,6 +349,11 @@
     <string name="m3_section_about">Acerca de</string>
     
     <string name="m3_notif_new_title">Notificaciones de mensajes nuevos</string>
+    <string name="m3_notif_channel_mention">Menciones</string>
+    <string name="m3_notif_channel_review">Solicitudes de revisión</string>
+    <string name="m3_notif_channel_ci">Actividad de CI</string>
+    <string name="m3_notif_channel_comment">Comentarios y cambios</string>
+    <string name="m3_notif_channel_other">Otras notificaciones</string>
     <string name="m3_notif_new_desc">Comprueba en segundo plano tus notificaciones no leídas y muestra una notificación del sistema cuando llega algo nuevo (tócala para abrir la aplicación).
 
 GitHub no tiene canal de notificaciones push para los clientes de terceros, así que esto es un sondeo real: el intervalo más corto es de 1 minuto, pero el sistema lo retrasará en reposo profundo para ahorrar batería.</string>
@@ -985,4 +990,76 @@ GitHub no tiene canal de notificaciones push para los clientes de terceros, así
 
     <string name="m3_actions_inputs_hint">clave=valor</string>
     <string name="m3_repo_topics_hint">android, kotlin</string>
+
+    <!-- issue/PR timeline state changes -->
+    <string name="m3_tl_someone">Alguien</string>
+    <string name="m3_tl_closed">%1$s cerró esto</string>
+    <string name="m3_tl_reopened">%1$s reabrió esto</string>
+    <string name="m3_tl_labeled">%1$s añadió la etiqueta %2$s</string>
+    <string name="m3_tl_unlabeled">%1$s quitó la etiqueta %2$s</string>
+    <string name="m3_tl_assigned">%1$s asignó a %2$s</string>
+    <string name="m3_tl_unassigned">%1$s desasignó a %2$s</string>
+    <string name="m3_tl_milestoned">%1$s lo añadió al hito %2$s</string>
+    <string name="m3_tl_demilestoned">%1$s lo quitó del hito %2$s</string>
+    <string name="m3_tl_renamed">%1$s lo renombró de %2$s a %3$s</string>
+    <string name="m3_tl_referenced">%1$s lo mencionó en %2$s</string>
+    <string name="m3_tl_cross_referenced">%1$s lo mencionó desde %2$s</string>
+    <string name="m3_tl_merged">%1$s lo fusionó</string>
+    <string name="m3_tl_review_requested">%1$s solicitó una revisión de %2$s</string>
+    <string name="m3_tl_draft">%1$s lo convirtió en borrador</string>
+    <string name="m3_tl_ready">%1$s lo marcó como listo para revisión</string>
+    <string name="m3_tl_locked">%1$s lo bloqueó</string>
+    <string name="m3_tl_unlocked">%1$s lo desbloqueó</string>
+
+    <!-- pull request checks / auto-merge -->
+    <string name="m3_checks_title">Comprobaciones</string>
+    <string name="m3_checks_summary_passed">%1$d correctas</string>
+    <string name="m3_checks_summary_failed">%1$d fallidas</string>
+    <string name="m3_checks_summary_running">%1$d en curso</string>
+    <string name="m3_auto_merge_enable">Activar fusión automática</string>
+    <string name="m3_auto_merge_hint">GitHub fusionará esta solicitud cuando pasen las comprobaciones requeridas.</string>
+    <string name="m3_auto_merge_on">La fusión automática está activada</string>
+    <string name="m3_auto_merge_cancel">Cancelar fusión automática</string>
+    <string name="m3_auto_merge_enabled">Fusión automática activada</string>
+    <string name="m3_auto_merge_disabled">Fusión automática cancelada</string>
+
+    <!-- discussions: accepted answer -->
+    <string name="m3_discussion_answer">Marcar como respuesta</string>
+    <string name="m3_discussion_answer_failed">No se pudo actualizar la respuesta.</string>
+
+    <!-- gists: star, comments, revisions -->
+    <string name="m3_gist_star">Destacar</string>
+    <string name="m3_gist_unstar">Destacado</string>
+    <string name="m3_gist_comment_hint">Escribe un comentario</string>
+    <string name="m3_gist_comment_send">Enviar</string>
+    <string name="m3_gist_history">Historial (%1$d)</string>
+    <string name="m3_gist_history_title">Historial de versiones</string>
+
+    <!-- repository digest -->
+    <string name="m3_digest_title">Desde tu última visita</string>
+    <string name="m3_digest_commits">%1$d commits</string>
+    <string name="m3_digest_commits_more">100+ commits</string>
+    <string name="m3_digest_threads">%1$d incidencias/PR</string>
+    <string name="m3_digest_release">Nueva versión %1$s</string>
+
+    <!-- bulk triage -->
+    <string name="m3_bulk_selected">%1$d seleccionados</string>
+    <string name="m3_bulk_clear">Limpiar</string>
+    <string name="m3_bulk_close">Cerrar</string>
+    <string name="m3_bulk_reopen">Reabrir</string>
+    <string name="m3_bulk_label">Añadir etiqueta</string>
+    <string name="m3_bulk_assign">Asignar</string>
+    <string name="m3_bulk_no_options">No hay nada que elegir.</string>
+    <string name="m3_bulk_done">%1$d hechos</string>
+    <string name="m3_bulk_partial">%1$d hechos, %2$d fallidos</string>
+
+    <!-- offline saved threads -->
+    <string name="m3_saved">Guardado sin conexión</string>
+    <string name="m3_saved_empty">Aún no hay nada guardado. Abre una incidencia o PR y pulsa «Guardar sin conexión».</string>
+    <string name="m3_saved_at">Guardado %1$s</string>
+    <string name="m3_saved_missing">Esta copia guardada ya no existe.</string>
+    <string name="m3_saved_offline_banner">Copia sin conexión: el contenido es de cuando lo guardaste.</string>
+    <string name="m3_saved_open_online">Abrir la versión en línea</string>
+    <string name="m3_save_offline">Guardar sin conexión</string>
+    <string name="m3_save_offline_done">Guardado sin conexión</string>
 </resources>

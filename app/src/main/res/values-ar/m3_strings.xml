@@ -349,6 +349,11 @@
     <string name="m3_section_about">حول التطبيق</string>
     
     <string name="m3_notif_new_title">إشعارات الرسائل الجديدة</string>
+    <string name="m3_notif_channel_mention">الإشارات</string>
+    <string name="m3_notif_channel_review">طلبات المراجعة</string>
+    <string name="m3_notif_channel_ci">نشاط التكامل المستمر</string>
+    <string name="m3_notif_channel_comment">التعليقات والتحديثات</string>
+    <string name="m3_notif_channel_other">إشعارات أخرى</string>
     <string name="m3_notif_new_desc">يتحقق من إشعاراتك غير المقروءة في الخلفية ويُظهر إشعار نظام عند وصول شيء جديد (اضغط عليه لفتح التطبيق).
 
 لا يوفر GitHub قناة دفع للتطبيقات التابعة لجهات أخرى، لذا فهذا استعلام دوري فعلي: أقصر فترة دقيقة واحدة، لكن النظام سيؤخّره في السبات العميق لتوفير البطارية.</string>
@@ -985,4 +990,76 @@
 
     <string name="m3_actions_inputs_hint">مفتاح=قيمة</string>
     <string name="m3_repo_topics_hint">android, kotlin</string>
+
+    <!-- issue/PR timeline state changes -->
+    <string name="m3_tl_someone">شخص ما</string>
+    <string name="m3_tl_closed">أغلق %1$s هذا</string>
+    <string name="m3_tl_reopened">أعاد %1$s فتح هذا</string>
+    <string name="m3_tl_labeled">أضاف %1$s التسمية %2$s</string>
+    <string name="m3_tl_unlabeled">أزال %1$s التسمية %2$s</string>
+    <string name="m3_tl_assigned">أسند %1$s إلى %2$s</string>
+    <string name="m3_tl_unassigned">ألغى %1$s إسناد %2$s</string>
+    <string name="m3_tl_milestoned">أضاف %1$s هذا إلى المعلم %2$s</string>
+    <string name="m3_tl_demilestoned">أزال %1$s هذا من المعلم %2$s</string>
+    <string name="m3_tl_renamed">أعاد %1$s تسمية هذا من %2$s إلى %3$s</string>
+    <string name="m3_tl_referenced">أشار %1$s إلى هذا في %2$s</string>
+    <string name="m3_tl_cross_referenced">أشار %1$s إلى هذا من %2$s</string>
+    <string name="m3_tl_merged">دمج %1$s هذا</string>
+    <string name="m3_tl_review_requested">طلب %1$s مراجعة من %2$s</string>
+    <string name="m3_tl_draft">حوّل %1$s هذا إلى مسودة</string>
+    <string name="m3_tl_ready">وضع %1$s علامة جاهز للمراجعة</string>
+    <string name="m3_tl_locked">قفل %1$s هذا</string>
+    <string name="m3_tl_unlocked">ألغى %1$s قفل هذا</string>
+
+    <!-- pull request checks / auto-merge -->
+    <string name="m3_checks_title">الفحوصات</string>
+    <string name="m3_checks_summary_passed">%1$d ناجحة</string>
+    <string name="m3_checks_summary_failed">%1$d فاشلة</string>
+    <string name="m3_checks_summary_running">%1$d قيد التشغيل</string>
+    <string name="m3_auto_merge_enable">تفعيل الدمج التلقائي</string>
+    <string name="m3_auto_merge_hint">يدمج GitHub طلب السحب هذا بعد نجاح الفحوصات المطلوبة.</string>
+    <string name="m3_auto_merge_on">الدمج التلقائي مفعّل</string>
+    <string name="m3_auto_merge_cancel">إلغاء الدمج التلقائي</string>
+    <string name="m3_auto_merge_enabled">تم تفعيل الدمج التلقائي</string>
+    <string name="m3_auto_merge_disabled">تم إلغاء الدمج التلقائي</string>
+
+    <!-- discussions: accepted answer -->
+    <string name="m3_discussion_answer">وضع علامة كإجابة</string>
+    <string name="m3_discussion_answer_failed">تعذّر تحديث الإجابة.</string>
+
+    <!-- gists: star, comments, revisions -->
+    <string name="m3_gist_star">إضافة نجمة</string>
+    <string name="m3_gist_unstar">مضاف إليه نجمة</string>
+    <string name="m3_gist_comment_hint">اكتب تعليقًا</string>
+    <string name="m3_gist_comment_send">إرسال</string>
+    <string name="m3_gist_history">السجل (%1$d)</string>
+    <string name="m3_gist_history_title">سجل الإصدارات</string>
+
+    <!-- repository digest -->
+    <string name="m3_digest_title">منذ زيارتك الأخيرة</string>
+    <string name="m3_digest_commits">%1$d إيداعات</string>
+    <string name="m3_digest_commits_more">أكثر من 100 إيداع</string>
+    <string name="m3_digest_threads">%1$d مشكلة/طلب سحب</string>
+    <string name="m3_digest_release">إصدار جديد %1$s</string>
+
+    <!-- bulk triage -->
+    <string name="m3_bulk_selected">تم تحديد %1$d</string>
+    <string name="m3_bulk_clear">مسح</string>
+    <string name="m3_bulk_close">إغلاق</string>
+    <string name="m3_bulk_reopen">إعادة الفتح</string>
+    <string name="m3_bulk_label">إضافة تسمية</string>
+    <string name="m3_bulk_assign">إسناد</string>
+    <string name="m3_bulk_no_options">لا يوجد ما يمكن اختياره.</string>
+    <string name="m3_bulk_done">تم %1$d</string>
+    <string name="m3_bulk_partial">تم %1$d وفشل %2$d</string>
+
+    <!-- offline saved threads -->
+    <string name="m3_saved">محفوظ دون اتصال</string>
+    <string name="m3_saved_empty">لا يوجد شيء محفوظ بعد. افتح مشكلة أو طلب سحب واضغط «حفظ دون اتصال».</string>
+    <string name="m3_saved_at">حُفظ %1$s</string>
+    <string name="m3_saved_missing">لم تعد هذه النسخة المحفوظة موجودة.</string>
+    <string name="m3_saved_offline_banner">نسخة دون اتصال — المحتوى كما كان عند الحفظ.</string>
+    <string name="m3_saved_open_online">فتح النسخة المباشرة</string>
+    <string name="m3_save_offline">حفظ دون اتصال</string>
+    <string name="m3_save_offline_done">محفوظ دون اتصال</string>
 </resources>

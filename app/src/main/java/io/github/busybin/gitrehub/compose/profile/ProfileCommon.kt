@@ -41,6 +41,8 @@ data class UserInfo(
     val name: String?,
     val avatarUrl: String?,
     val bio: String?,
+    /** Organizations describe themselves here. */
+    val description: String? = null,
     val company: String?,
     val location: String?,
     val blog: String?,
@@ -57,7 +59,7 @@ fun User.toUserInfo(): UserInfo = UserInfo(
     login = login,
     name = name,
     avatarUrl = avatarUrl,
-    bio = bio,
+    bio = bio ?: description,
     company = company,
     location = location,
     blog = blog,

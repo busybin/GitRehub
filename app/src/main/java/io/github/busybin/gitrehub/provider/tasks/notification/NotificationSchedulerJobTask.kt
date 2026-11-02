@@ -1,8 +1,6 @@
 package io.github.busybin.gitrehub.provider.tasks.notification
 
 import android.annotation.SuppressLint
-import android.app.NotificationChannel
-import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.job.JobInfo
 import android.app.job.JobParameters
@@ -10,25 +8,18 @@ import android.app.job.JobScheduler
 import android.app.job.JobService
 import android.content.ComponentName
 import android.content.Context
-import android.content.Intent
-import android.graphics.BitmapFactory
-import android.media.AudioManager
-import android.os.Build
-import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import io.github.busybin.gitrehub.R
-import io.github.busybin.gitrehub.compose.MainComposeActivity
 import io.github.busybin.gitrehub.compose.notifications.NotificationPrefs
 import io.github.busybin.gitrehub.core.auth.Session
-import io.github.busybin.gitrehub.core.model.Comment
 import io.github.busybin.gitrehub.core.model.Notification
 import io.github.busybin.gitrehub.core.net.GitHubApi
 import io.github.busybin.gitrehub.core.notify.NotifiedThreads
+import io.github.busybin.gitrehub.core.notify.NotificationPoster
 import io.github.busybin.gitrehub.helper.AppHelper
 import io.github.busybin.gitrehub.helper.InputHelper
 import io.github.busybin.gitrehub.helper.ParseDateFormat
 import io.github.busybin.gitrehub.helper.PrefGetter
-import io.github.busybin.gitrehub.provider.markdown.MarkDownProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -95,28 +86,29 @@ class NotificationSchedulerJobTask : JobService() {
             finishJob(job)
             return
         }
-        val context = applicationContext
         val accentColor = ContextCompat.getColor(this, R.color.material_blue_700)
-        val first = items[0]
-        // Skip the newest thread (it is the summary) and anything already shown in an earlier run.
+        // Skip anything already shown in an earlier run (the two pollers hand over to each other).
         val shown = NotifiedThreads.ids()
-        val targets = unread
-            .filter { first.id != it.id && it.numericId !in shown }
-            .take(10)
-        targets.forEach { thread ->
+        val targets = unread.filter { it.numericId !in shown }.take(10)
+        val pending = targets.map { thread ->
             val comment = thread.subject?.latestCommentUrl?.let { url ->
                 runCatching { GitHubApi.commentAt(url) }.getOrNull()
             }
-            if (comment?.user != null) {
-                showWithComment(context, accentColor, thread, comment)
-            } else {
-                showWithoutComment(context, accentColor, thread)
-            }
+            NotificationPoster.Pending(thread, comment)
         }
-        if (first.numericId !in shown) {
-            val grouped = getSummaryGroupNotification(first, accentColor, items.size > 1)
-            showNotification(first.numericId, grouped)
-        }
+        NotificationPoster.post(
+            context = applicationContext,
+            items = pending,
+            unreadTotal = unread.size,
+            contentIntent = { thread ->
+                getPendingIntent(
+                    thread.numericId,
+                    thread.subject?.url ?: thread.url.orEmpty(),
+                )
+            },
+            accentColor = accentColor,
+            largeIcon = true,
+        )
         runCatching { NotifiedThreads.remember(items.map { it.numericId }) }
         finishJob(job)
     }
@@ -133,113 +125,6 @@ class NotificationSchedulerJobTask : JobService() {
         scheduleNext(this)
     }
 
-    private fun showWithoutComment(context: Context, accentColor: Int, thread: Notification) {
-        val title = thread.subject?.title ?: getString(R.string.m3_notification)
-        val url = thread.subject?.url ?: thread.url.orEmpty()
-        val builder = getNotification(title, thread.repoFullName ?: "general", thread.repoFullName ?: "general")
-            .setLargeIcon(BitmapFactory.decodeResource(resources, R.mipmap.ic_launcher))
-            .setContentIntent(getPendingIntent(thread.numericId, url))
-            .setWhen(thread.updatedAt?.toEpochMilli() ?: System.currentTimeMillis())
-            .setShowWhen(true)
-            .setColor(accentColor)
-            .setGroup(NOTIFICATION_GROUP_ID)
-        NotificationActions.attach(
-            context, builder, thread, NotificationActions.readIntent(context, thread.numericId),
-        )
-        showNotification(thread.numericId, builder.build())
-    }
-
-    private fun showWithComment(
-        context: Context,
-        accentColor: Int,
-        thread: Notification,
-        comment: Comment,
-    ) {
-        val login = comment.user?.login.orEmpty()
-        val body = MarkDownProvider.stripMdText(comment.body)
-        val url = thread.subject?.url ?: thread.url.orEmpty()
-        @SuppressLint("LaunchActivityFromNotification") val builder = getNotification(
-            login,
-            body,
-            thread.repoFullName ?: "general",
-        )
-            .setLargeIcon(BitmapFactory.decodeResource(resources, R.mipmap.ic_launcher))
-            .setSmallIcon(R.drawable.ic_notification)
-            .setStyle(
-                NotificationCompat.BigTextStyle()
-                    .setBigContentTitle(login)
-                    .bigText(body),
-            )
-            .setWhen(comment.createdAt?.toEpochMilli() ?: System.currentTimeMillis())
-            .setShowWhen(true)
-            .setContentIntent(getPendingIntent(thread.numericId, url))
-            .setColor(accentColor)
-            .setGroup(NOTIFICATION_GROUP_ID)
-        NotificationActions.attach(
-            context, builder, thread, NotificationActions.readIntent(context, thread.numericId),
-        )
-        showNotification(thread.numericId, builder.build())
-    }
-
-    private fun getSummaryGroupNotification(
-        thread: Notification,
-        accentColor: Int,
-        toNotificationActivity: Boolean,
-    ): android.app.Notification {
-        @SuppressLint("UnspecifiedImmutableFlag") val pendingIntent = PendingIntent.getActivity(
-            applicationContext,
-            0,
-            Intent(applicationContext, MainComposeActivity::class.java),
-            PendingIntent.FLAG_UPDATE_CURRENT,
-        )
-        val url = thread.subject?.url ?: thread.url.orEmpty()
-        val builder = getNotification(
-            thread.subject?.title ?: getString(R.string.m3_notification),
-            thread.repoFullName ?: "general",
-            thread.repoFullName ?: "general",
-        )
-            .setContentIntent(
-                if (toNotificationActivity) pendingIntent else getPendingIntent(thread.numericId, url),
-            )
-            .setWhen(thread.updatedAt?.toEpochMilli() ?: System.currentTimeMillis())
-            .setShowWhen(true)
-            .setSmallIcon(R.drawable.ic_notification)
-            .setColor(accentColor)
-            .setGroup(NOTIFICATION_GROUP_ID)
-            .setGroupSummary(true)
-        if (PrefGetter.isNotificationSoundEnabled) {
-            builder.setDefaults(NotificationCompat.DEFAULT_ALL)
-                .setSound(PrefGetter.notificationSound, AudioManager.STREAM_NOTIFICATION)
-        }
-        return builder.build()
-    }
-
-    private fun getNotification(
-        title: String,
-        message: String,
-        channelName: String,
-    ): NotificationCompat.Builder =
-        NotificationCompat.Builder(this, channelName)
-            // A notification without a small icon does not show (or crashes) on Android.
-            .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle(title)
-            .setContentText(message)
-            .setAutoCancel(true)
-
-    private fun showNotification(id: Long, notification: android.app.Notification) {
-        val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val notificationChannel = NotificationChannel(
-                notification.channelId,
-                notification.channelId,
-                NotificationManager.IMPORTANCE_DEFAULT,
-            )
-            notificationChannel.setShowBadge(true)
-            notificationManager.createNotificationChannel(notificationChannel)
-        }
-        notificationManager.notify(InputHelper.getSafeIntId(id), notification)
-    }
-
     @SuppressLint("UnspecifiedImmutableFlag")
     private fun getPendingIntent(id: Long, url: String): PendingIntent {
         val intent = ReadNotificationService.start(applicationContext, id, url)
@@ -252,7 +137,6 @@ class NotificationSchedulerJobTask : JobService() {
     companion object {
         private const val JOB_ID = 1
         private const val SINGLE_JOB_ID = 2
-        private const val NOTIFICATION_GROUP_ID = "GitRehub"
 
         /** Called after the settings toggle/interval changes: cancel all, or (re)schedule once. */
         @JvmStatic

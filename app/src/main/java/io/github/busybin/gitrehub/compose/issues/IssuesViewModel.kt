@@ -4,6 +4,7 @@ import androidx.annotation.StringRes
 import androidx.lifecycle.viewModelScope
 import io.github.busybin.gitrehub.R
 import io.github.busybin.gitrehub.compose.common.PageResult
+import io.github.busybin.gitrehub.compose.common.UiText
 import io.github.busybin.gitrehub.compose.common.PagedViewModel
 import io.github.busybin.gitrehub.core.model.Issue
 import io.github.busybin.gitrehub.core.model.Label
@@ -96,6 +97,15 @@ class IssuesViewModel : PagedViewModel<Issue>() {
 
     private val _options = MutableStateFlow(IssueFilterOptions())
     val options: StateFlow<IssueFilterOptions> = _options.asStateFlow()
+
+    private val _bulkBusy = MutableStateFlow(false)
+    val bulkBusy: StateFlow<Boolean> = _bulkBusy.asStateFlow()
+
+    /** Result of a bulk action ("3 done" / "2 done, 1 failed"); the list clears it after showing. */
+    private val _message = MutableStateFlow<UiText?>(null)
+    val message: StateFlow<UiText?> = _message.asStateFlow()
+
+    fun consumeMessage() { _message.value = null }
 
     fun setup(owner: String, repo: String, kind: IssueKind = IssueKind.ISSUE) {
         if (this.owner == owner && this.repo == repo) {
@@ -193,5 +203,55 @@ class IssuesViewModel : PagedViewModel<Issue>() {
 
         /** Extra scan while every upstream row belongs to the other kind. */
         const val EMPTY_SCAN_PAGES = 20
+    }
+
+    /** Close or reopen every selected thread; PRs go through the same issues endpoint. */
+    fun bulkClose(numbers: Set<Int>, closed: Boolean) = runBulk(numbers) { number ->
+        GitHubApi.setIssueState(owner, repo, number, closed)
+    }
+
+    /**
+     * Add one label to every selected thread. The API replaces the whole set, so the caller passes
+     * the labels each thread already has.
+     */
+    fun bulkAddLabel(
+        numbers: Set<Int>,
+        label: String,
+        existing: Map<Int, List<String>>,
+    ) = runBulk(numbers) { number ->
+        val current = existing[number].orEmpty()
+        if (label !in current) {
+            GitHubApi.setIssueLabels(owner, repo, number, current + label)
+        }
+    }
+
+    /** Assignees are additive on GitHub, so the whole selection can share one call shape. */
+    fun bulkAssign(numbers: Set<Int>, logins: List<String>) {
+        if (logins.isEmpty()) return
+        runBulk(numbers) { number -> GitHubApi.addAssignees(owner, repo, number, logins) }
+    }
+
+    /**
+     * Runs one write per thread, sequentially: a burst of parallel writes is what triggers GitHub's
+     * secondary rate limit. Failures are counted, never thrown away silently.
+     */
+    private fun runBulk(numbers: Set<Int>, block: suspend (Int) -> Unit) {
+        if (_bulkBusy.value || numbers.isEmpty()) return
+        _bulkBusy.value = true
+        viewModelScope.launch {
+            var failed = 0
+            withContext(Dispatchers.IO) {
+                numbers.forEach { number ->
+                    runCatching { block(number) }.onFailure { failed++ }
+                }
+            }
+            _bulkBusy.value = false
+            _message.value = if (failed == 0) {
+                UiText.res(R.string.m3_bulk_done, numbers.size)
+            } else {
+                UiText.res(R.string.m3_bulk_partial, numbers.size - failed, failed)
+            }
+            refresh()
+        }
     }
 }

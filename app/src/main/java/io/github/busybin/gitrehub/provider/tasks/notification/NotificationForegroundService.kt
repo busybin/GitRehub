@@ -18,8 +18,9 @@ import io.github.busybin.gitrehub.compose.notifications.NotificationPrefs
 import io.github.busybin.gitrehub.core.auth.Session
 import io.github.busybin.gitrehub.core.model.Notification
 import io.github.busybin.gitrehub.core.net.GitHubApi
+import io.github.busybin.gitrehub.core.notify.NotifyChannel
 import io.github.busybin.gitrehub.core.notify.NotifiedThreads
-import io.github.busybin.gitrehub.helper.InputHelper
+import io.github.busybin.gitrehub.core.notify.NotificationPoster
 import io.github.busybin.gitrehub.helper.ParseDateFormat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -111,42 +112,17 @@ class NotificationForegroundService : Service() {
     }
 
     private fun notifyNew(items: List<Notification>) {
-        val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-        ensureChannel(manager, CHANNEL_NEW, getString(R.string.m3_section_notifications),
-            NotificationManager.IMPORTANCE_DEFAULT)
         val open = PendingIntent.getActivity(
             this, 0,
             Intent(this, MainComposeActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
-        items.take(5).forEach { thread ->
-            val title = thread.subject?.title ?: thread.repoFullName ?: getString(R.string.m3_notification)
-            val text = thread.repoFullName.orEmpty()
-            val builder = NotificationCompat.Builder(this, CHANNEL_NEW)
-                .setSmallIcon(R.drawable.ic_notification)
-                .setContentTitle(title)
-                .setContentText(text)
-                .setAutoCancel(true)
-                .setContentIntent(open)
-                .setGroup(CHANNEL_NEW)
-            NotificationActions.attach(
-                this, builder, thread,
-                NotificationActions.readIntent(this, thread.numericId),
-            )
-            manager.notify(InputHelper.getSafeIntId(thread.numericId), builder.build())
-        }
-        if (items.size > 1) {
-            val summary = NotificationCompat.Builder(this, CHANNEL_NEW)
-                .setSmallIcon(R.drawable.ic_notification)
-                .setContentTitle(getString(R.string.m3_section_notifications))
-                .setContentText(getString(R.string.m3_notif_new_count, items.size))
-                .setGroup(CHANNEL_NEW)
-                .setGroupSummary(true)
-                .setContentIntent(open)
-                .setAutoCancel(true)
-                .build()
-            manager.notify(SUMMARY_ID, summary)
-        }
+        NotificationPoster.post(
+            context = this,
+            items = items.take(5).map { NotificationPoster.Pending(it) },
+            unreadTotal = items.size,
+            contentIntent = { open },
+        )
     }
 
     private fun updatePersistent(unread: Int) {
@@ -177,8 +153,7 @@ class NotificationForegroundService : Service() {
         val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         ensureChannel(manager, CHANNEL_SERVICE, getString(R.string.m3_notif_fg_title),
             NotificationManager.IMPORTANCE_MIN)
-        ensureChannel(manager, CHANNEL_NEW, getString(R.string.m3_section_notifications),
-            NotificationManager.IMPORTANCE_DEFAULT)
+        NotifyChannel.ensure(this)
         val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
         } else {
@@ -197,9 +172,7 @@ class NotificationForegroundService : Service() {
         /** Poll interval: 15s ≈ 240 requests/hour, well under GitHub's 5000/hour authenticated limit. */
         const val INTERVAL_SECONDS = 15L
         private const val CHANNEL_SERVICE = "gitrehub_watcher"
-        private const val CHANNEL_NEW = "gitrehub_new"
         private const val PERSISTENT_ID = 0x6101
-        private const val SUMMARY_ID = 0x6102
 
         fun start(context: Context) {
             val intent = Intent(context, NotificationForegroundService::class.java)

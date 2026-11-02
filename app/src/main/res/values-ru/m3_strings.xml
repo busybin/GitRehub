@@ -349,6 +349,11 @@
     <string name="m3_section_about">О приложении</string>
     
     <string name="m3_notif_new_title">Уведомления о новых сообщениях</string>
+    <string name="m3_notif_channel_mention">Упоминания</string>
+    <string name="m3_notif_channel_review">Запросы на ревью</string>
+    <string name="m3_notif_channel_ci">Активность CI</string>
+    <string name="m3_notif_channel_comment">Комментарии и обновления</string>
+    <string name="m3_notif_channel_other">Прочие уведомления</string>
     <string name="m3_notif_new_desc">Проверяет ваши непрочитанные уведомления в фоновом режиме и показывает системное уведомление, когда появляется что-то новое (нажмите на него, чтобы открыть приложение).\n\nУ GitHub нет канала push для сторонних клиентов, поэтому это настоящий опрос: минимальный интервал — 1 минута, но система отложит его в глубоком сне ради экономии заряда батареи.</string>
     <string name="m3_notif_interval">Частота проверки</string>
     <string name="m3_notif_interval_hint">Короткие интервалы расходуют батарею; в глубоком сне Android всё равно отложит проверки.</string>
@@ -983,4 +988,76 @@
 
     <string name="m3_actions_inputs_hint">ключ=значение</string>
     <string name="m3_repo_topics_hint">android, kotlin</string>
+
+    <!-- issue/PR timeline state changes -->
+    <string name="m3_tl_someone">Кто-то</string>
+    <string name="m3_tl_closed">%1$s закрыл это</string>
+    <string name="m3_tl_reopened">%1$s переоткрыл это</string>
+    <string name="m3_tl_labeled">%1$s добавил метку %2$s</string>
+    <string name="m3_tl_unlabeled">%1$s удалил метку %2$s</string>
+    <string name="m3_tl_assigned">%1$s назначил %2$s</string>
+    <string name="m3_tl_unassigned">%1$s снял назначение с %2$s</string>
+    <string name="m3_tl_milestoned">%1$s добавил это в веху %2$s</string>
+    <string name="m3_tl_demilestoned">%1$s убрал это из вехи %2$s</string>
+    <string name="m3_tl_renamed">%1$s переименовал из %2$s в %3$s</string>
+    <string name="m3_tl_referenced">%1$s сослался на это в %2$s</string>
+    <string name="m3_tl_cross_referenced">%1$s сослался на это из %2$s</string>
+    <string name="m3_tl_merged">%1$s слил это</string>
+    <string name="m3_tl_review_requested">%1$s запросил ревью у %2$s</string>
+    <string name="m3_tl_draft">%1$s перевёл это в черновик</string>
+    <string name="m3_tl_ready">%1$s отметил готовым к ревью</string>
+    <string name="m3_tl_locked">%1$s заблокировал это</string>
+    <string name="m3_tl_unlocked">%1$s разблокировал это</string>
+
+    <!-- pull request checks / auto-merge -->
+    <string name="m3_checks_title">Проверки</string>
+    <string name="m3_checks_summary_passed">%1$d успешно</string>
+    <string name="m3_checks_summary_failed">%1$d с ошибкой</string>
+    <string name="m3_checks_summary_running">%1$d выполняется</string>
+    <string name="m3_auto_merge_enable">Включить автослияние</string>
+    <string name="m3_auto_merge_hint">GitHub сольёт этот pull request после успешных обязательных проверок.</string>
+    <string name="m3_auto_merge_on">Автослияние включено</string>
+    <string name="m3_auto_merge_cancel">Отменить автослияние</string>
+    <string name="m3_auto_merge_enabled">Автослияние включено</string>
+    <string name="m3_auto_merge_disabled">Автослияние отменено</string>
+
+    <!-- discussions: accepted answer -->
+    <string name="m3_discussion_answer">Отметить как ответ</string>
+    <string name="m3_discussion_answer_failed">Не удалось обновить ответ.</string>
+
+    <!-- gists: star, comments, revisions -->
+    <string name="m3_gist_star">В избранное</string>
+    <string name="m3_gist_unstar">В избранном</string>
+    <string name="m3_gist_comment_hint">Напишите комментарий</string>
+    <string name="m3_gist_comment_send">Отправить</string>
+    <string name="m3_gist_history">История (%1$d)</string>
+    <string name="m3_gist_history_title">История версий</string>
+
+    <!-- repository digest -->
+    <string name="m3_digest_title">С прошлого визита</string>
+    <string name="m3_digest_commits">%1$d коммитов</string>
+    <string name="m3_digest_commits_more">Более 100 коммитов</string>
+    <string name="m3_digest_threads">%1$d задач/PR</string>
+    <string name="m3_digest_release">Новый релиз %1$s</string>
+
+    <!-- bulk triage -->
+    <string name="m3_bulk_selected">Выбрано: %1$d</string>
+    <string name="m3_bulk_clear">Снять</string>
+    <string name="m3_bulk_close">Закрыть</string>
+    <string name="m3_bulk_reopen">Переоткрыть</string>
+    <string name="m3_bulk_label">Добавить метку</string>
+    <string name="m3_bulk_assign">Назначить</string>
+    <string name="m3_bulk_no_options">Здесь нечего выбирать.</string>
+    <string name="m3_bulk_done">Готово: %1$d</string>
+    <string name="m3_bulk_partial">Готово: %1$d, ошибок: %2$d</string>
+
+    <!-- offline saved threads -->
+    <string name="m3_saved">Сохранено офлайн</string>
+    <string name="m3_saved_empty">Пока ничего не сохранено. Откройте задачу или PR и нажмите «Сохранить офлайн».</string>
+    <string name="m3_saved_at">Сохранено %1$s</string>
+    <string name="m3_saved_missing">Эта сохранённая копия удалена.</string>
+    <string name="m3_saved_offline_banner">Офлайн-копия — содержимое на момент сохранения.</string>
+    <string name="m3_saved_open_online">Открыть актуальную версию</string>
+    <string name="m3_save_offline">Сохранить офлайн</string>
+    <string name="m3_save_offline_done">Сохранено офлайн</string>
 </resources>

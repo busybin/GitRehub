@@ -625,6 +625,16 @@ fun RepoDetailScreen(
                     MetaText(stringResource(R.string.m3_updated_ago, relativeTime(lastPush)))
                 }
 
+                detail.digest?.let { digest ->
+                    Spacer(Modifier.height(14.dp))
+                    RepoDigestCard(
+                        digest = digest,
+                        onOpenCommits = { onOpenActivity(owner, name) },
+                        onOpenIssues = { onOpenIssues(owner, name) },
+                        onOpenRelease = { onOpenReleases(owner, name) },
+                    )
+                }
+
                 Spacer(Modifier.height(14.dp))
                 HorizontalDivider()
                 Spacer(Modifier.height(14.dp))

@@ -18,6 +18,8 @@ data class User(
     @SerialName("html_url") val htmlUrl: String? = null,
     val type: String? = null,
     val bio: String? = null,
+    /** Organizations fill `description` instead of `bio`; people leave it null. */
+    val description: String? = null,
     val company: String? = null,
     val blog: String? = null,
     val location: String? = null,

@@ -347,6 +347,11 @@
     <string name="m3_section_about">关于</string>
     
     <string name="m3_notif_new_title">新消息通知</string>
+    <string name="m3_notif_channel_mention">提及</string>
+    <string name="m3_notif_channel_review">评审请求</string>
+    <string name="m3_notif_channel_ci">CI 动态</string>
+    <string name="m3_notif_channel_comment">评论与更新</string>
+    <string name="m3_notif_channel_other">其他通知</string>
     <string name="m3_notif_new_desc">后台定时拉取未读通知，有新消息就弹系统通知（点通知进应用）。
 
 github 不给第三方客户端推送通道，所以这是真的轮询：最短 1 分钟一次，但系统深度休眠时会为了省电延后。</string>
@@ -999,4 +1004,76 @@ github 不给第三方客户端推送通道，所以这是真的轮询：最短 
 
     <string name="m3_actions_inputs_hint">key=value</string>
     <string name="m3_repo_topics_hint">android, kotlin</string>
+
+    <!-- issue/PR timeline state changes -->
+    <string name="m3_tl_someone">某人</string>
+    <string name="m3_tl_closed">%1$s 关闭了</string>
+    <string name="m3_tl_reopened">%1$s 重新打开了</string>
+    <string name="m3_tl_labeled">%1$s 添加了 %2$s 标签</string>
+    <string name="m3_tl_unlabeled">%1$s 移除了 %2$s 标签</string>
+    <string name="m3_tl_assigned">%1$s 指派给 %2$s</string>
+    <string name="m3_tl_unassigned">%1$s 取消指派 %2$s</string>
+    <string name="m3_tl_milestoned">%1$s 加入里程碑 %2$s</string>
+    <string name="m3_tl_demilestoned">%1$s 移出里程碑 %2$s</string>
+    <string name="m3_tl_renamed">%1$s 将标题由 %2$s 改为 %3$s</string>
+    <string name="m3_tl_referenced">%1$s 在 %2$s 中引用了</string>
+    <string name="m3_tl_cross_referenced">%1$s 从 %2$s 引用了</string>
+    <string name="m3_tl_merged">%1$s 合并了</string>
+    <string name="m3_tl_review_requested">%1$s 请求 %2$s 评审</string>
+    <string name="m3_tl_draft">%1$s 转为草稿</string>
+    <string name="m3_tl_ready">%1$s 标记为可评审</string>
+    <string name="m3_tl_locked">%1$s 锁定</string>
+    <string name="m3_tl_unlocked">%1$s 解锁</string>
+
+    <!-- pull request checks / auto-merge -->
+    <string name="m3_checks_title">检查</string>
+    <string name="m3_checks_summary_passed">%1$d 通过</string>
+    <string name="m3_checks_summary_failed">%1$d 失败</string>
+    <string name="m3_checks_summary_running">%1$d 运行中</string>
+    <string name="m3_auto_merge_enable">启用自动合并</string>
+    <string name="m3_auto_merge_hint">必需检查通过后由 GitHub 自动合并。</string>
+    <string name="m3_auto_merge_on">自动合并已开启</string>
+    <string name="m3_auto_merge_cancel">取消自动合并</string>
+    <string name="m3_auto_merge_enabled">已启用自动合并</string>
+    <string name="m3_auto_merge_disabled">已取消自动合并</string>
+
+    <!-- discussions: accepted answer -->
+    <string name="m3_discussion_answer">标为答案</string>
+    <string name="m3_discussion_answer_failed">无法更新答案。</string>
+
+    <!-- gists: star, comments, revisions -->
+    <string name="m3_gist_star">加星</string>
+    <string name="m3_gist_unstar">已加星</string>
+    <string name="m3_gist_comment_hint">写评论</string>
+    <string name="m3_gist_comment_send">发送</string>
+    <string name="m3_gist_history">历史版本（%1$d）</string>
+    <string name="m3_gist_history_title">版本历史</string>
+
+    <!-- repository digest -->
+    <string name="m3_digest_title">自上次查看以来</string>
+    <string name="m3_digest_commits">%1$d 个提交</string>
+    <string name="m3_digest_commits_more">100+ 个提交</string>
+    <string name="m3_digest_threads">%1$d 条 Issue/PR</string>
+    <string name="m3_digest_release">新发布 %1$s</string>
+
+    <!-- bulk triage -->
+    <string name="m3_bulk_selected">已选 %1$d 项</string>
+    <string name="m3_bulk_clear">清除</string>
+    <string name="m3_bulk_close">关闭</string>
+    <string name="m3_bulk_reopen">重新打开</string>
+    <string name="m3_bulk_label">加标签</string>
+    <string name="m3_bulk_assign">指派</string>
+    <string name="m3_bulk_no_options">这里没有可选项。</string>
+    <string name="m3_bulk_done">已完成 %1$d 项</string>
+    <string name="m3_bulk_partial">完成 %1$d，失败 %2$d</string>
+
+    <!-- offline saved threads -->
+    <string name="m3_saved">离线保存</string>
+    <string name="m3_saved_empty">还没有离线保存。打开 Issue 或 PR，点「离线保存」。</string>
+    <string name="m3_saved_at">保存于 %1$s</string>
+    <string name="m3_saved_missing">这份离线副本已不存在。</string>
+    <string name="m3_saved_offline_banner">离线副本 — 内容是保存时的样子。</string>
+    <string name="m3_saved_open_online">打开在线版本</string>
+    <string name="m3_save_offline">离线保存</string>
+    <string name="m3_save_offline_done">已离线保存</string>
 </resources>

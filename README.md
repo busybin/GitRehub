@@ -24,23 +24,46 @@ Taken on an Android 14 emulator at 1080×2400.
 ## Features
 
 **Interface**
-- Material 3, dark only, nine colour themes (GitHub, Follow wallpaper, One Dark, Dracula, Nord, Catppuccin, Solarized, Gruvbox, Tokyo Night), four font sizes, comfortable/compact density
-- Single-activity Compose UI with a navigation drawer, bottom bar, and two-pane layouts on tablets
+- Material 3, dark only, ten colour themes (GitHub, Follow wallpaper, One Dark, Dracula, Nord, Catppuccin, Solarized, Gruvbox, Tokyo Night, AMOLED), four font sizes, density and line-height sliders
+- Single-activity Compose UI: navigation drawer, bottom bar on phones, navigation rail and two-pane layouts on tablets
+- Hardware-keyboard shortcuts (`Ctrl+K`, `Ctrl+1..5`, `Ctrl+,`, `Esc`), predictive back, eight languages with an in-app language switch
 
 **Activity feed**
-- One merged stream: your received events, your own activity, and what other people did to *your* repositories (stars, forks, PRs, issues)
-- **Filters**: event type, time range, source, read state, ordering, per-author, per-repository, keyword block-list, hide bots. Everything is saved and survives a restart; only “Clear filters” resets it
-- “Mark all as read” shared with the notifications screen
+- One merged stream: your received events, your own activity, and what other people did to *your* repositories
+- **Filters**: event type, time range, source, read state, ordering, per-author, per-repository, keyword block-list, hide bots; saved across restarts
+- "Mark all as read" shared with the notifications screen
 
-**Repositories, issues, pull requests**
-- Repository browser: rendered README, code browsing (directories, files, branches, tags) with line numbers and in-file search, releases with downloadable assets, activity and contributor pages
-- Native issue/PR detail pages: labels, comments (edit and delete), reactions, assignees, milestones, lock, reviews, and comment/close/merge actions where your permissions allow
-- Notifications with filtering, custom swipe actions, and mark-all-as-read
-- Search repositories, users, issues/PRs and code; a My Work tab with your issues, PRs, reviews and mentions
+**Repositories**
+- Rendered README with a section outline, badge/SVG images and in-page anchors
+- Code browsing with line numbers, in-file search, wrap toggle, find-file, in-repository code search, per-file history and commit diffs
+- Branches and tags, releases with downloadable assets, a release editor (draft, generate notes, compare with the previous release), contributors and stargazers
+- Maintainer insights: 14-day views/clones, referrers, popular paths, Dependabot alerts, stale issues
+- "Since your last visit": commits, issue activity and new releases on the repository screen
+- Labels and milestones management, topics/description/homepage editing, watch levels
+
+**Issues and pull requests**
+- Native issue and PR pages: timeline of state changes and comments, labels, assignees, milestones, reactions, lock, edit, close/reopen
+- PR review: per-file diffs, line comments, approve / request changes, resolve conversations, mark files as viewed, checks summary, update branch, draft toggle, auto-merge
+- Issue templates, bulk triage (close/reopen, add label, assign), print/PDF export
+- Discussions: categories, comments, accepted answers
+
+**Gists**
+- Browse your gists (secret ones included) and anyone's public gists; create, edit, delete; comments, revision history, star
+
+**Search and My Work**
+- Search repositories, users, issues/PRs and code; saved searches and pinned repositories
+- My Work: assigned issues, review requests, mentions, your own issues and PRs
+
+**Notifications**
+- Filtering by type, repository, reason and time; custom swipe actions; mark-all-as-read
+- Done (unsubscribe), inline reply from the notification shade, quiet hours, per-reason notification channels
+
+**Offline**
+- OkHttp disk cache so browsed screens still open without a network
+- Save an issue or pull request for offline reading; the copy is deleted when the account signs out
 
 **Accounts and data**
 - Access-token login, device-code login (needs your own OAuth app), multiple accounts with switching, profile editing
-- Offline cache (OkHttp disk cache) so what you browsed still shows without a network
 - Update check against GitHub Releases (manual + opt-in automatic check)
 - No ads, no trackers, no Google Play Services
 

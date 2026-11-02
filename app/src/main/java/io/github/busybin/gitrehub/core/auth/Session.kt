@@ -2,6 +2,7 @@ package io.github.busybin.gitrehub.core.auth
 
 import io.github.busybin.gitrehub.core.model.User
 import io.github.busybin.gitrehub.core.net.GitHubApi
+import io.github.busybin.gitrehub.core.offline.OfflineSaves
 import io.github.busybin.gitrehub.helper.PrefGetter
 import io.github.busybin.gitrehub.provider.rest.HttpCache
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -144,7 +145,10 @@ object Session {
      * of the account just left must not be answerable for the one being entered.
      */
     suspend fun switchTo(login: String): Boolean {
+        val previous = TokenStore.current()?.login
         if (!TokenStore.setCurrent(login)) return false
+        // Offline copies are private to an account; they must not survive a switch.
+        previous?.let { runCatching { OfflineSaves.clearAccount(it) } }
         HttpCache.clear()
         PrefGetter.token = TokenStore.current()?.token
         _accountRevision.value = _accountRevision.value + 1
@@ -152,10 +156,14 @@ object Session {
     }
 
     /** Forgets a stored account; the current one can only be left through [logout]. */
-    suspend fun removeAccount(login: String): Boolean = TokenStore.remove(login)
+    suspend fun removeAccount(login: String): Boolean {
+        runCatching { OfflineSaves.clearAccount(login) }
+        return TokenStore.remove(login)
+    }
 
     /** Signs out: the account leaves the encrypted store and the in-memory token with it. */
     suspend fun logout() {
+        TokenStore.current()?.login?.let { runCatching { OfflineSaves.clearAccount(it) } }
         HttpCache.clear()
         TokenStore.clearCurrent()
         PrefGetter.clearCredentials()

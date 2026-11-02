@@ -31,6 +31,7 @@ import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Assignment
+import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material.icons.outlined.Drafts
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Share
@@ -49,6 +50,8 @@ import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationRail
+import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.NavigationDrawerItemDefaults
 import androidx.compose.material3.Scaffold
@@ -68,6 +71,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.FocusRequester
@@ -109,6 +113,7 @@ import io.github.busybin.gitrehub.compose.code.EditFileScreen
 import io.github.busybin.gitrehub.compose.code.FileHistoryScreen
 import io.github.busybin.gitrehub.compose.code.FileViewerScreen
 import io.github.busybin.gitrehub.compose.code.RefKind
+import io.github.busybin.gitrehub.compose.common.isWideLayout
 import io.github.busybin.gitrehub.compose.common.Avatar
 import io.github.busybin.gitrehub.compose.common.AvatarVersions
 import io.github.busybin.gitrehub.compose.common.ConfirmDialog
@@ -158,6 +163,8 @@ import io.github.busybin.gitrehub.compose.releases.CompareScreen
 import io.github.busybin.gitrehub.compose.releases.ReleaseEditorScreen
 import io.github.busybin.gitrehub.compose.releases.ReleasesScreen
 import io.github.busybin.gitrehub.compose.search.SearchScreen
+import io.github.busybin.gitrehub.compose.saved.SavedScreen
+import io.github.busybin.gitrehub.compose.saved.SavedThreadScreen
 import io.github.busybin.gitrehub.compose.settings.SettingsScreen
 import io.github.busybin.gitrehub.compose.theme.FaTheme
 import io.github.busybin.gitrehub.core.auth.StoredAccount
@@ -169,135 +176,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-object Routes {
-    const val LOGIN = "login"
-    const val ADD_ACCOUNT = "add-account"
-    const val DEVICE_LOGIN = "device-login"
-    const val DEVICE_LOGIN_ADD = "device-login-add"
-    const val ACCOUNTS = "accounts"
-    const val FEED = "feed"
-    const val REPOS = "repos"
-    const val MY_WORK = "my-work"
-    const val TRENDING = "trending"
-    const val NOTIFICATIONS = "notifications"
-    const val PROFILE = "profile"
-    const val USER = "user/{login}"
-    const val SEARCH = "search"
-    const val GISTS = "gists?login={login}"
-    const val GIST = "gist/{id}"
-    const val GIST_EDIT = "gist-edit?id={id}"
-    const val SHARE = "share"
-    const val DRAFTS = "drafts"
-    const val SETTINGS = "settings"
-    const val REPO = "repo/{owner}/{name}"
-    const val ISSUES = "issues/{owner}/{repo}?kind={kind}"
-    const val ISSUE = "issue/{owner}/{repo}/{number}"
-    const val PR_FILES = "pr-files/{owner}/{repo}/{number}"
-    const val NEW_ISSUE = "new-issue/{owner}/{repo}"
-    const val NEW_PULL = "new-pull/{owner}/{repo}?base={base}&head={head}"
-    const val COMMIT = "commit/{owner}/{repo}?sha={sha}"
-    const val COMMITS = "commits/{owner}/{repo}?ref={ref}"
-    const val RELEASES = "releases/{owner}/{repo}"
-    const val RELEASE_EDIT = "release-edit/{owner}/{repo}?id={id}"
-    const val COMPARE = "compare/{owner}/{repo}?base={base}&head={head}"
-    const val DISCUSSIONS = "discussions/{owner}/{repo}"
-    const val DISCUSSION = "discussion/{owner}/{repo}/{number}"
-    const val LABELS = "labels/{owner}/{repo}"
-    const val MILESTONES = "milestones/{owner}/{repo}"
-    const val ACTIONS = "actions/{owner}/{repo}"
-    const val RUN_LOGS = "run-logs/{owner}/{repo}/{runId}"
-    const val BRANCHES = "branches/{owner}/{repo}?kind={kind}"
-    const val STARGAZERS = "stargazers/{owner}/{repo}"
-    const val WATCHERS = "watchers/{owner}/{repo}"
-    const val FORKS = "forks/{owner}/{repo}"
-    const val CONTRIBUTORS = "contributors/{owner}/{repo}"
-    const val REPO_ACTIVITY = "repo-activity/{owner}/{repo}"
-    const val INSIGHTS = "insights/{owner}/{repo}"
-    const val CODE = "code/{owner}/{repo}?ref={ref}&path={path}"
-    const val FILE = "file/{owner}/{repo}?path={path}&ref={ref}"
-    const val FILE_HISTORY = "file-history/{owner}/{repo}?path={path}&ref={ref}"
-    const val EDIT_FILE = "edit-file/{owner}/{repo}?path={path}&ref={ref}"
-    const val CODE_SEARCH = "code-search/{owner}/{repo}?ref={ref}"
-
-    fun repo(owner: String, name: String) = "repo/$owner/$name"
-
-    fun user(login: String) = "user/${Uri.encode(login)}"
-
-    /** `null` opens the signed-in account's own gists (secret ones included). */
-    fun gists(login: String? = null) = "gists?login=${Uri.encode(login.orEmpty())}"
-
-    fun gist(id: String) = "gist/${Uri.encode(id)}"
-
-    fun gistEdit(id: String? = null) = "gist-edit?id=${Uri.encode(id.orEmpty())}"
-
-    fun releases(owner: String, repo: String) = "releases/$owner/$repo"
-
-    fun releaseEdit(owner: String, repo: String, id: Long? = null) =
-        "release-edit/$owner/$repo?id=${id ?: 0}"
-
-    fun compare(owner: String, repo: String, base: String, head: String) =
-        "compare/$owner/$repo?base=${Uri.encode(base)}&head=${Uri.encode(head)}"
-
-    fun discussions(owner: String, repo: String) = "discussions/$owner/$repo"
-
-    fun discussion(owner: String, repo: String, number: Int) =
-        "discussion/$owner/$repo/$number"
-
-    fun actions(owner: String, repo: String) = "actions/$owner/$repo"
-
-    fun labels(owner: String, repo: String) = "labels/$owner/$repo"
-
-    fun milestones(owner: String, repo: String) = "milestones/$owner/$repo"
-
-    fun runLogs(owner: String, repo: String, runId: Long) = "run-logs/$owner/$repo/$runId"
-
-    fun issues(owner: String, repo: String, kind: String = "issue") =
-        "issues/$owner/$repo?kind=$kind"
-
-    fun issue(owner: String, repo: String, number: Int) = "issue/$owner/$repo/$number"
-
-    fun prFiles(owner: String, repo: String, number: Int) = "pr-files/$owner/$repo/$number"
-
-    fun newIssue(owner: String, repo: String) = "new-issue/$owner/$repo"
-
-    fun newPull(owner: String, repo: String, base: String = "", head: String = "") =
-        "new-pull/$owner/$repo?base=${Uri.encode(base)}&head=${Uri.encode(head)}"
-
-    fun commit(owner: String, repo: String, sha: String) =
-        "commit/$owner/$repo?sha=${Uri.encode(sha)}"
-
-    fun commits(owner: String, repo: String, ref: String) =
-        "commits/$owner/$repo?ref=${Uri.encode(ref)}"
-
-    fun branches(owner: String, repo: String, kind: String = "branch") =
-        "branches/$owner/$repo?kind=$kind"
-
-    fun stargazers(owner: String, repo: String) = "stargazers/$owner/$repo"
-    fun watchers(owner: String, repo: String) = "watchers/$owner/$repo"
-
-    fun forks(owner: String, repo: String) = "forks/$owner/$repo"
-
-    fun contributors(owner: String, repo: String) = "contributors/$owner/$repo"
-
-    fun repoActivity(owner: String, repo: String) = "repo-activity/$owner/$repo"
-
-    fun insights(owner: String, repo: String) = "insights/$owner/$repo"
-
-    fun code(owner: String, repo: String, ref: String? = null, path: String = "") =
-        "code/$owner/$repo?ref=${Uri.encode(ref.orEmpty())}&path=${Uri.encode(path)}"
-
-    fun file(owner: String, repo: String, path: String, ref: String? = null) =
-        "file/$owner/$repo?path=${Uri.encode(path)}&ref=${Uri.encode(ref.orEmpty())}"
-
-    fun fileHistory(owner: String, repo: String, path: String, ref: String? = null) =
-        "file-history/$owner/$repo?path=${Uri.encode(path)}&ref=${Uri.encode(ref.orEmpty())}"
-
-    fun editFile(owner: String, repo: String, path: String, ref: String? = null) =
-        "edit-file/$owner/$repo?path=${Uri.encode(path)}&ref=${Uri.encode(ref.orEmpty())}"
-
-    fun codeSearch(owner: String, repo: String, ref: String? = null) =
-        "code-search/$owner/$repo?ref=${Uri.encode(ref.orEmpty())}"
-}
 
 private data class Tab(val route: String, @StringRes val labelRes: Int, val icon: ImageVector)
 
@@ -316,6 +194,8 @@ private val tabRoutes = tabs.map { it.route }.toSet()
 fun FaApp(routeRequest: MutableState<String?>? = null) {
     FaTheme {
         val nav = rememberNavController()
+        // Wide windows get a navigation rail instead of a bottom bar; the content shifts right.
+        val wide = isWideLayout()
         val drawerState = rememberDrawerState(DrawerValue.Closed)
         val scope = rememberCoroutineScope()
         val context = LocalContext.current
@@ -542,6 +422,16 @@ fun FaApp(routeRequest: MutableState<String?>? = null) {
                                 modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
                             )
                             NavigationDrawerItem(
+                                label = { Text(stringResource(R.string.m3_saved)) },
+                                icon = { Icon(Icons.Outlined.BookmarkBorder, contentDescription = null) },
+                                selected = current == Routes.SAVED || current == Routes.SAVED_THREAD,
+                                onClick = {
+                                    scope.launch { drawerState.close() }
+                                    nav.navigateSingleTop(Routes.SAVED)
+                                },
+                                modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
+                            )
+                            NavigationDrawerItem(
                                 label = { Text(stringResource(R.string.m3_drawer_search)) },
                                 icon = { Icon(Icons.Filled.Search, contentDescription = null) },
                                 selected = current == Routes.SEARCH,
@@ -613,7 +503,7 @@ fun FaApp(routeRequest: MutableState<String?>? = null) {
                     }
                 },
                 bottomBar = {
-                    if (current in tabRoutes) {
+                    if (current in tabRoutes && !wide) {
                         val notificationsBadge by TabBadges.notifications.collectAsStateWithLifecycle()
                         val myWorkBadge by TabBadges.myWork.collectAsStateWithLifecycle()
                         NavigationBar {
@@ -653,6 +543,10 @@ fun FaApp(routeRequest: MutableState<String?>? = null) {
                     Modifier
                         .fillMaxSize()
                         .padding(padding)
+                        .then(
+                            if (wide && current in tabRoutes) Modifier.padding(start = 80.dp)
+                            else Modifier,
+                        )
                         .focusRequester(keyFocus)
                         .focusable()
                         .onPreviewKeyEvent { event ->
@@ -693,6 +587,13 @@ fun FaApp(routeRequest: MutableState<String?>? = null) {
                             }
                         },
                 ) {
+                    if (wide && current in tabRoutes) {
+                        AppNavigationRail(
+                            current = current,
+                            onNavigate = { route -> nav.navigateSingleTop(route) },
+                            modifier = Modifier.align(Alignment.CenterStart).fillMaxHeight(),
+                        )
+                    }
                     NavHost(navController = nav, startDestination = start) {
                         composable(Routes.LOGIN) {
                             LoginScreen(
@@ -873,6 +774,31 @@ fun FaApp(routeRequest: MutableState<String?>? = null) {
                                     }
                                 },
                                 onDone = { nav.popBackStack() },
+                            )
+                        }
+                        composable(Routes.SAVED) {
+                            SavedScreen(
+                                onOpen = { meta ->
+                                    nav.navigate(
+                                        Routes.savedThread(meta.owner, meta.repo, meta.number),
+                                    )
+                                },
+                            )
+                        }
+                        composable(
+                            route = Routes.SAVED_THREAD,
+                            arguments = listOf(
+                                navArgument("owner") { type = NavType.StringType },
+                                navArgument("repo") { type = NavType.StringType },
+                                navArgument("number") { type = NavType.IntType },
+                            ),
+                        ) { entry ->
+                            val arguments = entry.arguments
+                            SavedThreadScreen(
+                                owner = arguments?.getString("owner").orEmpty(),
+                                repo = arguments?.getString("repo").orEmpty(),
+                                number = arguments?.getInt("number") ?: 0,
+                                onOpenOnline = { o, r, n -> nav.navigate(Routes.issue(o, r, n)) },
                             )
                         }
                         composable(Routes.DRAFTS) {
@@ -1779,3 +1705,37 @@ private fun NotificationAskDialog(
     )
 }
 
+/** Rail for tablets and foldables: same five destinations and badges as the bottom bar. */
+@Composable
+private fun AppNavigationRail(
+    current: String?,
+    onNavigate: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val notificationsBadge by TabBadges.notifications.collectAsStateWithLifecycle()
+    val myWorkBadge by TabBadges.myWork.collectAsStateWithLifecycle()
+    NavigationRail(modifier = modifier) {
+        tabs.forEach { tab ->
+            val label = stringResource(tab.labelRes)
+            val badge = when (tab.route) {
+                Routes.NOTIFICATIONS -> notificationsBadge
+                Routes.MY_WORK -> myWorkBadge
+                else -> 0
+            }
+            NavigationRailItem(
+                selected = current == tab.route,
+                onClick = { onNavigate(tab.route) },
+                icon = {
+                    BadgedBox(
+                        badge = {
+                            if (badge > 0) {
+                                Badge { Text(if (badge > 99) "99+" else badge.toString()) }
+                            }
+                        },
+                    ) { Icon(tab.icon, contentDescription = label) }
+                },
+                label = { Text(label) },
+            )
+        }
+    }
+}
