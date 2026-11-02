@@ -4,7 +4,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.busybin.gitrehub.compose.common.LoadState
 import io.github.busybin.gitrehub.compose.common.launchLoad
+import io.github.busybin.gitrehub.App
+import io.github.busybin.gitrehub.core.auth.Session
 import io.github.busybin.gitrehub.core.model.CodeEntry
+import io.github.busybin.gitrehub.core.offline.RepoPacks
+import io.github.busybin.gitrehub.helper.OfflineStatus
 import io.github.busybin.gitrehub.compose.data.RepoContent
 import io.github.busybin.gitrehub.compose.data.RepoStats
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -46,6 +50,7 @@ class FileViewerViewModel : ViewModel() {
     }
 
     private suspend fun fetch(owner: String, repo: String, path: String, ref: String?): FileContent {
+        localFile(owner, repo, path, ref)?.let { return it }
         val entry: CodeEntry? = RepoContent.file(owner, repo, path, ref)
         val name = entry?.name ?: path.substringAfterLast('/')
         val tooBig = (entry?.size ?: 0) > RepoContent.MAX_PREVIEW_BYTES
@@ -68,6 +73,29 @@ class FileViewerViewModel : ViewModel() {
             text = text,
             tooBig = tooBig,
             lastModified = lastModified,
+        )
+    }
+
+    /** Offline: read the file straight out of the repository pack, if one covers this branch. */
+    private suspend fun localFile(owner: String, repo: String, path: String, ref: String?): FileContent? {
+        if (OfflineStatus.isOnline) return null
+        val context = App.getInstance()
+        val account = runCatching { Session.currentAccount()?.login }.getOrNull() ?: return null
+        val meta = RepoPacks.get(account, owner, repo) ?: return null
+        if (!ref.isNullOrBlank() && ref != meta.branch) return null
+        val text = RepoPacks.text(context, meta, path) ?: return null
+        return FileContent(
+            name = path.substringAfterLast('/'),
+            path = path,
+            ref = ref,
+            size = text.toByteArray(Charsets.UTF_8).size.toLong(),
+            htmlUrl = null,
+            apiUrl = null,
+            rawUrl = null,
+            isImage = false,
+            text = text,
+            tooBig = false,
+            lastModified = null,
         )
     }
 }

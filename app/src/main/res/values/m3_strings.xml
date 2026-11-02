@@ -1083,4 +1083,23 @@ GitHub has no push channel for third-party clients, so this is real polling: the
     <!-- bulk close confirmation -->
     <string name="m3_bulk_close_confirm_title">Close %1$d threads?</string>
     <string name="m3_bulk_close_confirm_message">They will be closed on GitHub. You can reopen them later.</string>
+
+    <!-- offline repository packs -->
+    <string name="m3_pack_title">Offline repository</string>
+    <string name="m3_pack_not_saved">Not saved yet</string>
+    <string name="m3_pack_saved">Saved %1$s · %2$s</string>
+    <string name="m3_pack_stats">%1$d files · %2$d releases</string>
+    <string name="m3_pack_skipped">%1$d files skipped (binary or over 2 MB)</string>
+    <string name="m3_pack_include_code">Also save source code</string>
+    <string name="m3_pack_include_code_hint">Text files only, up to 2 MB each.</string>
+    <string name="m3_pack_estimating">Calculating size…</string>
+    <string name="m3_pack_estimate">About %1$s · %2$d files</string>
+    <string name="m3_pack_estimate_failed">Could not measure the tree.</string>
+    <string name="m3_pack_start">Save now</string>
+    <string name="m3_pack_update">Update</string>
+    <string name="m3_pack_remove">Delete offline copy</string>
+    <string name="m3_pack_syncing">%1$d / %2$d files</string>
+    <string name="m3_pack_syncing_meta">Reading repository…</string>
+    <string name="m3_pack_offline_banner">Offline copy · synced %1$s</string>
+    <string name="m3_offline_repos">Offline repositories</string>
 </resources>

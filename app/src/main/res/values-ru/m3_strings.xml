@@ -1064,4 +1064,23 @@
     <!-- bulk close confirmation -->
     <string name="m3_bulk_close_confirm_title">Закрыть %1$d?</string>
     <string name="m3_bulk_close_confirm_message">Они будут закрыты на GitHub. Позже их можно открыть снова.</string>
+
+    <!-- offline repository packs -->
+    <string name="m3_pack_title">Репозиторий офлайн</string>
+    <string name="m3_pack_not_saved">Ещё не сохранено</string>
+    <string name="m3_pack_saved">Сохранено %1$s · %2$s</string>
+    <string name="m3_pack_stats">Файлов: %1$d · релизов: %2$d</string>
+    <string name="m3_pack_skipped">Пропущено файлов: %1$d (бинарные или > 2 МБ)</string>
+    <string name="m3_pack_include_code">Сохранять и исходники</string>
+    <string name="m3_pack_include_code_hint">Только текстовые файлы, до 2 МБ каждый.</string>
+    <string name="m3_pack_estimating">Считаем размер…</string>
+    <string name="m3_pack_estimate">Около %1$s · %2$d файлов</string>
+    <string name="m3_pack_estimate_failed">Не удалось оценить размер дерева.</string>
+    <string name="m3_pack_start">Сохранить</string>
+    <string name="m3_pack_update">Обновить</string>
+    <string name="m3_pack_remove">Удалить офлайн-копию</string>
+    <string name="m3_pack_syncing">%1$d / %2$d файлов</string>
+    <string name="m3_pack_syncing_meta">Читаем репозиторий…</string>
+    <string name="m3_pack_offline_banner">Офлайн-копия · синхронизирована %1$s</string>
+    <string name="m3_offline_repos">Репозитории офлайн</string>
 </resources>

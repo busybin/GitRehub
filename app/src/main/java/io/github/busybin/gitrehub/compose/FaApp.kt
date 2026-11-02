@@ -128,6 +128,7 @@ import io.github.busybin.gitrehub.compose.common.PendingText
 import io.github.busybin.gitrehub.compose.common.shareText
 import kotlinx.coroutines.runBlocking
 import io.github.busybin.gitrehub.core.auth.Session
+import io.github.busybin.gitrehub.core.offline.RepoPackSyncer
 import io.github.busybin.gitrehub.compose.data.CacheWarmer
 import io.github.busybin.gitrehub.compose.discussions.DiscussionDetailScreen
 import io.github.busybin.gitrehub.compose.discussions.DiscussionsScreen
@@ -153,6 +154,7 @@ import io.github.busybin.gitrehub.compose.repos.RepoDetailScreen
 import io.github.busybin.gitrehub.compose.repos.RepoInsightsScreen
 import io.github.busybin.gitrehub.compose.repos.RepoLabelsScreen
 import io.github.busybin.gitrehub.compose.repos.RepoMilestonesScreen
+import io.github.busybin.gitrehub.compose.repos.RepoPackAction
 import io.github.busybin.gitrehub.compose.repos.ReposScreen
 import io.github.busybin.gitrehub.compose.repos.ContributorsScreen
 import io.github.busybin.gitrehub.compose.repos.ForksScreen
@@ -237,6 +239,15 @@ fun FaApp(routeRequest: MutableState<String?>? = null) {
         // Session.accountRevision. Without this the drawer kept the pre-login (empty) layout until
         // the next process start.
         LaunchedEffect(accountRevision) { loggedIn = Session.isLoggedIn }
+
+        // Refresh enabled repository packs whose default branch moved. Foreground only: this runs
+        // once per sign-in and is a no-op for accounts without packs.
+        LaunchedEffect(loggedIn) {
+            if (!loggedIn) return@LaunchedEffect
+            val account = withContext(Dispatchers.IO) { Session.currentAccount() }?.login
+                ?: return@LaunchedEffect
+            runCatching { RepoPackSyncer.syncStale(context.applicationContext, account) }
+        }
 
         // The pre-rewrite build left its token in MMKV but not in our encrypted store yet; adopting
         // it needs a `GET /user` (to learn whose token it is), so it cannot run inside `start`.
@@ -496,6 +507,14 @@ fun FaApp(routeRequest: MutableState<String?>? = null) {
                                 onMenu = { scope.launch { drawerState.open() } },
                                 actions = {
                                     if (current == Routes.FEED) FeedFilterAction { showFilterSheet = true }
+                                    if (current == Routes.REPO) {
+                                        val args = backStack?.arguments
+                                        val owner = args?.getString("owner").orEmpty()
+                                        val name = args?.getString("name").orEmpty()
+                                        if (owner.isNotBlank() && name.isNotBlank()) {
+                                            RepoPackAction(owner, name)
+                                        }
+                                    }
                                 },
                             )
                             OfflineBanner()

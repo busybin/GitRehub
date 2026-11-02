@@ -1066,4 +1066,23 @@
     <!-- bulk close confirmation -->
     <string name="m3_bulk_close_confirm_title">هل تريد إغلاق %1$d؟</string>
     <string name="m3_bulk_close_confirm_message">سيتم إغلاقها على GitHub ويمكنك إعادة فتحها لاحقًا.</string>
+
+    <!-- offline repository packs -->
+    <string name="m3_pack_title">مستودع دون اتصال</string>
+    <string name="m3_pack_not_saved">لم يُحفظ بعد</string>
+    <string name="m3_pack_saved">محفوظ %1$s · %2$s</string>
+    <string name="m3_pack_stats">%1$d ملفًا · %2$d إصدار</string>
+    <string name="m3_pack_skipped">تم تخطي %1$d ملفًا (ثنائي أو أكبر من 2 ميغابايت)</string>
+    <string name="m3_pack_include_code">حفظ الشيفرة أيضًا</string>
+    <string name="m3_pack_include_code_hint">ملفات نصية فقط، بحد أقصى 2 ميغابايت لكل ملف.</string>
+    <string name="m3_pack_estimating">جارٍ حساب الحجم…</string>
+    <string name="m3_pack_estimate">حوالي %1$s · %2$d ملفًا</string>
+    <string name="m3_pack_estimate_failed">تعذّر قياس شجرة الملفات.</string>
+    <string name="m3_pack_start">حفظ الآن</string>
+    <string name="m3_pack_update">تحديث</string>
+    <string name="m3_pack_remove">حذف النسخة دون اتصال</string>
+    <string name="m3_pack_syncing">%1$d / %2$d ملفًا</string>
+    <string name="m3_pack_syncing_meta">جارٍ قراءة المستودع…</string>
+    <string name="m3_pack_offline_banner">نسخة دون اتصال · زُوّدت %1$s</string>
+    <string name="m3_offline_repos">المستودعات دون اتصال</string>
 </resources>

@@ -1066,4 +1066,23 @@ GitHub n\'a pas de canal push pour les clients tiers, il s\'agit donc d\'une vé
     <!-- bulk close confirmation -->
     <string name="m3_bulk_close_confirm_title">Fermer %1$d tickets ?</string>
     <string name="m3_bulk_close_confirm_message">Ils seront fermés sur GitHub. Vous pourrez les rouvrir.</string>
+
+    <!-- offline repository packs -->
+    <string name="m3_pack_title">Dépôt hors ligne</string>
+    <string name="m3_pack_not_saved">Pas encore enregistré</string>
+    <string name="m3_pack_saved">Enregistré %1$s · %2$s</string>
+    <string name="m3_pack_stats">%1$d fichiers · %2$d versions</string>
+    <string name="m3_pack_skipped">%1$d fichiers ignorés (binaires ou > 2 Mo)</string>
+    <string name="m3_pack_include_code">Enregistrer aussi le code</string>
+    <string name="m3_pack_include_code_hint">Fichiers texte uniquement, 2 Mo max chacun.</string>
+    <string name="m3_pack_estimating">Calcul de la taille…</string>
+    <string name="m3_pack_estimate">Environ %1$s · %2$d fichiers</string>
+    <string name="m3_pack_estimate_failed">Impossible de mesurer l\'arborescence.</string>
+    <string name="m3_pack_start">Enregistrer</string>
+    <string name="m3_pack_update">Mettre à jour</string>
+    <string name="m3_pack_remove">Supprimer la copie hors ligne</string>
+    <string name="m3_pack_syncing">%1$d / %2$d fichiers</string>
+    <string name="m3_pack_syncing_meta">Lecture du dépôt…</string>
+    <string name="m3_pack_offline_banner">Copie hors ligne · synchronisée %1$s</string>
+    <string name="m3_offline_repos">Dépôts hors ligne</string>
 </resources>

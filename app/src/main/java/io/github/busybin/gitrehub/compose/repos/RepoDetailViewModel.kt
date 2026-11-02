@@ -4,7 +4,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.busybin.gitrehub.R
 import io.github.busybin.gitrehub.compose.common.LoadState
+import io.github.busybin.gitrehub.App
 import io.github.busybin.gitrehub.compose.common.RepoSeen
+import io.github.busybin.gitrehub.core.offline.RepoPackSyncer
+import io.github.busybin.gitrehub.core.offline.RepoPacks
+import io.github.busybin.gitrehub.helper.OfflineStatus
 import io.github.busybin.gitrehub.compose.common.UiText
 import io.github.busybin.gitrehub.compose.common.launchLoad
 import io.github.busybin.gitrehub.compose.data.LanguageSlice
@@ -33,6 +37,10 @@ data class RepoDetail(
     val counts: RepoStats.RepoCounts = RepoStats.RepoCounts(),
     /** What changed since the user last opened this repository; null on the first visit. */
     val digest: RepoDigest? = null,
+    /** True when the screen was filled from the offline pack instead of the network. */
+    val localOnly: Boolean = false,
+    /** When the offline pack shown here was synced (0 when this is not a local render). */
+    val packSyncedAt: Long = 0L,
 )
 
 /** "Since your last visit": commits, issue/PR activity and a release, all from local bookkeeping. */
@@ -76,6 +84,29 @@ class RepoDetailViewModel : ViewModel() {
     }
 
     private suspend fun fetch(): RepoDetail {
+        val context = App.getInstance()
+        val account = runCatching { Session.currentAccount()?.login }.getOrNull()
+        val pack = account?.let { RepoPacks.get(it, owner, name) }
+        if (pack != null && !OfflineStatus.isOnline) {
+            val localRepo = RepoPacks.repoObject(context, pack)
+            if (localRepo != null) {
+                return RepoDetail(
+                    repo = localRepo,
+                    readmeHtml = RepoPacks.readmeHtml(context, pack),
+                    starring = false,
+                    localOnly = true,
+                    packSyncedAt = pack.syncedAt,
+                )
+            }
+        }
+        // Online: refresh the pack in the background when the branch moved.
+        if (pack != null && OfflineStatus.isOnline) {
+            viewModelScope.launch {
+                if (runCatching { RepoPackSyncer.isStale(pack) }.getOrDefault(false)) {
+                    RepoPackSyncer.start(context, owner, name, pack.includeCode)
+                }
+            }
+        }
         val repo = GitHubApi.repo(owner, name)
         return coroutineScope {
             // Fire all requests in parallel; the detail screen is slow enough already.

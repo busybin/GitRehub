@@ -1066,4 +1066,23 @@ O GitHub não tem canal de push para clientes de terceiros, então isto é uma c
     <!-- bulk close confirmation -->
     <string name="m3_bulk_close_confirm_title">Fechar %1$d itens?</string>
     <string name="m3_bulk_close_confirm_message">Eles serão fechados no GitHub. Você pode reabri-los depois.</string>
+
+    <!-- offline repository packs -->
+    <string name="m3_pack_title">Repositório offline</string>
+    <string name="m3_pack_not_saved">Ainda não salvo</string>
+    <string name="m3_pack_saved">Salvo %1$s · %2$s</string>
+    <string name="m3_pack_stats">%1$d arquivos · %2$d versões</string>
+    <string name="m3_pack_skipped">%1$d arquivos ignorados (binários ou acima de 2 MB)</string>
+    <string name="m3_pack_include_code">Salvar também o código</string>
+    <string name="m3_pack_include_code_hint">Somente arquivos de texto, até 2 MB cada.</string>
+    <string name="m3_pack_estimating">Calculando o tamanho…</string>
+    <string name="m3_pack_estimate">Cerca de %1$s · %2$d arquivos</string>
+    <string name="m3_pack_estimate_failed">Não foi possível medir a árvore.</string>
+    <string name="m3_pack_start">Salvar agora</string>
+    <string name="m3_pack_update">Atualizar</string>
+    <string name="m3_pack_remove">Excluir cópia offline</string>
+    <string name="m3_pack_syncing">%1$d / %2$d arquivos</string>
+    <string name="m3_pack_syncing_meta">Lendo o repositório…</string>
+    <string name="m3_pack_offline_banner">Cópia offline · sincronizada %1$s</string>
+    <string name="m3_offline_repos">Repositórios offline</string>
 </resources>

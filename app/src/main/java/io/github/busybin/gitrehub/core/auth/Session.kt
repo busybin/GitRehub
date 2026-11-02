@@ -3,6 +3,7 @@ package io.github.busybin.gitrehub.core.auth
 import io.github.busybin.gitrehub.core.model.User
 import io.github.busybin.gitrehub.core.net.GitHubApi
 import io.github.busybin.gitrehub.core.offline.OfflineSaves
+import io.github.busybin.gitrehub.core.offline.RepoPacks
 import io.github.busybin.gitrehub.helper.LocalAccountTraces
 import io.github.busybin.gitrehub.helper.PrefGetter
 import io.github.busybin.gitrehub.provider.rest.HttpCache
@@ -166,6 +167,7 @@ object Session {
         if (removed && TokenStore.accounts().isEmpty()) {
             runCatching { LocalAccountTraces.clear() }
             runCatching { OfflineSaves.clearAll() }
+            runCatching { RepoPacks.clearAll() }
         }
         return removed
     }
@@ -193,5 +195,6 @@ object Session {
      */
     private fun clearOfflineCopies(login: String) {
         runCatching { OfflineSaves.clearAccount(login) }
+        runCatching { RepoPacks.clearAccount(login) }
     }
 }

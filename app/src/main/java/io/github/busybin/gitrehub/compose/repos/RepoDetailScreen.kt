@@ -66,6 +66,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
 import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
@@ -123,6 +124,7 @@ import io.github.busybin.gitrehub.compose.common.ToggleActionButton
 import io.github.busybin.gitrehub.compose.common.repoBlobBaseUrl
 import io.github.busybin.gitrehub.compose.common.repoRawBaseUrl
 import io.github.busybin.gitrehub.core.model.WatchLevel
+import io.github.busybin.gitrehub.core.offline.RepoPackSyncer
 import io.github.busybin.gitrehub.helper.BrowserLauncher
 import io.github.busybin.gitrehub.provider.colors.ColorsProvider
 import io.github.busybin.gitrehub.provider.timeline.OutlineSection
@@ -194,6 +196,39 @@ fun RepoDetailScreen(
         state = state,
         onRetry = { vm.load(owner, name, force = true) },
     ) { detail ->
+        val packProgress by RepoPackSyncer.progress.collectAsStateWithLifecycle()
+        if (packProgress?.fullName == "$owner/$name") {
+            Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp)) {
+                LinearProgressIndicator(Modifier.fillMaxWidth())
+                Text(
+                    text = if ((packProgress?.total ?: 0) > 0) {
+                        stringResource(
+                            R.string.m3_pack_syncing,
+                            packProgress?.done ?: 0,
+                            packProgress?.total ?: 0,
+                        )
+                    } else {
+                        stringResource(R.string.m3_pack_syncing_meta)
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+        }
+        if (detail.localOnly) {
+            androidx.compose.material3.Surface(
+                color = MaterialTheme.colorScheme.secondaryContainer,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(
+                    text = stringResource(
+                        R.string.m3_pack_offline_banner,
+                        relativeTime(java.util.Date(detail.packSyncedAt)),
+                    ),
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                )
+            }
+        }
         val repo = detail.repo
         val scrollState = rememberScrollState()
         val outline = remember(owner, name) { OutlineController() }

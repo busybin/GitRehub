@@ -5,7 +5,11 @@ import androidx.lifecycle.viewModelScope
 import io.github.busybin.gitrehub.compose.common.LoadState
 import io.github.busybin.gitrehub.compose.common.launchLoad
 import io.github.busybin.gitrehub.compose.common.toUiText
+import io.github.busybin.gitrehub.App
+import io.github.busybin.gitrehub.core.auth.Session
 import io.github.busybin.gitrehub.core.model.CodeEntry
+import io.github.busybin.gitrehub.core.offline.RepoPacks
+import io.github.busybin.gitrehub.helper.OfflineStatus
 import io.github.busybin.gitrehub.core.model.GitTree
 import io.github.busybin.gitrehub.compose.data.RepoContent
 import io.github.busybin.gitrehub.compose.data.RepoStats
@@ -103,6 +107,15 @@ class CodeBrowserViewModel : ViewModel() {
         val repo = repo
         val ref = ref
         viewModelScope.launch {
+            // Offline + a pack of this branch: list the packaged tree instead of hitting the network.
+            if (!OfflineStatus.isOnline) {
+                val local = localListing(newPath)
+                if (local != null) {
+                    listings[key] = local
+                    _state.value = LoadState.Ready(local)
+                    return@launch
+                }
+            }
             _state.value = LoadState.Loading
             val result = runCatching {
                 withContext(Dispatchers.IO) {
@@ -121,6 +134,15 @@ class CodeBrowserViewModel : ViewModel() {
                 _state.value = LoadState.Failure(error.toUiText(), error)
             }
         }
+    }
+
+    private suspend fun localListing(path: String): CodeListing? {
+        val account = runCatching { Session.currentAccount()?.login }.getOrNull() ?: return null
+        val meta = RepoPacks.get(account, owner, repo) ?: return null
+        if (!ref.isNullOrBlank() && ref != meta.branch) return null
+        val entries = RepoPacks.entries(App.getInstance(), meta, path)
+        if (entries.isEmpty() && path.isNotBlank()) return null
+        return CodeListing(ref, path, entries, null)
     }
 
     private fun cacheKey(p: String) = "${ref.orEmpty()}|$p"

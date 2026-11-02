@@ -35,6 +35,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.github.busybin.gitrehub.core.offline.RepoPackMeta
+import io.github.busybin.gitrehub.core.offline.RepoPacks
+import io.github.busybin.gitrehub.compose.common.formatBytes
+import java.util.Date
 import io.github.busybin.gitrehub.R
 import io.github.busybin.gitrehub.compose.common.MetaText
 import io.github.busybin.gitrehub.compose.common.relativeTime
@@ -54,12 +59,15 @@ fun SavedScreen(
 ) {
     val context = LocalContext.current
     var items by remember { mutableStateOf<List<SavedThreadMeta>>(emptyList()) }
+    var packs by remember { mutableStateOf<List<RepoPackMeta>>(emptyList()) }
+    val packRevision by RepoPacks.revision.collectAsStateWithLifecycle()
     var loading by remember { mutableStateOf(true) }
 
-    LaunchedEffect(refreshKey) {
+    LaunchedEffect(refreshKey, packRevision) {
         loading = true
         val login = runCatching { Session.currentAccount()?.login }.getOrNull()
         items = if (login == null) emptyList() else OfflineSaves.index(login)
+        packs = if (login == null) emptyList() else RepoPacks.index(login)
         loading = false
     }
 
@@ -70,7 +78,7 @@ fun SavedScreen(
                 strokeWidth = 2.dp,
             )
 
-            items.isEmpty() -> Text(
+            items.isEmpty() && packs.isEmpty() -> Text(
                 text = stringResource(R.string.m3_saved_empty),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -81,6 +89,33 @@ fun SavedScreen(
                 contentPadding = PaddingValues(12.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
+                if (packs.isNotEmpty()) {
+                    item(key = "packs-header") {
+                        Text(
+                            text = stringResource(R.string.m3_offline_repos),
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    items(packs, key = { "pack-${it.fullName}" }) { pack ->
+                        RepoPackRow(
+                            pack = pack,
+                            onRemove = {
+                                RepoPacks.remove(context, pack)
+                                packs = packs.filterNot { it.fullName == pack.fullName }
+                            },
+                        )
+                    }
+                }
+                if (items.isNotEmpty()) {
+                    item(key = "threads-header") {
+                        Text(
+                            text = stringResource(R.string.m3_saved),
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
                 items(items, key = { it.key }) { meta ->
                     SavedRow(
                         meta = meta,
@@ -121,6 +156,35 @@ private fun SavedRow(meta: SavedThreadMeta, onOpen: () -> Unit, onDelete: () -> 
                 Icon(
                     Icons.Outlined.Delete,
                     contentDescription = stringResource(R.string.m3_remove),
+                    tint = MaterialTheme.colorScheme.error,
+                )
+            }
+        }
+    }
+}
+
+/** One offline repository: name, size, last sync and a delete action. */
+@Composable
+private fun RepoPackRow(pack: RepoPackMeta, onRemove: () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+    ) {
+        Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    text = pack.fullName,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Medium,
+                )
+                MetaText(
+                    stringResource(R.string.m3_pack_saved, formatBytes(pack.bytes), relativeTime(Date(pack.syncedAt))),
+                )
+            }
+            IconButton(onClick = onRemove) {
+                Icon(
+                    Icons.Outlined.Delete,
+                    contentDescription = stringResource(R.string.m3_pack_remove),
                     tint = MaterialTheme.colorScheme.error,
                 )
             }

@@ -1239,6 +1239,21 @@ object GitHubApi {
             query = mapOf("recursive" to "1"),
         ).value
 
+    @Serializable
+    private data class GitBlob(val content: String = "", val encoding: String = "")
+
+    /** `GET /git/blobs/{sha}`: the pack sync reads file bodies by blob sha. */
+    suspend fun blobText(owner: String, repo: String, sha: String): String {
+        val blob = GitHubClient.get(
+            "/repos/$owner/$repo/git/blobs/$sha",
+            GitBlob.serializer(),
+        ).value
+        if (blob.encoding != "base64") return blob.content
+        return runCatching {
+            String(android.util.Base64.decode(blob.content.replace("\n", ""), android.util.Base64.DEFAULT))
+        }.getOrDefault("")
+    }
+
     /** Raw file text, fetched from the entry's own URL (works for private repositories too). */
     suspend fun fileText(url: String): String =
         GitHubClient.getTextUrl(url, accept = "application/vnd.github.VERSION.raw")
