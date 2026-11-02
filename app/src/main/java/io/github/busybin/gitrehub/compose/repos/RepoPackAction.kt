@@ -1,5 +1,6 @@
 package io.github.busybin.gitrehub.compose.repos
 
+import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -58,7 +59,7 @@ import java.util.Date
 fun RepoPackAction(owner: String, repo: String) {
     val context = LocalContext.current
     val revision by RepoPacks.revision.collectAsStateWithLifecycle()
-    val progress by RepoPackSyncer.progress.collectAsStateWithLifecycle()
+    val sync by RepoPackSyncer.state.collectAsStateWithLifecycle()
     var account by remember { mutableStateOf<String?>(null) }
     var pack by remember { mutableStateOf<RepoPackMeta?>(null) }
     var showDialog by remember { mutableStateOf(false) }
@@ -68,13 +69,19 @@ fun RepoPackAction(owner: String, repo: String) {
         pack = account?.let { RepoPacks.get(it, owner, repo) }
     }
 
-    val syncing = progress?.fullName == "$owner/$repo"
+    val fullName = "$owner/$repo"
+    val runningHere = sync.running?.fullName == fullName
+    val queuedPosition = sync.queued.indexOfFirst { it.fullName == fullName }
+    val busyHere = runningHere || queuedPosition >= 0
     IconButton(onClick = { showDialog = true }) {
         Icon(
             imageVector = if (pack != null) Icons.Filled.CloudDone else Icons.Outlined.CloudDownload,
             contentDescription = stringResource(R.string.m3_pack_title),
-            tint = if (pack != null) MaterialTheme.colorScheme.primary
-            else MaterialTheme.colorScheme.onSurfaceVariant,
+            tint = when {
+                busyHere -> MaterialTheme.colorScheme.tertiary
+                pack != null -> MaterialTheme.colorScheme.primary
+                else -> MaterialTheme.colorScheme.onSurfaceVariant
+            },
         )
     }
 
@@ -84,10 +91,21 @@ fun RepoPackAction(owner: String, repo: String) {
             repo = repo,
             account = account,
             pack = pack,
-            syncing = syncing,
-            progress = if (syncing) progress else null,
+            running = runningHere,
+            queuedPosition = queuedPosition,
+            progress = if (runningHere) sync.progress else null,
             onDismiss = { showDialog = false },
-            onStart = { options -> RepoPackSyncer.start(context, owner, repo, options) },
+            onStart = { options ->
+                when (RepoPackSyncer.enqueue(context, owner, repo, options)) {
+                    RepoPackSyncer.Enqueue.QUEUED -> Toast.makeText(
+                        context,
+                        context.getString(R.string.m3_pack_queue_added),
+                        Toast.LENGTH_SHORT,
+                    ).show()
+                    RepoPackSyncer.Enqueue.ALREADY_RUNNING -> Unit
+                    RepoPackSyncer.Enqueue.STARTED -> Unit
+                }
+            },
             onRemove = {
                 pack?.let { RepoPacks.remove(context, it) }
                 showDialog = false
@@ -102,12 +120,14 @@ private fun RepoPackDialog(
     repo: String,
     account: String?,
     pack: RepoPackMeta?,
-    syncing: Boolean,
+    running: Boolean,
+    queuedPosition: Int,
     progress: RepoPackSyncer.Progress?,
     onDismiss: () -> Unit,
     onStart: (RepoPackOptions) -> Unit,
     onRemove: () -> Unit,
 ) {
+    val busyHere = running || queuedPosition >= 0
     var includeSmall by remember { mutableStateOf(pack?.includeSmall ?: true) }
     var includeLarge by remember { mutableStateOf(pack?.includeLarge ?: false) }
     var includeIssues by remember { mutableStateOf(pack?.includeIssues ?: false) }
@@ -181,7 +201,7 @@ private fun RepoPackDialog(
                         else stringResource(R.string.m3_pack_estimate, formatBytes(it.smallBytes), it.smallCount)
                     } ?: estimatingHint(estimating),
                     checked = includeSmall,
-                    enabled = !syncing,
+                    enabled = !busyHere,
                     onCheckedChange = { includeSmall = it },
                 )
                 PackSwitch(
@@ -191,7 +211,7 @@ private fun RepoPackDialog(
                         else stringResource(R.string.m3_pack_estimate, formatBytes(it.largeBytes), it.largeCount)
                     } ?: estimatingHint(estimating),
                     checked = includeLarge,
-                    enabled = !syncing,
+                    enabled = !busyHere,
                     onCheckedChange = { includeLarge = it },
                 )
                 PackSwitch(
@@ -200,18 +220,18 @@ private fun RepoPackDialog(
                         stringResource(R.string.m3_pack_issues_count, it.issueCount)
                     } ?: estimatingHint(estimating),
                     checked = includeIssues,
-                    enabled = !syncing,
+                    enabled = !busyHere,
                     onCheckedChange = { includeIssues = it },
                 )
                 PackSwitch(
                     title = stringResource(R.string.m3_pack_auto_sync),
                     hint = stringResource(R.string.m3_pack_auto_sync_hint),
                     checked = autoSync,
-                    enabled = !syncing,
+                    enabled = !busyHere,
                     onCheckedChange = { autoSync = it },
                 )
 
-                if (syncing) {
+                if (running) {
                     Spacer(Modifier.height(10.dp))
                     Surface(
                         color = MaterialTheme.colorScheme.secondaryContainer,
@@ -248,6 +268,18 @@ private fun RepoPackDialog(
                         }
                     }
                 }
+                if (queuedPosition >= 0) {
+                    Spacer(Modifier.height(10.dp))
+                    Text(
+                        text = if (queuedPosition == 0) {
+                            stringResource(R.string.m3_pack_queued)
+                        } else {
+                            stringResource(R.string.m3_pack_queued_position, queuedPosition)
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
         },
         confirmButton = {
@@ -263,15 +295,23 @@ private fun RepoPackDialog(
                     )
                     onDismiss()
                 },
-                enabled = !syncing && account != null &&
+                enabled = !busyHere && account != null &&
                     (includeSmall || includeLarge || includeIssues || pack != null),
             ) {
-                Text(stringResource(if (pack == null) R.string.m3_pack_start else R.string.m3_pack_update))
+                Text(
+                    when {
+                        running -> stringResource(R.string.m3_pack_saving)
+                        queuedPosition >= 0 -> stringResource(R.string.m3_pack_queued)
+                        else -> stringResource(
+                            if (pack == null) R.string.m3_pack_start else R.string.m3_pack_update,
+                        )
+                    },
+                )
             }
         },
         dismissButton = {
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                if (pack != null && !syncing) {
+                if (pack != null && !busyHere) {
                     TextButton(onClick = { confirmDelete = true }) {
                         Text(
                             stringResource(R.string.m3_pack_remove),

@@ -1121,4 +1121,27 @@ GitHub has no push channel for third-party clients, so this is real polling: the
 
     <!-- offline issue banner -->
     <string name="m3_issue_offline_banner">Offline copy · comments are not included</string>
+
+    <!-- pack queue, cancel and interruption prompts -->
+    <string name="m3_pack_phase_code">Downloading files…</string>
+    <string name="m3_pack_phase_issues">Downloading issues…</string>
+    <string name="m3_pack_queue_waiting">Waiting %1$d</string>
+    <string name="m3_pack_queued">Queued</string>
+    <string name="m3_pack_queued_position">Queued · %1$d ahead</string>
+    <string name="m3_pack_queue_added">Added to the queue</string>
+    <string name="m3_pack_saving">Saving…</string>
+    <string name="m3_pack_cancel_save">Cancel save</string>
+    <string name="m3_pack_saved_toast">Saved %1$s</string>
+    <string name="m3_pack_failed_toast">Could not save %1$s</string>
+    <string name="m3_pack_cancelled_toast">Save cancelled</string>
+    <string name="m3_pack_exit_title">Download in progress</string>
+    <string name="m3_pack_exit_message">%1$s is still downloading. Choose whether it keeps running in the background or stops before you leave.</string>
+    <string name="m3_pack_exit_keep">Keep saving</string>
+    <string name="m3_pack_exit_stop">Stop and exit</string>
+    <string name="m3_pack_switch_title">Stop the download?</string>
+    <string name="m3_pack_switch_message">Switching accounts stops %1$s and deletes this account\'s offline copies.</string>
+    <string name="m3_pack_switch_confirm">Stop and switch</string>
+    <string name="m3_pack_add_account_message">Adding and signing in to another account will stop %1$s and delete this account\'s offline copies.</string>
+    <string name="m3_pack_continue">Continue</string>
+    <string name="m3_pack_logout_note">The download in progress will stop.</string>
 </resources>

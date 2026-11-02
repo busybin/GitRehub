@@ -70,6 +70,12 @@ object RepoPacks {
     const val MAX_REPO_BYTES = 200L * 1024 * 1024
     const val MAX_TOTAL_BYTES = 1024L * 1024 * 1024
 
+    /** In-progress download. Never indexed and never read; only renamed into place on success. */
+    private const val STAGING_SUFFIX = ".staging"
+
+    /** Previous pack during the rename; restored if publishing is interrupted. */
+    private const val BACKUP_SUFFIX = ".old"
+
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
 
     fun digest(account: String, owner: String, repo: String): String {
@@ -80,6 +86,12 @@ object RepoPacks {
 
     fun dir(context: Context, meta: RepoPackMeta): File =
         File(File(context.filesDir, "offline/repos"), digest(meta.account, meta.owner, meta.repo))
+
+    private fun stagingDir(context: Context, meta: RepoPackMeta): File =
+        File(File(context.filesDir, "offline/repos"), digest(meta.account, meta.owner, meta.repo) + STAGING_SUFFIX)
+
+    private fun backupDir(context: Context, meta: RepoPackMeta): File =
+        File(File(context.filesDir, "offline/repos"), digest(meta.account, meta.owner, meta.repo) + BACKUP_SUFFIX)
 
     /** Packs of [account], newest sync first. */
     fun index(account: String): List<RepoPackMeta> = readIndex()
@@ -148,23 +160,33 @@ object RepoPacks {
         return runCatching { File(File(dir(context, meta), "files"), safe).readText() }.getOrNull()
     }
 
-    /** Wipes the old pack and creates an empty `files/` tree; returns the pack directory. */
+    /**
+     * Creates an empty staging tree for the download; returns that directory.
+     *
+     * The published pack is left untouched until [finish] succeeds, so a cancelled or failed
+     * refresh can never destroy the copy the user already had.
+     */
     fun prepare(context: Context, meta: RepoPackMeta): File {
-        val target = dir(context, meta)
-        runCatching { target.deleteRecursively() }
-        File(target, "files").mkdirs()
-        return target
+        val staging = stagingDir(context, meta)
+        runCatching { staging.deleteRecursively() }
+        File(staging, "files").mkdirs()
+        return staging
     }
 
-    /** Writes one fetched file; paths are sanitised so nothing escapes the pack directory. */
+    /** Writes one fetched file into the staging tree; a failed write aborts the whole sync. */
     fun writeText(context: Context, meta: RepoPackMeta, path: String, text: String) {
         val safe = safePath(path) ?: return
-        val out = File(File(dir(context, meta), "files"), safe)
+        val out = File(File(stagingDir(context, meta), "files"), safe)
         out.parentFile?.mkdirs()
-        runCatching { out.writeText(text) }
+        out.writeText(text)
     }
 
-    /** Writes the metadata files and publishes the pack to the index. */
+    /** Drops the staged download after a failure or a cancel. Published packs are untouched. */
+    fun abort(context: Context, meta: RepoPackMeta) {
+        runCatching { stagingDir(context, meta).deleteRecursively() }
+    }
+
+    /** Writes the metadata into the staging tree and publishes it to the index. */
     fun finish(
         context: Context,
         meta: RepoPackMeta,
@@ -173,12 +195,34 @@ object RepoPacks {
         files: List<RepoPackFile>,
         issues: List<Issue> = emptyList(),
     ) {
+        val staging = stagingDir(context, meta)
+        if (!staging.isDirectory) File(staging, "files").mkdirs()
+        File(staging, "meta.json").writeText(json.encodeToString(meta))
+        File(staging, "repo.json").writeText(json.encodeToString(repo))
+        File(staging, "tree.json").writeText(json.encodeToString(RepoPackTree(files)))
+        readmeHtml?.let { File(staging, "readme.html").writeText(it) }
+        File(staging, "issues.json").writeText(json.encodeToString(issues))
+        publish(context, meta)
+    }
+
+    /**
+     * Swaps the staging tree in. The old directory is kept as `.old` until the rename succeeded and
+     * is restored if it did not, so a crash mid-publish leaves a recoverable copy (see [recover]).
+     */
+    private fun publish(context: Context, meta: RepoPackMeta) {
+        val staging = stagingDir(context, meta)
         val target = dir(context, meta)
-        File(target, "meta.json").writeText(json.encodeToString(meta))
-        File(target, "repo.json").writeText(json.encodeToString(repo))
-        File(target, "tree.json").writeText(json.encodeToString(RepoPackTree(files)))
-        readmeHtml?.let { File(target, "readme.html").writeText(it) }
-        File(target, "issues.json").writeText(json.encodeToString(issues))
+        val backup = backupDir(context, meta)
+        runCatching { backup.deleteRecursively() }
+        val hadTarget = target.exists()
+        if (hadTarget && !target.renameTo(backup)) {
+            throw IllegalStateException("Cannot replace the offline pack")
+        }
+        if (!staging.renameTo(target)) {
+            if (hadTarget) runCatching { backup.renameTo(target) }
+            throw IllegalStateException("Cannot publish the offline pack")
+        }
+        runCatching { backup.deleteRecursively() }
         val next = (readIndex().filterNot {
             it.account == meta.account && it.owner == meta.owner && it.repo == meta.repo
         } + meta).sortedByDescending { it.syncedAt }
@@ -186,7 +230,7 @@ object RepoPacks {
     }
 
     fun remove(context: Context, meta: RepoPackMeta) {
-        runCatching { dir(context, meta).deleteRecursively() }
+        deleteFiles(context, meta)
         writeIndex(
             readIndex().filterNot {
                 it.account == meta.account && it.owner == meta.owner && it.repo == meta.repo
@@ -198,8 +242,16 @@ object RepoPacks {
     /** Drops every pack of [account]; called whenever the account changes or signs out. */
     fun clearAccount(account: String) {
         val context = App.getInstance()
-        readIndex().filter { it.account == account }.forEach { meta ->
-            runCatching { dir(context, meta).deleteRecursively() }
+        readIndex().filter { it.account == account }.forEach { meta -> deleteFiles(context, meta) }
+        // A download killed by the process leaves a directory that is not in the index yet. Its
+        // meta.json names the account once publishing started; without one it is deleted on the
+        // next [recover] instead of being published for an account that is gone.
+        File(context.filesDir, "offline/repos").listFiles()?.forEach { file ->
+            if (!file.isDirectory) return@forEach
+            val owner = runCatching {
+                json.decodeFromString(RepoPackMeta.serializer(), File(file, "meta.json").readText()).account
+            }.getOrNull()
+            if (owner == account) runCatching { file.deleteRecursively() }
         }
         writeIndex(readIndex().filterNot { it.account == account }, context)
     }
@@ -208,6 +260,39 @@ object RepoPacks {
         val context = App.getInstance()
         runCatching { File(context.filesDir, "offline/repos").deleteRecursively() }
         writeIndex(emptyList(), context)
+    }
+
+    /**
+     * Finishes or rolls back a publish that the process interrupted. Called once at startup:
+     * a complete staging tree is published, an incomplete one is thrown away, and a `.old`
+     * directory is restored only when the target is missing.
+     */
+    fun recover(context: Context) {
+        val root = File(context.filesDir, "offline/repos")
+        val dirs = root.listFiles()?.filter { it.isDirectory }.orEmpty()
+        dirs.filter { it.name.endsWith(STAGING_SUFFIX) }.forEach { staging ->
+            val target = File(root, staging.name.removeSuffix(STAGING_SUFFIX))
+            val complete = File(staging, "meta.json").isFile && File(staging, "files").isDirectory
+            when {
+                !complete -> runCatching { staging.deleteRecursively() }
+                target.exists() -> runCatching { staging.deleteRecursively() }
+                !staging.renameTo(target) -> runCatching { staging.deleteRecursively() }
+            }
+        }
+        dirs.filter { it.name.endsWith(BACKUP_SUFFIX) }.forEach { backup ->
+            val target = File(root, backup.name.removeSuffix(BACKUP_SUFFIX))
+            if (target.exists()) {
+                runCatching { backup.deleteRecursively() }
+            } else {
+                runCatching { backup.renameTo(target) }
+            }
+        }
+    }
+
+    private fun deleteFiles(context: Context, meta: RepoPackMeta) {
+        runCatching { dir(context, meta).deleteRecursively() }
+        runCatching { stagingDir(context, meta).deleteRecursively() }
+        runCatching { backupDir(context, meta).deleteRecursively() }
     }
 
     /** Path traversal guard: packaged paths must stay inside the pack directory. */
@@ -225,7 +310,7 @@ object RepoPacks {
         var used = 0L
         val survivors = kept.filter { meta ->
             val fits = used + meta.bytes <= MAX_TOTAL_BYTES
-            if (fits) used += meta.bytes else runCatching { dir(context, meta).deleteRecursively() }
+            if (fits) used += meta.bytes else deleteFiles(context, meta)
             fits
         }
         runCatching { PrefHelper.putAny(INDEX_KEY, json.encodeToString(survivors)) }

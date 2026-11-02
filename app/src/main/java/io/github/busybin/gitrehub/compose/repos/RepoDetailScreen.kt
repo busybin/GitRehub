@@ -66,7 +66,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
 import androidx.compose.material3.rememberModalBottomSheetState
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
@@ -124,7 +123,6 @@ import io.github.busybin.gitrehub.compose.common.ToggleActionButton
 import io.github.busybin.gitrehub.compose.common.repoBlobBaseUrl
 import io.github.busybin.gitrehub.compose.common.repoRawBaseUrl
 import io.github.busybin.gitrehub.core.model.WatchLevel
-import io.github.busybin.gitrehub.core.offline.RepoPackSyncer
 import io.github.busybin.gitrehub.helper.BrowserLauncher
 import io.github.busybin.gitrehub.provider.colors.ColorsProvider
 import io.github.busybin.gitrehub.provider.timeline.OutlineSection
@@ -196,57 +194,6 @@ fun RepoDetailScreen(
         state = state,
         onRetry = { vm.load(owner, name, force = true) },
     ) { detail ->
-        val packProgress by RepoPackSyncer.progress.collectAsStateWithLifecycle()
-        if (packProgress?.fullName == "$owner/$name") {
-            Surface(
-                color = MaterialTheme.colorScheme.secondaryContainer,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
-                shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
-            ) {
-                Column(Modifier.padding(10.dp)) {
-                    val done = packProgress?.done ?: 0
-                    val total = packProgress?.total ?: 0
-                    if (total > 0) {
-                        LinearProgressIndicator(
-                            progress = { done.toFloat() / total },
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                        Spacer(Modifier.height(6.dp))
-                        Text(
-                            text = stringResource(
-                                R.string.m3_pack_sync_progress,
-                                done,
-                                total,
-                                io.github.busybin.gitrehub.compose.common.formatBytes(packProgress?.bytes ?: 0L),
-                            ),
-                            style = MaterialTheme.typography.bodySmall,
-                        )
-                    } else {
-                        LinearProgressIndicator(Modifier.fillMaxWidth())
-                        Spacer(Modifier.height(6.dp))
-                        Text(
-                            text = stringResource(R.string.m3_pack_syncing_meta),
-                            style = MaterialTheme.typography.bodySmall,
-                        )
-                    }
-                }
-            }
-        }
-        if (detail.localOnly) {
-            androidx.compose.material3.Surface(
-                color = MaterialTheme.colorScheme.secondaryContainer,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text(
-                    text = stringResource(
-                        R.string.m3_pack_offline_banner,
-                        relativeTime(java.util.Date(detail.packSyncedAt)),
-                    ),
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
-                )
-            }
-        }
         val repo = detail.repo
         val scrollState = rememberScrollState()
         val outline = remember(owner, name) { OutlineController() }
@@ -366,6 +313,24 @@ fun RepoDetailScreen(
                     .onGloballyPositioned { containerTopInWindow = it.positionInWindow().y }
                     .padding(14.dp),
             ) {
+                // Part of the scrolling page on purpose: a root-level sibling would be covered by
+                // the page (NavHost stacks root children), which is how the old banner disappeared.
+                if (detail.localOnly) {
+                    androidx.compose.material3.Surface(
+                        color = MaterialTheme.colorScheme.secondaryContainer,
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp),
+                    ) {
+                        Text(
+                            text = stringResource(
+                                R.string.m3_pack_offline_banner,
+                                relativeTime(java.util.Date(detail.packSyncedAt)),
+                            ),
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                        )
+                    }
+                }
                 Row(
                     modifier = Modifier.clickable {
                         onOpenUser(repo.owner?.login ?: owner)

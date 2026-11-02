@@ -104,7 +104,7 @@ class RepoDetailViewModel : ViewModel() {
         if (pack != null && OfflineStatus.isOnline) {
             viewModelScope.launch {
                 if (pack.autoSync && runCatching { RepoPackSyncer.isStale(pack) }.getOrDefault(false)) {
-                    RepoPackSyncer.start(
+                    RepoPackSyncer.enqueue(
                         context, owner, name,
                         RepoPackOptions(
                             includeSmall = pack.includeSmall,
@@ -112,6 +112,7 @@ class RepoDetailViewModel : ViewModel() {
                             includeIssues = pack.includeIssues,
                             autoSync = true,
                         ),
+                        auto = true,
                     )
                 }
             }

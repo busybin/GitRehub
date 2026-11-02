@@ -2,6 +2,7 @@ package io.github.busybin.gitrehub.core.auth
 
 import io.github.busybin.gitrehub.core.model.User
 import io.github.busybin.gitrehub.core.net.GitHubApi
+import io.github.busybin.gitrehub.core.offline.RepoPackSyncer
 import io.github.busybin.gitrehub.core.offline.OfflineSaves
 import io.github.busybin.gitrehub.core.offline.RepoPacks
 import io.github.busybin.gitrehub.helper.LocalAccountTraces
@@ -91,6 +92,8 @@ object Session {
             token = clean,
             scopes = response.scopes?.toList().orEmpty(),
         )
+        // A download belongs to the account that started it; stop it before the token changes.
+        RepoPackSyncer.cancelAll(silent = true)
         val previous = TokenStore.current()?.login
         TokenStore.upsert(account, makeCurrent = true)
         if (previous != null && previous != account.login) clearOfflineCopies(previous)
@@ -149,6 +152,7 @@ object Session {
      * of the account just left must not be answerable for the one being entered.
      */
     suspend fun switchTo(login: String): Boolean {
+        RepoPackSyncer.cancelAll(silent = true)
         val previous = TokenStore.current()?.login
         if (!TokenStore.setCurrent(login)) return false
         previous?.let { clearOfflineCopies(it) }
@@ -174,6 +178,7 @@ object Session {
 
     /** Signs out: the account leaves the encrypted store and the in-memory token with it. */
     suspend fun logout() {
+        RepoPackSyncer.cancelAll(silent = true)
         val previous = TokenStore.current()?.login
         previous?.let { clearOfflineCopies(it) }
         // Signing out wipes the browsing traces too: their keys name private repositories.

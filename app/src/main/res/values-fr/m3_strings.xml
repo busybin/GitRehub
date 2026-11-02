@@ -1104,4 +1104,27 @@ GitHub n\'a pas de canal push pour les clients tiers, il s\'agit donc d\'une vé
 
     <!-- offline issue banner -->
     <string name="m3_issue_offline_banner">Copie hors ligne · sans commentaires</string>
+
+    <!-- paquets hors ligne : file, annulation et interruption -->
+    <string name="m3_pack_phase_code">Téléchargement des fichiers…</string>
+    <string name="m3_pack_phase_issues">Téléchargement des tickets…</string>
+    <string name="m3_pack_queue_waiting">En attente %1$d</string>
+    <string name="m3_pack_queued">En file d\'attente</string>
+    <string name="m3_pack_queued_position">En file d\'attente · %1$d devant</string>
+    <string name="m3_pack_queue_added">Ajouté à la file d\'attente</string>
+    <string name="m3_pack_saving">Enregistrement…</string>
+    <string name="m3_pack_cancel_save">Annuler l\'enregistrement</string>
+    <string name="m3_pack_saved_toast">Enregistré %1$s</string>
+    <string name="m3_pack_failed_toast">Impossible d\'enregistrer %1$s</string>
+    <string name="m3_pack_cancelled_toast">Enregistrement annulé</string>
+    <string name="m3_pack_exit_title">Téléchargement en cours</string>
+    <string name="m3_pack_exit_message">%1$s est toujours en cours de téléchargement. Choisissez de le poursuivre en arrière-plan ou de l\'arrêter avant de quitter.</string>
+    <string name="m3_pack_exit_keep">Continuer en arrière-plan</string>
+    <string name="m3_pack_exit_stop">Arrêter et quitter</string>
+    <string name="m3_pack_switch_title">Arrêter le téléchargement ?</string>
+    <string name="m3_pack_switch_message">Changer de compte arrête %1$s et supprime les copies hors ligne de ce compte.</string>
+    <string name="m3_pack_switch_confirm">Arrêter et changer</string>
+    <string name="m3_pack_add_account_message">Ajouter et se connecter avec un autre compte arrêtera %1$s et supprimera les copies hors ligne de ce compte.</string>
+    <string name="m3_pack_continue">Continuer</string>
+    <string name="m3_pack_logout_note">Le téléchargement en cours va s\'arrêter.</string>
 </resources>

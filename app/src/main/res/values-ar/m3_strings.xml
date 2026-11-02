@@ -1104,4 +1104,27 @@
 
     <!-- offline issue banner -->
     <string name="m3_issue_offline_banner">نسخة دون اتصال · بدون تعليقات</string>
+
+    <!-- حزم دون اتصال: قائمة الانتظار والإلغاء والمقاطعة -->
+    <string name="m3_pack_phase_code">تنزيل الملفات…</string>
+    <string name="m3_pack_phase_issues">تنزيل المشكلات…</string>
+    <string name="m3_pack_queue_waiting">في الانتظار %1$d</string>
+    <string name="m3_pack_queued">في قائمة الانتظار</string>
+    <string name="m3_pack_queued_position">في قائمة الانتظار · %1$d قبله</string>
+    <string name="m3_pack_queue_added">تمت الإضافة إلى قائمة الانتظار</string>
+    <string name="m3_pack_saving">جارٍ الحفظ…</string>
+    <string name="m3_pack_cancel_save">إلغاء الحفظ</string>
+    <string name="m3_pack_saved_toast">تم حفظ %1$s</string>
+    <string name="m3_pack_failed_toast">تعذّر حفظ %1$s</string>
+    <string name="m3_pack_cancelled_toast">تم إلغاء الحفظ</string>
+    <string name="m3_pack_exit_title">التنزيل قيد التقدم</string>
+    <string name="m3_pack_exit_message">لا يزال %1$s قيد التنزيل. اختر متابعة التنزيل في الخلفية أو إيقافه قبل المغادرة.</string>
+    <string name="m3_pack_exit_keep">متابعة الحفظ</string>
+    <string name="m3_pack_exit_stop">إيقاف والخروج</string>
+    <string name="m3_pack_switch_title">إيقاف التنزيل؟</string>
+    <string name="m3_pack_switch_message">تبديل الحساب يوقف %1$s ويحذف النسخ غير المتصلة لهذا الحساب.</string>
+    <string name="m3_pack_switch_confirm">إيقاف وتبديل</string>
+    <string name="m3_pack_add_account_message">إضافة حساب آخر وتسجيل الدخول به سيوقف %1$s ويحذف النسخ غير المتصلة لهذا الحساب.</string>
+    <string name="m3_pack_continue">متابعة</string>
+    <string name="m3_pack_logout_note">سيتم إيقاف التنزيل الجاري.</string>
 </resources>

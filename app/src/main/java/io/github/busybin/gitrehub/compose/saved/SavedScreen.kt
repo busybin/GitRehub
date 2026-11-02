@@ -37,6 +37,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.busybin.gitrehub.core.offline.RepoPackMeta
+import io.github.busybin.gitrehub.core.offline.RepoPackSyncer
 import io.github.busybin.gitrehub.core.offline.RepoPacks
 import io.github.busybin.gitrehub.compose.common.formatBytes
 import java.util.Date
@@ -64,6 +65,7 @@ fun SavedScreen(
     var pendingThread by remember { mutableStateOf<SavedThreadMeta?>(null) }
     var pendingPack by remember { mutableStateOf<RepoPackMeta?>(null) }
     val packRevision by RepoPacks.revision.collectAsStateWithLifecycle()
+    val sync by RepoPackSyncer.state.collectAsStateWithLifecycle()
     var loading by remember { mutableStateOf(true) }
 
     LaunchedEffect(refreshKey, packRevision) {
@@ -132,6 +134,8 @@ fun SavedScreen(
                     items(packs, key = { "pack-${it.fullName}" }) { pack ->
                         RepoPackRow(
                             pack = pack,
+                            busy = sync.running?.fullName == pack.fullName ||
+                                sync.queued.any { it.fullName == pack.fullName },
                             onRemove = { pendingPack = pack },
                         )
                     }
@@ -191,7 +195,7 @@ private fun SavedRow(meta: SavedThreadMeta, onOpen: () -> Unit, onDelete: () -> 
 
 /** One offline repository: name, size, last sync and a delete action. */
 @Composable
-private fun RepoPackRow(pack: RepoPackMeta, onRemove: () -> Unit) {
+private fun RepoPackRow(pack: RepoPackMeta, busy: Boolean, onRemove: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
@@ -207,7 +211,7 @@ private fun RepoPackRow(pack: RepoPackMeta, onRemove: () -> Unit) {
                     stringResource(R.string.m3_pack_saved, formatBytes(pack.bytes), relativeTime(Date(pack.syncedAt))),
                 )
             }
-            IconButton(onClick = onRemove) {
+            IconButton(onClick = onRemove, enabled = !busy) {
                 Icon(
                     Icons.Outlined.Delete,
                     contentDescription = stringResource(R.string.m3_pack_remove),

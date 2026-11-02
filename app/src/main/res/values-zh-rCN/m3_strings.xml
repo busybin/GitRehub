@@ -1118,4 +1118,27 @@ github 不给第三方客户端推送通道，所以这是真的轮询：最短 
 
     <!-- offline issue banner -->
     <string name="m3_issue_offline_banner">离线副本 · 不含评论</string>
+
+    <!-- 离线包：队列、取消与中断提示 -->
+    <string name="m3_pack_phase_code">正在下载文件…</string>
+    <string name="m3_pack_phase_issues">正在下载 Issue…</string>
+    <string name="m3_pack_queue_waiting">等待 %1$d</string>
+    <string name="m3_pack_queued">已排队</string>
+    <string name="m3_pack_queued_position">已排队 · 前面 %1$d 个</string>
+    <string name="m3_pack_queue_added">已加入队列</string>
+    <string name="m3_pack_saving">保存中…</string>
+    <string name="m3_pack_cancel_save">取消保存</string>
+    <string name="m3_pack_saved_toast">已保存 %1$s</string>
+    <string name="m3_pack_failed_toast">无法保存 %1$s</string>
+    <string name="m3_pack_cancelled_toast">已取消保存</string>
+    <string name="m3_pack_exit_title">下载进行中</string>
+    <string name="m3_pack_exit_message">%1$s 仍在下载。离开前选择让它在后台继续，或先停止。</string>
+    <string name="m3_pack_exit_keep">后台继续</string>
+    <string name="m3_pack_exit_stop">停止并退出</string>
+    <string name="m3_pack_switch_title">停止下载？</string>
+    <string name="m3_pack_switch_message">切换账号会停止 %1$s，并删除当前账号的离线副本。</string>
+    <string name="m3_pack_switch_confirm">停止并切换</string>
+    <string name="m3_pack_add_account_message">添加并登录其他账号会停止 %1$s，并删除当前账号的离线副本。</string>
+    <string name="m3_pack_continue">继续</string>
+    <string name="m3_pack_logout_note">正在进行的下载将停止。</string>
 </resources>

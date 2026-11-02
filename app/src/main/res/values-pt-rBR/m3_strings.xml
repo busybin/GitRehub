@@ -1104,4 +1104,27 @@ O GitHub não tem canal de push para clientes de terceiros, então isto é uma c
 
     <!-- offline issue banner -->
     <string name="m3_issue_offline_banner">Cópia offline · sem comentários</string>
+
+    <!-- pacotes offline: fila, cancelamento e interrupção -->
+    <string name="m3_pack_phase_code">Baixando arquivos…</string>
+    <string name="m3_pack_phase_issues">Baixando issues…</string>
+    <string name="m3_pack_queue_waiting">Aguardando %1$d</string>
+    <string name="m3_pack_queued">Na fila</string>
+    <string name="m3_pack_queued_position">Na fila · %1$d à frente</string>
+    <string name="m3_pack_queue_added">Adicionado à fila</string>
+    <string name="m3_pack_saving">Salvando…</string>
+    <string name="m3_pack_cancel_save">Cancelar salvamento</string>
+    <string name="m3_pack_saved_toast">Salvo %1$s</string>
+    <string name="m3_pack_failed_toast">Não foi possível salvar %1$s</string>
+    <string name="m3_pack_cancelled_toast">Salvamento cancelado</string>
+    <string name="m3_pack_exit_title">Download em andamento</string>
+    <string name="m3_pack_exit_message">%1$s ainda está sendo baixado. Escolha se ele continua em segundo plano ou para antes de sair.</string>
+    <string name="m3_pack_exit_keep">Continuar salvando</string>
+    <string name="m3_pack_exit_stop">Parar e sair</string>
+    <string name="m3_pack_switch_title">Parar o download?</string>
+    <string name="m3_pack_switch_message">Trocar de conta interrompe %1$s e apaga as cópias offline desta conta.</string>
+    <string name="m3_pack_switch_confirm">Parar e trocar</string>
+    <string name="m3_pack_add_account_message">Adicionar e entrar com outra conta interromperá %1$s e apagará as cópias offline desta conta.</string>
+    <string name="m3_pack_continue">Continuar</string>
+    <string name="m3_pack_logout_note">O download em andamento será interrompido.</string>
 </resources>

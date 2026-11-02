@@ -1104,4 +1104,27 @@ GitHub no tiene canal de notificaciones push para los clientes de terceros, así
 
     <!-- offline issue banner -->
     <string name="m3_issue_offline_banner">Copia sin conexión · sin comentarios</string>
+
+    <!-- paquetes sin conexión: cola, cancelación e interrupción -->
+    <string name="m3_pack_phase_code">Descargando archivos…</string>
+    <string name="m3_pack_phase_issues">Descargando issues…</string>
+    <string name="m3_pack_queue_waiting">Esperando %1$d</string>
+    <string name="m3_pack_queued">En cola</string>
+    <string name="m3_pack_queued_position">En cola · %1$d por delante</string>
+    <string name="m3_pack_queue_added">Añadido a la cola</string>
+    <string name="m3_pack_saving">Guardando…</string>
+    <string name="m3_pack_cancel_save">Cancelar guardado</string>
+    <string name="m3_pack_saved_toast">Guardado %1$s</string>
+    <string name="m3_pack_failed_toast">No se pudo guardar %1$s</string>
+    <string name="m3_pack_cancelled_toast">Guardado cancelado</string>
+    <string name="m3_pack_exit_title">Descarga en curso</string>
+    <string name="m3_pack_exit_message">%1$s se sigue descargando. Elige si continúa en segundo plano o se detiene antes de salir.</string>
+    <string name="m3_pack_exit_keep">Seguir guardando</string>
+    <string name="m3_pack_exit_stop">Detener y salir</string>
+    <string name="m3_pack_switch_title">¿Detener la descarga?</string>
+    <string name="m3_pack_switch_message">Cambiar de cuenta detiene %1$s y borra las copias sin conexión de esta cuenta.</string>
+    <string name="m3_pack_switch_confirm">Detener y cambiar</string>
+    <string name="m3_pack_add_account_message">Añadir e iniciar sesión con otra cuenta detendrá %1$s y borrará las copias sin conexión de esta cuenta.</string>
+    <string name="m3_pack_continue">Continuar</string>
+    <string name="m3_pack_logout_note">La descarga en curso se detendrá.</string>
 </resources>

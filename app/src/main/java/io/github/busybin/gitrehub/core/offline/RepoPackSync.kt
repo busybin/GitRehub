@@ -7,16 +7,20 @@ import io.github.busybin.gitrehub.core.model.GitTreeEntry
 import io.github.busybin.gitrehub.core.model.Issue
 import io.github.busybin.gitrehub.core.net.GitHubApi
 import io.github.busybin.gitrehub.provider.tasks.RepoPackSyncService
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import java.io.IOException
 
 /**
  * Which files of a tree belong in a pack.
@@ -80,22 +84,77 @@ data class RepoPackOptions(
     val autoSync: Boolean = true,
 )
 
+/** One queued pack download. */
+data class RepoPackTask(
+    val owner: String,
+    val repo: String,
+    val options: RepoPackOptions,
+    /** True when the task was queued by the branch-moved watcher rather than by a tap. */
+    val auto: Boolean = false,
+) {
+    val fullName: String get() = "$owner/$repo"
+}
+
+/**
+ * FIFO queue of pack tasks.
+ *
+ * A repository that is already queued is replaced in place instead of stacked, so tapping "save"
+ * twice (or tapping it while the branch watcher has already queued the same pack) cannot double the
+ * work. Pure Kotlin so the ordering rules are unit-tested.
+ */
+class RepoPackTaskQueue {
+    private val items = ArrayList<RepoPackTask>()
+
+    fun enqueue(task: RepoPackTask) {
+        val index = items.indexOfFirst { it.fullName == task.fullName }
+        if (index >= 0) items[index] = task else items += task
+    }
+
+    fun snapshot(): List<RepoPackTask> = items.toList()
+
+    fun poll(): RepoPackTask? = items.removeFirstOrNull()
+
+    fun clear() = items.clear()
+}
+
 /**
  * Downloads and refreshes whole-repository packs.
  *
- * One sync at a time, on a process-wide scope, with a foreground service behind it so the progress
- * notification survives leaving the app.
+ * One worker drains the queue. Each task downloads into a staging directory and replaces the
+ * previous pack only after every file arrived, so cancelling, failing or switching accounts never
+ * destroys a pack that already worked. [RepoPackSyncService] keeps the progress in the notification
+ * shade while the app is elsewhere.
  */
 object RepoPackSyncer {
 
+    enum class Phase { META, CODE, ISSUES }
+
     data class Progress(
         val fullName: String,
-        val step: String,
-        /** 0 while the size is still unknown (indeterminate bar). */
+        val phase: Phase,
+        /** 0 while the total is still unknown (indeterminate bar). */
         val done: Int = 0,
         val total: Int = 0,
         val bytes: Long = 0L,
     )
+
+    data class Outcome(
+        val fullName: String,
+        val saved: Boolean,
+        val cancelled: Boolean = false,
+    )
+
+    data class State(
+        val running: RepoPackTask? = null,
+        val queued: List<RepoPackTask> = emptyList(),
+        val progress: Progress? = null,
+        val outcome: Outcome? = null,
+    ) {
+        val hasWork: Boolean get() = running != null || queued.isNotEmpty()
+
+        /** Name shown by interruption prompts, including the brief gap between two tasks. */
+        val activeName: String? get() = running?.fullName ?: queued.firstOrNull()?.fullName
+    }
 
     data class Estimate(
         val smallCount: Int = 0,
@@ -105,16 +164,26 @@ object RepoPackSyncer {
         val issueCount: Int = 0,
     )
 
+    enum class Enqueue { STARTED, QUEUED, ALREADY_RUNNING }
+
     /** Cap on packed issues: a repository with 5k issues would otherwise own the whole quota. */
     const val MAX_ISSUES = 1000
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private val mutex = Mutex()
+    private val queue = RepoPackTaskQueue()
+    private val lock = Any()
+    private var worker: Job? = null
 
-    private val _progress = MutableStateFlow<Progress?>(null)
-    val progress: StateFlow<Progress?> = _progress.asStateFlow()
+    /**
+     * Bumped by [cancelAll]. A drained worker whose generation is stale stops touching [State], so
+     * a cancelled run cannot clear the progress of the run that replaced it.
+     */
+    private var generation = 0
 
-    /** Sizes for the dialog's three switches; one tree request and one issue-count request. */
+    private val _state = MutableStateFlow(State())
+    val state: StateFlow<State> = _state.asStateFlow()
+
+    /** Sizes for the dialog's switches; one tree request and one issue-count request. */
     suspend fun estimate(owner: String, repo: String, branch: String?): Estimate =
         withContext(Dispatchers.IO) {
             val tree = GitHubApi.gitTree(owner, repo, branch)
@@ -130,28 +199,65 @@ object RepoPackSyncer {
             )
         }
 
-    /** Total issue + PR count; `per_page=1` keeps the payload tiny, the total is the last page. */
-    private suspend fun issueCount(owner: String, repo: String): Int = runCatching {
-        val page = GitHubApi.issuesSince(owner, repo, "1970-01-01T00:00:00Z")
-        page.links.last ?: page.value.size
-    }.getOrDefault(0)
-
-    /** Starts a sync (foreground service + notification). False when one is already running. */
-    fun start(context: Context, owner: String, repo: String, options: RepoPackOptions): Boolean {
-        if (_progress.value != null) return false
-        val app = context.applicationContext
-        RepoPackSyncService.start(app, owner, repo, options)
-        return true
-    }
-
-    /** Runs the sync on the caller's coroutine; used by [RepoPackSyncService]. */
-    suspend fun syncNow(
+    /**
+     * Adds a pack to the queue and makes sure the foreground service (and the worker) is up.
+     *
+     * Re-saving the pack that is already running is rejected; re-saving one that is only queued
+     * replaces its options and keeps its place in line.
+     */
+    fun enqueue(
         context: Context,
         owner: String,
         repo: String,
         options: RepoPackOptions,
-    ) = withContext(Dispatchers.IO) {
-        mutex.withLock { runSync(context, owner, repo, options) }
+        auto: Boolean = false,
+    ): Enqueue {
+        val app = context.applicationContext
+        val task = RepoPackTask(owner, repo, options, auto)
+        val result: Enqueue
+        synchronized(lock) {
+            if (_state.value.running?.fullName == task.fullName) return Enqueue.ALREADY_RUNNING
+            queue.enqueue(task)
+            _state.update { it.copy(queued = queue.snapshot(), outcome = null) }
+            result = if (worker?.isActive == true) Enqueue.QUEUED else Enqueue.STARTED
+            if (worker?.isActive != true) {
+                // A cancelled worker may still be deleting its staging tree. Wait for it before the
+                // next drain starts, or the new task's staging directory could be the one deleted.
+                val previous = worker
+                worker = scope.launch {
+                    previous?.join()
+                    drain(app)
+                }
+            }
+        }
+        runCatching { RepoPackSyncService.start(app) }
+        return result
+    }
+
+    /** Drops the running task and everything queued. [silent] skips the "cancelled" toast. */
+    fun cancelAll(silent: Boolean = false) {
+        synchronized(lock) {
+            val active = _state.value.running ?: queue.snapshot().firstOrNull()
+            generation += 1
+            queue.clear()
+            worker?.cancel()
+            _state.value = State(
+                outcome = if (silent || active == null) {
+                    null
+                } else {
+                    Outcome(active.fullName, saved = false, cancelled = true)
+                },
+            )
+        }
+    }
+
+    fun consumeOutcome() {
+        _state.update { it.copy(outcome = null) }
+    }
+
+    /** True when [fullName] is running or waiting. */
+    fun isKnown(fullName: String): Boolean = synchronized(lock) {
+        _state.value.running?.fullName == fullName || _state.value.queued.any { it.fullName == fullName }
     }
 
     /** True when the default branch moved since the pack was taken. */
@@ -162,45 +268,60 @@ object RepoPackSyncer {
         head != meta.headSha
     }
 
-    /** Refreshes packs that opted into auto-sync and whose branch moved (at most [limit] a pass). */
-    suspend fun syncStale(context: Context, account: String, limit: Int = 5) = withContext(Dispatchers.IO) {
-        if (_progress.value != null) return@withContext
-        RepoPacks.index(account).filter { it.autoSync }.take(limit).forEach { meta ->
-            if (runCatching { isStale(meta) }.getOrDefault(false)) {
-                val options = RepoPackOptions(
-                    includeSmall = meta.includeSmall,
-                    includeLarge = meta.includeLarge,
-                    includeIssues = meta.includeIssues,
-                    autoSync = true,
-                )
-                mutex.withLock { runSync(context, meta.owner, meta.repo, options) }
+    /**
+     * Queues packs that opted into auto-sync and whose branch moved (at most [limit] a pass). They
+     * go through the same queue as manual saves, so a manual tap never fails just because the
+     * watcher got there first.
+     */
+    suspend fun enqueueStale(context: Context, account: String, limit: Int = 5) =
+        withContext(Dispatchers.IO) {
+            RepoPacks.index(account).filter { it.autoSync }.take(limit).forEach { meta ->
+                if (isKnown(meta.fullName)) return@forEach
+                if (runCatching { isStale(meta) }.getOrDefault(false)) {
+                    enqueue(context, meta.owner, meta.repo, meta.options(), auto = true)
+                }
+            }
+        }
+
+    private suspend fun drain(context: Context) {
+        val startedAt = synchronized(lock) { generation }
+        while (true) {
+            val task = synchronized(lock) {
+                if (generation != startedAt) return
+                val next = queue.poll()
+                if (next != null) _state.update { it.copy(running = next, queued = queue.snapshot()) }
+                next
+            } ?: break
+            var outcome: Outcome? = null
+            try {
+                runTask(context, task)
+                outcome = Outcome(task.fullName, saved = true)
+            } catch (cancelled: CancellationException) {
+                // cancelAll() already published the outcome; just let the coroutine die.
+                throw cancelled
+            } catch (_: Throwable) {
+                outcome = Outcome(task.fullName, saved = false)
+            } finally {
+                synchronized(lock) {
+                    if (generation == startedAt) {
+                        _state.update { it.copy(running = null, progress = null) }
+                    }
+                }
+            }
+            synchronized(lock) {
+                if (generation == startedAt) _state.update { it.copy(outcome = outcome) }
             }
         }
     }
 
-    private suspend fun runSync(
-        context: Context,
-        owner: String,
-        repo: String,
-        options: RepoPackOptions,
-    ) {
-        try {
-            sync(context, owner, repo, options)
-        } catch (_: Throwable) {
-            // A failed pack must not leave the UI stuck on "syncing"; the old pack stays as it was.
-        } finally {
-            _progress.value = null
-        }
-    }
+    private suspend fun runTask(context: Context, task: RepoPackTask) {
+        val account = Session.currentAccount()?.login
+            ?: throw IllegalStateException("No account")
+        val owner = task.owner
+        val repo = task.repo
+        val options = task.options
+        report(task, Phase.META, 0, 0, 0)
 
-    private suspend fun sync(
-        context: Context,
-        owner: String,
-        repo: String,
-        options: RepoPackOptions,
-    ) {
-        val account = Session.currentAccount()?.login ?: return
-        _progress.value = Progress("$owner/$repo", "meta")
         val detail = GitHubApi.repo(owner, repo)
         val branch = detail.defaultBranch?.takeIf { it.isNotBlank() } ?: "main"
         val head = runCatching { GitHubApi.branchHeadSha(owner, repo, branch) }.getOrNull()
@@ -223,88 +344,139 @@ object RepoPackSyncer {
         )
         RepoPacks.prepare(context, meta)
 
-        var files = emptyList<RepoPackFile>()
-        var bytes = 0L
-        var skipped = 0
-        if (options.includeSmall || options.includeLarge) {
-            val tree = GitHubApi.gitTree(owner, repo, head)
-            val (candidates, _, _) = RepoPackRules.textFiles(
-                tree, options.includeSmall, options.includeLarge,
-            )
-            val allBlobs = tree.tree.count { it.type == "blob" }
-            skipped += allBlobs - candidates.size
-            _progress.value = Progress(meta.fullName, "code", 0, candidates.size)
-            val packed = ArrayList<RepoPackFile>(candidates.size)
-            for ((index, entry) in candidates.withIndex()) {
-                val path = entry.path
-                val sha = entry.sha ?: continue
-                if (bytes + entry.size > RepoPacks.MAX_REPO_BYTES) {
-                    skipped += candidates.size - index
-                    break
-                }
-                // Signing out mid-download must not resurrect a pack for the old account.
-                if (runCatching { Session.currentAccount()?.login }.getOrNull() != account) break
-                val text = runCatching { GitHubApi.blobText(owner, repo, sha) }.getOrNull()
-                if (text == null) {
-                    skipped++
-                } else {
+        var published = false
+        try {
+            var files = emptyList<RepoPackFile>()
+            var bytes = 0L
+            var skipped = 0
+            if (options.includeSmall || options.includeLarge) {
+                val tree = GitHubApi.gitTree(owner, repo, head)
+                val (candidates, _, _) = RepoPackRules.textFiles(
+                    tree, options.includeSmall, options.includeLarge,
+                )
+                skipped += tree.tree.count { it.type == "blob" } - candidates.size
+                report(task, Phase.CODE, 0, candidates.size, 0)
+                val packed = ArrayList<RepoPackFile>(candidates.size)
+                for ((index, entry) in candidates.withIndex()) {
+                    currentCoroutineContext().ensureActive()
+                    requireSameAccount(account)
+                    if (bytes + entry.size > RepoPacks.MAX_REPO_BYTES) {
+                        skipped += candidates.size - index
+                        break
+                    }
+                    val path = entry.path
+                    val sha = entry.sha ?: continue
+                    val text = fetchBlob(owner, repo, sha)
+                    if (text.isEmpty()) throw IOException("Empty blob for $path")
                     RepoPacks.writeText(context, meta, path, text)
                     bytes += text.toByteArray(Charsets.UTF_8).size.toLong()
                     packed += RepoPackFile(path = path, size = entry.size, sha = sha)
+                    report(task, Phase.CODE, index + 1, candidates.size, bytes)
                 }
-                _progress.value = Progress(meta.fullName, "code", index + 1, candidates.size, bytes)
+                files = packed
             }
-            files = packed
-        }
 
-        var issues: List<Issue> = emptyList()
-        if (options.includeIssues) {
-            issues = fetchIssues(context, owner, repo, account, meta.fullName)
-        }
+            requireSameAccount(account)
+            var issues: List<Issue> = emptyList()
+            if (options.includeIssues) {
+                issues = fetchIssues(task, account, owner, repo, bytes)
+            }
+            requireSameAccount(account)
+            // A cancel that arrived while the last file was being written must not publish.
+            currentCoroutineContext().ensureActive()
 
-        RepoPacks.finish(
-            context = context,
-            meta = meta.copy(
-                bytes = bytes,
-                fileCount = files.size,
-                skipped = skipped,
-                issueCount = issues.size,
-            ),
-            repo = detail,
-            readmeHtml = readme,
-            files = files,
-            issues = issues,
-        )
+            RepoPacks.finish(
+                context = context,
+                meta = meta.copy(
+                    bytes = bytes,
+                    fileCount = files.size,
+                    skipped = skipped,
+                    issueCount = issues.size,
+                ),
+                repo = detail,
+                readmeHtml = readme,
+                files = files,
+                issues = issues,
+            )
+            published = true
+        } finally {
+            if (!published) RepoPacks.abort(context, meta)
+        }
     }
 
     /** Pages through `state=all` (issues and PRs together), capped by [MAX_ISSUES]. */
     private suspend fun fetchIssues(
-        context: Context,
+        task: RepoPackTask,
+        account: String,
         owner: String,
         repo: String,
-        account: String,
-        fullName: String,
+        bytes: Long,
     ): List<Issue> {
         val collected = ArrayList<Issue>()
         val expected = issueCount(owner, repo).coerceAtMost(MAX_ISSUES)
         var page = 1
         while (collected.size < MAX_ISSUES) {
-            _progress.value = Progress(fullName, "issues", collected.size, expected)
-            val response = runCatching {
-                GitHubApi.repoIssues(
-                    owner = owner,
-                    repo = repo,
-                    state = "all",
-                    sort = "updated",
-                    page = page,
-                )
-            }.getOrNull() ?: break
+            currentCoroutineContext().ensureActive()
+            requireSameAccount(account)
+            report(task, Phase.ISSUES, collected.size, expected, bytes)
+            val response = GitHubApi.repoIssues(
+                owner = owner,
+                repo = repo,
+                state = "all",
+                sort = "updated",
+                page = page,
+            )
             if (response.value.isEmpty()) break
             collected += response.value
             if (response.links.next == null) break
-            if (runCatching { Session.currentAccount()?.login }.getOrNull() != account) break
             page += 1
         }
         return collected.take(MAX_ISSUES)
     }
+
+    /** One retry: GitHub occasionally drops a connection during a long run. */
+    private suspend fun fetchBlob(owner: String, repo: String, sha: String): String {
+        var last: Throwable? = null
+        repeat(2) {
+            try {
+                return GitHubApi.blobText(owner, repo, sha)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Throwable) {
+                last = error
+            }
+        }
+        throw last ?: IOException("Blob download failed")
+    }
+
+    private suspend fun requireSameAccount(account: String) {
+        if (Session.currentAccount()?.login != account) throw AccountChangedException()
+    }
+
+    private fun report(task: RepoPackTask, phase: Phase, done: Int, total: Int, bytes: Long) {
+        _state.update { state ->
+            // A worker cancelled between two suspending calls can still report once; never let it
+            // overwrite the progress of the task that replaced it.
+            if (state.running?.fullName != task.fullName) {
+                state
+            } else {
+                state.copy(progress = Progress(task.fullName, phase, done, total, bytes))
+            }
+        }
+    }
+
+    /** Total issue + PR count; `per_page=1` keeps the payload tiny, the total is the last page. */
+    private suspend fun issueCount(owner: String, repo: String): Int = runCatching {
+        val page = GitHubApi.issuesSince(owner, repo, "1970-01-01T00:00:00Z")
+        page.links.last ?: page.value.size
+    }.getOrDefault(0)
+
+    private fun RepoPackMeta.options() = RepoPackOptions(
+        includeSmall = includeSmall,
+        includeLarge = includeLarge,
+        includeIssues = includeIssues,
+        autoSync = true,
+    )
+
+    private class AccountChangedException : Exception()
 }

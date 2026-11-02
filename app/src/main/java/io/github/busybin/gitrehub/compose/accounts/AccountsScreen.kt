@@ -43,9 +43,11 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.busybin.gitrehub.R
 import io.github.busybin.gitrehub.compose.common.AsyncContent
 import io.github.busybin.gitrehub.compose.common.Avatar
+import io.github.busybin.gitrehub.compose.common.ConfirmDialog
 import io.github.busybin.gitrehub.compose.common.Pill
 import io.github.busybin.gitrehub.compose.common.render
 import io.github.busybin.gitrehub.core.auth.StoredAccounts
+import io.github.busybin.gitrehub.core.offline.RepoPackSyncer
 import io.github.busybin.gitrehub.core.auth.StoredAccount
 import kotlinx.coroutines.delay
 
@@ -64,6 +66,9 @@ fun AccountsScreen(
     val state by vm.state.collectAsStateWithLifecycle()
     val busy by vm.busy.collectAsStateWithLifecycle()
     val message by vm.message.collectAsStateWithLifecycle()
+    val sync by RepoPackSyncer.state.collectAsStateWithLifecycle()
+    var pendingSwitch by remember { mutableStateOf<StoredAccount?>(null) }
+    var warnAddAccount by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) { vm.load() }
 
@@ -73,6 +78,41 @@ fun AccountsScreen(
             delay(3_000)
             vm.clearMessage()
         }
+    }
+
+    // Switching accounts deletes the current account's packs; never do that behind a running
+    // download without asking first.
+    pendingSwitch?.let { target ->
+        ConfirmDialog(
+            title = stringResource(R.string.m3_pack_switch_title),
+            message = stringResource(
+                R.string.m3_pack_switch_message,
+                sync.activeName.orEmpty(),
+            ),
+            confirmLabel = stringResource(R.string.m3_pack_switch_confirm),
+            destructive = true,
+            onConfirm = {
+                pendingSwitch = null
+                RepoPackSyncer.cancelAll(silent = true)
+                vm.switchTo(target, onSwitched)
+            },
+            onDismiss = { pendingSwitch = null },
+        )
+    }
+    if (warnAddAccount) {
+        ConfirmDialog(
+            title = stringResource(R.string.m3_pack_switch_title),
+            message = stringResource(
+                R.string.m3_pack_add_account_message,
+                sync.activeName.orEmpty(),
+            ),
+            confirmLabel = stringResource(R.string.m3_pack_continue),
+            onConfirm = {
+                warnAddAccount = false
+                onAddAccount()
+            },
+            onDismiss = { warnAddAccount = false },
+        )
     }
 
     Column(
@@ -102,14 +142,16 @@ fun AccountsScreen(
             AccountsBody(
                 accounts = accounts,
                 busy = busy,
-                onSwitch = { vm.switchTo(it, onSwitched) },
+                onSwitch = { target ->
+                    if (sync.hasWork) pendingSwitch = target else vm.switchTo(target, onSwitched)
+                },
                 onRemove = { vm.remove(it) },
             )
         }
 
         Spacer(Modifier.height(18.dp))
         Button(
-            onClick = onAddAccount,
+            onClick = { if (sync.hasWork) warnAddAccount = true else onAddAccount() },
             modifier = Modifier.fillMaxWidth(),
         ) {
             Icon(Icons.Outlined.PersonAdd, contentDescription = null, modifier = Modifier.size(18.dp))

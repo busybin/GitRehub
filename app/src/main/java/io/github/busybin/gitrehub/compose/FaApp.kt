@@ -1,10 +1,15 @@
 package io.github.busybin.gitrehub.compose
 
 import android.Manifest
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
+import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.StringRes
@@ -15,6 +20,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -120,6 +126,7 @@ import io.github.busybin.gitrehub.compose.common.ConfirmDialog
 import io.github.busybin.gitrehub.compose.common.DraftQueue
 import io.github.busybin.gitrehub.compose.common.DraftsScreen
 import io.github.busybin.gitrehub.compose.common.OfflineBanner
+import io.github.busybin.gitrehub.compose.common.PackSyncBar
 import io.github.busybin.gitrehub.compose.common.TabBadges
 import io.github.busybin.gitrehub.compose.common.UpdatePromptHost
 import io.github.busybin.gitrehub.compose.common.UpdateSupport
@@ -206,6 +213,7 @@ fun FaApp(routeRequest: MutableState<String?>? = null) {
 
         val backStack by nav.currentBackStackEntryAsState()
         val current = backStack?.destination?.route
+        val packState by RepoPackSyncer.state.collectAsStateWithLifecycle()
         val start = remember {
             runBlocking { Session.repairSession() }
             if (Session.isLoggedIn) Routes.FEED
@@ -246,7 +254,7 @@ fun FaApp(routeRequest: MutableState<String?>? = null) {
             if (!loggedIn) return@LaunchedEffect
             val account = withContext(Dispatchers.IO) { Session.currentAccount() }?.login
                 ?: return@LaunchedEffect
-            runCatching { RepoPackSyncer.syncStale(context.applicationContext, account) }
+            runCatching { RepoPackSyncer.enqueueStale(context.applicationContext, account) }
         }
 
         // The pre-rewrite build left its token in MMKV but not in our encrypted store yet; adopting
@@ -289,6 +297,66 @@ fun FaApp(routeRequest: MutableState<String?>? = null) {
             if (loggedIn && !account?.login.isNullOrBlank()) TabBadges.refreshAll(force = true)
         }
 
+        // Completion / failure / cancel feedback for pack downloads: the bar is already gone by the
+        // time the outcome arrives, so the toast is the only thing that can say what happened.
+        val packOutcome = packState.outcome
+        val packOutcomeText = packOutcome?.let { outcome ->
+            when {
+                outcome.saved -> stringResource(R.string.m3_pack_saved_toast, outcome.fullName)
+                outcome.cancelled -> stringResource(R.string.m3_pack_cancelled_toast)
+                else -> stringResource(R.string.m3_pack_failed_toast, outcome.fullName)
+            }
+        }
+        LaunchedEffect(packOutcome) {
+            if (packOutcome != null && packOutcomeText != null) {
+                Toast.makeText(context, packOutcomeText, Toast.LENGTH_SHORT).show()
+                RepoPackSyncer.consumeOutcome()
+            }
+        }
+
+        // Back from the root screen while a pack downloads: keep it running in the background or
+        // stop it before leaving. The drawer's own back handling wins while the drawer is open.
+        var exitWhileSaving by rememberSaveable { mutableStateOf(false) }
+        val atRoot = nav.previousBackStackEntry == null
+        BackHandler(enabled = packState.hasWork && atRoot && drawerState.isClosed) {
+            exitWhileSaving = true
+        }
+        // Material3's drawer does not close on back by itself; without this, back at the root
+        // would leave the app while the drawer is open.
+        BackHandler(enabled = drawerState.isOpen) {
+            scope.launch { drawerState.close() }
+        }
+        if (exitWhileSaving) {
+            val runningName = packState.activeName.orEmpty()
+            AlertDialog(
+                onDismissRequest = { exitWhileSaving = false },
+                title = { Text(stringResource(R.string.m3_pack_exit_title)) },
+                text = { Text(stringResource(R.string.m3_pack_exit_message, runningName)) },
+                confirmButton = {
+                    Row {
+                        TextButton(
+                            onClick = {
+                                exitWhileSaving = false
+                                context.findActivity()?.finish()
+                            },
+                        ) { Text(stringResource(R.string.m3_pack_exit_keep)) }
+                        TextButton(
+                            onClick = {
+                                exitWhileSaving = false
+                                RepoPackSyncer.cancelAll(silent = true)
+                                context.findActivity()?.finish()
+                            },
+                        ) { Text(stringResource(R.string.m3_pack_exit_stop)) }
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { exitWhileSaving = false }) {
+                        Text(stringResource(R.string.m3_cancel))
+                    }
+                },
+            )
+        }
+
         // Offer to make github.com links open here. It can only ever be done by hand in the system
         // settings, and hiding that away in the settings screen (as it was) means nobody finds it.
         val linkHandlingAsked by LinkHandlingPrefs.asked.collectAsStateWithLifecycle()
@@ -309,13 +377,18 @@ fun FaApp(routeRequest: MutableState<String?>? = null) {
 
         var confirmLogout by rememberSaveable { mutableStateOf(false) }
         if (confirmLogout) {
+            val logoutMessage = stringResource(R.string.m3_logout_message) +
+                if (packState.hasWork) "\n\n" + stringResource(R.string.m3_pack_logout_note) else ""
             ConfirmDialog(
                 title = stringResource(R.string.m3_logout_title),
-                message = stringResource(R.string.m3_logout_message),
+                message = logoutMessage,
                 confirmLabel = stringResource(R.string.m3_logout_confirm),
                 destructive = true,
                 onConfirm = {
                     confirmLogout = false
+                    // Signing out deletes this account's packs; stop the download before the
+                    // account disappears so nothing can be published for it afterwards.
+                    RepoPackSyncer.cancelAll(silent = true)
                     scope.launch {
                         withContext(Dispatchers.IO) { Session.logout() }
                         // The old account keeps ViewModels on the nav graph; rebuild everything
@@ -522,35 +595,49 @@ fun FaApp(routeRequest: MutableState<String?>? = null) {
                     }
                 },
                 bottomBar = {
-                    if (current in tabRoutes && !wide) {
-                        val notificationsBadge by TabBadges.notifications.collectAsStateWithLifecycle()
-                        val myWorkBadge by TabBadges.myWork.collectAsStateWithLifecycle()
-                        NavigationBar {
-                            tabs.forEach { tab ->
-                                val tabLabel = stringResource(tab.labelRes)
-                                val badge = when (tab.route) {
-                                    Routes.NOTIFICATIONS -> notificationsBadge
-                                    Routes.MY_WORK -> myWorkBadge
-                                    else -> 0
-                                }
-                                NavigationBarItem(
-                                    selected = current == tab.route,
-                                    onClick = { nav.navigateSingleTop(tab.route) },
-                                    icon = {
-                                        BadgedBox(
-                                            badge = {
-                                                if (badge > 0) {
-                                                    Badge {
-                                                        Text(if (badge > 99) "99+" else badge.toString())
+                    Column {
+                        // Occupies layout instead of floating over the page, and sits inside the
+                        // scaffold so the navigation drawer covers it when it opens.
+                        PackSyncBar(
+                            onOpen = { nav.openRepo(it) },
+                            // The navigation bar below already consumes the system inset; without
+                            // it the pack bar needs to keep clear of the gesture area itself.
+                            modifier = if (current in tabRoutes && !wide) {
+                                Modifier
+                            } else {
+                                Modifier.navigationBarsPadding()
+                            },
+                        )
+                        if (current in tabRoutes && !wide) {
+                            val notificationsBadge by TabBadges.notifications.collectAsStateWithLifecycle()
+                            val myWorkBadge by TabBadges.myWork.collectAsStateWithLifecycle()
+                            NavigationBar {
+                                tabs.forEach { tab ->
+                                    val tabLabel = stringResource(tab.labelRes)
+                                    val badge = when (tab.route) {
+                                        Routes.NOTIFICATIONS -> notificationsBadge
+                                        Routes.MY_WORK -> myWorkBadge
+                                        else -> 0
+                                    }
+                                    NavigationBarItem(
+                                        selected = current == tab.route,
+                                        onClick = { nav.navigateSingleTop(tab.route) },
+                                        icon = {
+                                            BadgedBox(
+                                                badge = {
+                                                    if (badge > 0) {
+                                                        Badge {
+                                                            Text(if (badge > 99) "99+" else badge.toString())
+                                                        }
                                                     }
-                                                }
-                                            },
-                                        ) {
-                                            Icon(tab.icon, contentDescription = tabLabel)
-                                        }
-                                    },
-                                    label = { Text(tabLabel) },
-                                )
+                                                },
+                                            ) {
+                                                Icon(tab.icon, contentDescription = tabLabel)
+                                            }
+                                        },
+                                        label = { Text(tabLabel) },
+                                    )
+                                }
                             }
                         }
                     }
@@ -1663,9 +1750,25 @@ private fun NavHostController.navigateSingleTop(route: String) {    navigate(rou
 
 private fun NavHostController.openRepo(fullName: String) {
     val parts = fullName.split("/")
-    if (parts.size == 2) {
-        navigate(Routes.repo(parts[0], parts[1]))
+    if (parts.size != 2) return
+    // Tapping the download bar while already on that repository should not stack a copy.
+    val args = currentBackStackEntry?.arguments
+    if (currentDestination?.route == Routes.REPO &&
+        args?.getString("owner") == parts[0] && args?.getString("name") == parts[1]
+    ) {
+        return
     }
+    navigate(Routes.repo(parts[0], parts[1]))
+}
+
+/** Compose hands out a theme-wrapped context often enough that a plain cast would miss. */
+private fun Context.findActivity(): Activity? {
+    var current: Context = this
+    while (current is ContextWrapper) {
+        if (current is Activity) return current
+        current = current.baseContext
+    }
+    return current as? Activity
 }
 
 /**

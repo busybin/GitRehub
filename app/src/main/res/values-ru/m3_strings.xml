@@ -1102,4 +1102,27 @@
 
     <!-- offline issue banner -->
     <string name="m3_issue_offline_banner">Офлайн-копия · без комментариев</string>
+
+    <!-- офлайн-пакеты: очередь, отмена и прерывание -->
+    <string name="m3_pack_phase_code">Загрузка файлов…</string>
+    <string name="m3_pack_phase_issues">Загрузка issues…</string>
+    <string name="m3_pack_queue_waiting">Ожидание %1$d</string>
+    <string name="m3_pack_queued">В очереди</string>
+    <string name="m3_pack_queued_position">В очереди · %1$d впереди</string>
+    <string name="m3_pack_queue_added">Добавлено в очередь</string>
+    <string name="m3_pack_saving">Сохранение…</string>
+    <string name="m3_pack_cancel_save">Отменить сохранение</string>
+    <string name="m3_pack_saved_toast">Сохранено %1$s</string>
+    <string name="m3_pack_failed_toast">Не удалось сохранить %1$s</string>
+    <string name="m3_pack_cancelled_toast">Сохранение отменено</string>
+    <string name="m3_pack_exit_title">Идёт загрузка</string>
+    <string name="m3_pack_exit_message">%1$s всё ещё загружается. Выберите, продолжать в фоне или остановить перед выходом.</string>
+    <string name="m3_pack_exit_keep">Продолжить сохранение</string>
+    <string name="m3_pack_exit_stop">Остановить и выйти</string>
+    <string name="m3_pack_switch_title">Остановить загрузку?</string>
+    <string name="m3_pack_switch_message">Смена аккаунта остановит %1$s и удалит офлайн-копии этого аккаунта.</string>
+    <string name="m3_pack_switch_confirm">Остановить и сменить</string>
+    <string name="m3_pack_add_account_message">Добавление и вход в другой аккаунт остановит %1$s и удалит офлайн-копии этого аккаунта.</string>
+    <string name="m3_pack_continue">Продолжить</string>
+    <string name="m3_pack_logout_note">Текущая загрузка будет остановлена.</string>
 </resources>

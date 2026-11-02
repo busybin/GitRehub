@@ -11,6 +11,7 @@ import coil.disk.DiskCache
 import coil.memory.MemoryCache
 import io.github.busybin.gitrehub.compose.common.AppShortcuts
 import io.github.busybin.gitrehub.core.auth.TokenStore
+import io.github.busybin.gitrehub.core.offline.RepoPacks
 import io.github.busybin.gitrehub.helper.OfflineStatus
 import io.github.busybin.gitrehub.helper.PrefHelper.init
 import io.github.busybin.gitrehub.helper.TypeFaceHelper.generateTypeface
@@ -86,6 +87,8 @@ class App : Application(), ImageLoaderFactory {
         TokenStore.init(applicationContext)
         // Offline cache uses this to pick cache-first vs network-first.
         OfflineStatus.init(this)
+        // Finish or roll back a pack publish the process interrupted last time.
+        runCatching { RepoPacks.recover(applicationContext) }
         generateTypeface(this)
         NotificationSchedulerJobTask.scheduleJob(this)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
