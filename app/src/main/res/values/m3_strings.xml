@@ -1102,6 +1102,16 @@ GitHub has no push channel for third-party clients, so this is real polling: the
     <string name="m3_pack_syncing_meta">Reading repository…</string>
     <string name="m3_pack_offline_banner">Offline copy · synced %1$s</string>
     <string name="m3_offline_repos">Offline repositories</string>
+    <string name="m3_pack_auto_sync_all">Auto-sync offline repositories</string>
+    <string name="m3_pack_auto_sync_all_hint">Refresh in the background when a branch moves. Turning this off stops automatic updates.</string>
+    <string name="m3_pack_quota">%1$d repositories · %2$s / %3$s</string>
+    <string name="m3_pack_badge_code">Code</string>
+    <string name="m3_pack_badge_meta">Metadata only</string>
+    <string name="m3_pack_badge_issues">Issues</string>
+    <string name="m3_pack_skipped_short">%1$d skipped</string>
+    <string name="m3_pack_contents">Includes %1$s</string>
+    <string name="m3_pack_phase_archive">Downloading archive…</string>
+    <string name="m3_pack_auto_stopped">Auto-sync stopped</string>
 
     <!-- repo pack: switches, progress, confirmations -->
     <string name="m3_pack_include_small">Small text files (≤ 2 MB)</string>

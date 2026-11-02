@@ -889,6 +889,7 @@ fun FaApp(routeRequest: MutableState<String?>? = null) {
                                         Routes.savedThread(meta.owner, meta.repo, meta.number),
                                     )
                                 },
+                                onOpenRepo = { owner, repo -> nav.openRepo("$owner/$repo") },
                             )
                         }
                         composable(

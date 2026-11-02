@@ -1085,6 +1085,16 @@ GitHub n\'a pas de canal push pour les clients tiers, il s\'agit donc d\'une vé
     <string name="m3_pack_syncing_meta">Lecture du dépôt…</string>
     <string name="m3_pack_offline_banner">Copie hors ligne · synchronisée %1$s</string>
     <string name="m3_offline_repos">Dépôts hors ligne</string>
+    <string name="m3_pack_auto_sync_all">Synchroniser les dépôts hors ligne</string>
+    <string name="m3_pack_auto_sync_all_hint">Actualise en arrière-plan quand la branche avance. Désactivé, aucune mise à jour automatique.</string>
+    <string name="m3_pack_quota">%1$d dépôts · %2$s / %3$s</string>
+    <string name="m3_pack_badge_code">Code</string>
+    <string name="m3_pack_badge_meta">Métadonnées seules</string>
+    <string name="m3_pack_badge_issues">Issues</string>
+    <string name="m3_pack_skipped_short">%1$d ignorés</string>
+    <string name="m3_pack_contents">Contient %1$s</string>
+    <string name="m3_pack_phase_archive">Téléchargement de l’archive…</string>
+    <string name="m3_pack_auto_stopped">Synchronisation automatique arrêtée</string>
 
     <!-- repo pack: switches, progress, confirmations -->
     <string name="m3_pack_include_small">Petits fichiers texte (≤ 2 Mo)</string>

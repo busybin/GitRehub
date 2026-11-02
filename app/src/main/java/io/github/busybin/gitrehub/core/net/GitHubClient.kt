@@ -19,6 +19,7 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import java.io.File
 import java.io.IOException
 
 /** One decoded answer plus the headers the callers care about (pagination, scopes). */
@@ -68,6 +69,9 @@ object GitHubClient {
     private val cacheOnlyClient: OkHttpClient by lazy {
         HttpProvider.provideCacheOnlyClient(AuthenticationInterceptor())
     }
+
+    /** No disk cache, wide dispatcher: repository zipballs and the parallel blob fallback. */
+    private val downloadClient: OkHttpClient by lazy { HttpProvider.provideDownloadClient() }
 
     /** Explicit token: used to validate a token before it is stored, never for normal calls. */
     private fun clientFor(token: String?, cacheOnly: Boolean): OkHttpClient = when {
@@ -210,6 +214,54 @@ object GitHubClient {
                 out.write(buffer, 0, read)
             }
             out.toByteArray()
+        }
+    }
+
+    /**
+     * Streams a GET into [target] and reports bytes as they arrive. No HTTP cache is involved.
+     *
+     * [maxBytes] is checked twice: against the declared `Content-Length` (so a huge archive is
+     * abandoned before a single byte is read) and while copying, because chunked answers have no
+     * declared length. The partial file is deleted on any failure.
+     */
+    suspend fun download(
+        path: String,
+        target: File,
+        maxBytes: Long,
+        onProgress: (downloaded: Long, total: Long) -> Unit = { _, _ -> },
+    ): Long = withContext(Dispatchers.IO) {
+        val request = Request.Builder().url(apiRoot + path).get().build()
+        val response = try {
+            downloadClient.newCall(request).execute()
+        } catch (e: IOException) {
+            throw ApiException(ApiError(0, e.message ?: e.javaClass.simpleName), e)
+        }
+        response.use { r ->
+            if (!r.isSuccessful) throw errorFor(r.code, r.body?.string().orEmpty(), r.headers)
+            val body = r.body ?: throw ApiException(0, "Empty response")
+            val declared = body.contentLength()
+            if (declared > maxBytes) throw ApiException(413, "Response is too large")
+            target.parentFile?.mkdirs()
+            var total = 0L
+            try {
+                body.byteStream().use { input ->
+                    target.outputStream().buffered(64 * 1024).use { output ->
+                        val buffer = ByteArray(64 * 1024)
+                        while (true) {
+                            val read = input.read(buffer)
+                            if (read < 0) break
+                            total += read
+                            if (total > maxBytes) throw ApiException(413, "Response is too large")
+                            output.write(buffer, 0, read)
+                            onProgress(total, declared)
+                        }
+                    }
+                }
+            } catch (t: Throwable) {
+                runCatching { target.delete() }
+                throw t
+            }
+            total
         }
     }
 

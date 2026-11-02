@@ -11,6 +11,7 @@ import coil.disk.DiskCache
 import coil.memory.MemoryCache
 import io.github.busybin.gitrehub.compose.common.AppShortcuts
 import io.github.busybin.gitrehub.core.auth.TokenStore
+import io.github.busybin.gitrehub.core.offline.RepoPackPrefs
 import io.github.busybin.gitrehub.core.offline.RepoPacks
 import io.github.busybin.gitrehub.helper.OfflineStatus
 import io.github.busybin.gitrehub.helper.PrefHelper.init
@@ -89,6 +90,8 @@ class App : Application(), ImageLoaderFactory {
         OfflineStatus.init(this)
         // Finish or roll back a pack publish the process interrupted last time.
         runCatching { RepoPacks.recover(applicationContext) }
+        // Auto-sync is on by default; the stored value must be read before the UI collects it.
+        runCatching { RepoPackPrefs.load() }
         generateTypeface(this)
         NotificationSchedulerJobTask.scheduleJob(this)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {

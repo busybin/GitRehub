@@ -1099,6 +1099,16 @@ github 不给第三方客户端推送通道，所以这是真的轮询：最短 
     <string name="m3_pack_syncing_meta">正在读取仓库…</string>
     <string name="m3_pack_offline_banner">离线副本 · 同步于 %1$s</string>
     <string name="m3_offline_repos">离线仓库</string>
+    <string name="m3_pack_auto_sync_all">自动同步离线仓库</string>
+    <string name="m3_pack_auto_sync_all_hint">分支有新提交时在后台更新；关闭后不再自动同步。</string>
+    <string name="m3_pack_quota">%1$d 个仓库 · %2$s / %3$s</string>
+    <string name="m3_pack_badge_code">代码</string>
+    <string name="m3_pack_badge_meta">仅元数据</string>
+    <string name="m3_pack_badge_issues">Issues</string>
+    <string name="m3_pack_skipped_short">跳过 %1$d</string>
+    <string name="m3_pack_contents">包含 %1$s</string>
+    <string name="m3_pack_phase_archive">正在下载压缩包…</string>
+    <string name="m3_pack_auto_stopped">已停止自动同步</string>
 
     <!-- repo pack: switches, progress, confirmations -->
     <string name="m3_pack_include_small">小文件（≤ 2 MB）</string>

@@ -1085,6 +1085,16 @@ GitHub no tiene canal de notificaciones push para los clientes de terceros, así
     <string name="m3_pack_syncing_meta">Leyendo el repositorio…</string>
     <string name="m3_pack_offline_banner">Copia sin conexión · sincronizada %1$s</string>
     <string name="m3_offline_repos">Repositorios sin conexión</string>
+    <string name="m3_pack_auto_sync_all">Sincronizar repositorios sin conexión</string>
+    <string name="m3_pack_auto_sync_all_hint">Actualiza en segundo plano cuando la rama avanza. Desactivado no hay actualizaciones automáticas.</string>
+    <string name="m3_pack_quota">%1$d repositorios · %2$s / %3$s</string>
+    <string name="m3_pack_badge_code">Código</string>
+    <string name="m3_pack_badge_meta">Solo metadatos</string>
+    <string name="m3_pack_badge_issues">Issues</string>
+    <string name="m3_pack_skipped_short">%1$d omitidos</string>
+    <string name="m3_pack_contents">Incluye %1$s</string>
+    <string name="m3_pack_phase_archive">Descargando archivo…</string>
+    <string name="m3_pack_auto_stopped">Sincronización automática detenida</string>
 
     <!-- repo pack: switches, progress, confirmations -->
     <string name="m3_pack_include_small">Archivos de texto pequeños (≤ 2 MB)</string>

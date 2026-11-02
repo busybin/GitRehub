@@ -1085,6 +1085,16 @@ GitHub にはサードパーティ製クライアント向けのプッシュチ�
     <string name="m3_pack_syncing_meta">リポジトリを読み込み中…</string>
     <string name="m3_pack_offline_banner">オフラインコピー · %1$s に同期</string>
     <string name="m3_offline_repos">オフラインのリポジトリ</string>
+    <string name="m3_pack_auto_sync_all">オフラインリポジトリを自動同期</string>
+    <string name="m3_pack_auto_sync_all_hint">ブランチが進むとバックグラウンドで更新します。オフにすると自動更新しません。</string>
+    <string name="m3_pack_quota">%1$d リポジトリ · %2$s / %3$s</string>
+    <string name="m3_pack_badge_code">コード</string>
+    <string name="m3_pack_badge_meta">メタデータのみ</string>
+    <string name="m3_pack_badge_issues">Issues</string>
+    <string name="m3_pack_skipped_short">%1$d 件スキップ</string>
+    <string name="m3_pack_contents">含まれるもの %1$s</string>
+    <string name="m3_pack_phase_archive">アーカイブをダウンロード中…</string>
+    <string name="m3_pack_auto_stopped">自動同期を停止しました</string>
 
     <!-- repo pack: switches, progress, confirmations -->
     <string name="m3_pack_include_small">小さいテキストファイル（2 MB 以下）</string>

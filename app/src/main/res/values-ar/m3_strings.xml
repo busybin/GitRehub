@@ -1085,6 +1085,16 @@
     <string name="m3_pack_syncing_meta">جارٍ قراءة المستودع…</string>
     <string name="m3_pack_offline_banner">نسخة دون اتصال · زُوّدت %1$s</string>
     <string name="m3_offline_repos">المستودعات دون اتصال</string>
+    <string name="m3_pack_auto_sync_all">مزامنة المستودعات دون اتصال</string>
+    <string name="m3_pack_auto_sync_all_hint">يُحدَّث في الخلفية عند تقدّم الفرع. الإيقاف يمنع التحديث التلقائي.</string>
+    <string name="m3_pack_quota">%1$d مستودعات · %2$s / %3$s</string>
+    <string name="m3_pack_badge_code">الشيفرة</string>
+    <string name="m3_pack_badge_meta">بيانات وصفية فقط</string>
+    <string name="m3_pack_badge_issues">Issues</string>
+    <string name="m3_pack_skipped_short">تم تخطي %1$d</string>
+    <string name="m3_pack_contents">يتضمن %1$s</string>
+    <string name="m3_pack_phase_archive">جارٍ تنزيل الأرشيف…</string>
+    <string name="m3_pack_auto_stopped">تم إيقاف المزامنة التلقائية</string>
 
     <!-- repo pack: switches, progress, confirmations -->
     <string name="m3_pack_include_small">ملفات نصية صغيرة (≤ 2 ميغابايت)</string>

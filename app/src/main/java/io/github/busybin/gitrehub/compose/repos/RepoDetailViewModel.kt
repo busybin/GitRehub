@@ -7,6 +7,7 @@ import io.github.busybin.gitrehub.compose.common.LoadState
 import io.github.busybin.gitrehub.App
 import io.github.busybin.gitrehub.compose.common.RepoSeen
 import io.github.busybin.gitrehub.core.offline.RepoPackOptions
+import io.github.busybin.gitrehub.core.offline.RepoPackPrefs
 import io.github.busybin.gitrehub.core.offline.RepoPackSyncer
 import io.github.busybin.gitrehub.core.offline.RepoPacks
 import io.github.busybin.gitrehub.helper.OfflineStatus
@@ -103,14 +104,16 @@ class RepoDetailViewModel : ViewModel() {
         // Online: refresh the pack in the background when the branch moved.
         if (pack != null && OfflineStatus.isOnline) {
             viewModelScope.launch {
-                if (pack.autoSync && runCatching { RepoPackSyncer.isStale(pack) }.getOrDefault(false)) {
+                if (pack.autoSync && RepoPackPrefs.isEnabled() &&
+                    runCatching { RepoPackSyncer.isStale(pack) }.getOrDefault(false)
+                ) {
                     RepoPackSyncer.enqueue(
                         context, owner, name,
                         RepoPackOptions(
                             includeSmall = pack.includeSmall,
                             includeLarge = pack.includeLarge,
                             includeIssues = pack.includeIssues,
-                            autoSync = true,
+                            autoSync = pack.autoSync,
                         ),
                         auto = true,
                     )

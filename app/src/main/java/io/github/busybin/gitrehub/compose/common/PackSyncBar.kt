@@ -43,19 +43,22 @@ fun PackSyncBar(onOpen: (String) -> Unit, modifier: Modifier = Modifier) {
     val task = state.running ?: return
     val progress = state.progress
     val phase = when (progress?.phase) {
+        RepoPackSyncer.Phase.ARCHIVE -> stringResource(R.string.m3_pack_phase_archive)
         RepoPackSyncer.Phase.CODE -> stringResource(R.string.m3_pack_phase_code)
         RepoPackSyncer.Phase.ISSUES -> stringResource(R.string.m3_pack_phase_issues)
         else -> stringResource(R.string.m3_pack_syncing_meta)
     }
-    val detail = if (progress != null && progress.total > 0) {
-        stringResource(
+    val detail = when {
+        progress == null -> ""
+        progress.total > 0 -> stringResource(
             R.string.m3_pack_sync_progress,
             progress.done,
             progress.total,
             formatBytes(progress.bytes),
         )
-    } else {
-        ""
+        progress.phase == RepoPackSyncer.Phase.ARCHIVE && progress.bytes > 0 ->
+            formatBytes(progress.bytes)
+        else -> ""
     }
 
     Surface(

@@ -1,6 +1,8 @@
 package io.github.busybin.gitrehub.core.offline
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Assert.assertNull
 import org.junit.Test
 
@@ -39,5 +41,15 @@ class RepoPackTaskQueueTest {
         queue.enqueue(task("a"))
         queue.clear()
         assertEquals(emptyList<String>(), queue.snapshot().map { it.fullName })
+    }
+
+    @Test
+    fun removingAutomaticTasksKeepsManualOnesInPlace() {
+        val queue = RepoPackTaskQueue()
+        queue.enqueue(task("manual"))
+        queue.enqueue(RepoPackTask("me", "auto", RepoPackOptions(), auto = true))
+        assertTrue(queue.removeAuto())
+        assertEquals(listOf("me/manual"), queue.snapshot().map { it.fullName })
+        assertFalse(queue.removeAuto())
     }
 }

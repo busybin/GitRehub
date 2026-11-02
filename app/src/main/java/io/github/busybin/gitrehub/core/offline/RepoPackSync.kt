@@ -12,6 +12,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,8 +22,14 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
+import java.io.File
 import java.io.IOException
+import java.util.Collections
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicLong
 
 /**
  * Which files of a tree belong in a pack.
@@ -74,6 +83,24 @@ object RepoPackRules {
         val chosen = small.takeIf { includeSmall }.orEmpty() + large.takeIf { includeLarge }.orEmpty()
         return Triple(chosen, small.sumOf { it.size }, large.sumOf { it.size })
     }
+
+    /** The files that fit the per-pack quota, plus how many candidates were dropped for it. */
+    data class Selection(val files: List<GitTreeEntry>, val skipped: Int)
+
+    /**
+     * Trims [candidates] to [maxBytes] **before** anything is downloaded, so the archive path and
+     * the blob fallback both stop at the same set of files.
+     */
+    fun select(candidates: List<GitTreeEntry>, maxBytes: Long): Selection {
+        var used = 0L
+        val chosen = ArrayList<GitTreeEntry>(candidates.size)
+        for (entry in candidates) {
+            if (used + entry.size > maxBytes) break
+            chosen += entry
+            used += entry.size
+        }
+        return Selection(chosen, candidates.size - chosen.size)
+    }
 }
 
 /** What the dialog asks the user, and what a sync then does. */
@@ -114,6 +141,13 @@ class RepoPackTaskQueue {
 
     fun poll(): RepoPackTask? = items.removeFirstOrNull()
 
+    /** Drops waiting automatic refreshes; manual taps stay queued. */
+    fun removeAuto(): Boolean {
+        val before = items.size
+        items.removeAll { it.auto }
+        return items.size != before
+    }
+
     fun clear() = items.clear()
 }
 
@@ -127,7 +161,7 @@ class RepoPackTaskQueue {
  */
 object RepoPackSyncer {
 
-    enum class Phase { META, CODE, ISSUES }
+    enum class Phase { META, ARCHIVE, CODE, ISSUES }
 
     data class Progress(
         val fullName: String,
@@ -169,10 +203,28 @@ object RepoPackSyncer {
     /** Cap on packed issues: a repository with 5k issues would otherwise own the whole quota. */
     const val MAX_ISSUES = 1000
 
+    /** Above this an archive costs more traffic than the per-file fallback it replaces. */
+    private const val MAX_ARCHIVE_BYTES = 150L * 1024 * 1024
+
+    /**
+     * Tiny packs use blobs directly: a handful of requests is cheap, and it avoids pulling a big
+     * archive full of binaries just to find ten text files.
+     */
+    private const val MIN_FILES_FOR_ARCHIVE = 8
+
+    /**
+     * Parallel blob downloads for the fallback path. OkHttp's shared client allows five requests
+     * per host, so six workers would only queue; five is also well below GitHub's secondary limit.
+     */
+    private const val BLOB_CONCURRENCY = 5
+
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val queue = RepoPackTaskQueue()
     private val lock = Any()
     private var worker: Job? = null
+
+    /** Kept for [cancelAuto], which may have to restart the worker for the manual queue. */
+    private var appContext: Context? = null
 
     /**
      * Bumped by [cancelAll]. A drained worker whose generation is stale stops touching [State], so
@@ -183,20 +235,24 @@ object RepoPackSyncer {
     private val _state = MutableStateFlow(State())
     val state: StateFlow<State> = _state.asStateFlow()
 
-    /** Sizes for the dialog's switches; one tree request and one issue-count request. */
+    /** Sizes for the dialog's switches; the tree and the issue count are fetched in parallel. */
     suspend fun estimate(owner: String, repo: String, branch: String?): Estimate =
         withContext(Dispatchers.IO) {
-            val tree = GitHubApi.gitTree(owner, repo, branch)
-            val result = RepoPackRules.textFiles(tree, includeSmall = true, includeLarge = true)
-            val small = result.first.filter { !RepoPackRules.isLarge(it.size) }
-            val large = result.first.filter { RepoPackRules.isLarge(it.size) }
-            Estimate(
-                smallCount = small.size,
-                smallBytes = result.second,
-                largeCount = large.size,
-                largeBytes = result.third,
-                issueCount = issueCount(owner, repo),
-            )
+            coroutineScope {
+                val treeDeferred = async { GitHubApi.gitTree(owner, repo, branch) }
+                val issuesDeferred = async { issueCount(owner, repo) }
+                val tree = treeDeferred.await()
+                val result = RepoPackRules.textFiles(tree, includeSmall = true, includeLarge = true)
+                val small = result.first.filter { !RepoPackRules.isLarge(it.size) }
+                val large = result.first.filter { RepoPackRules.isLarge(it.size) }
+                Estimate(
+                    smallCount = small.size,
+                    smallBytes = result.second,
+                    largeCount = large.size,
+                    largeBytes = result.third,
+                    issueCount = issuesDeferred.await(),
+                )
+            }
         }
 
     /**
@@ -216,6 +272,7 @@ object RepoPackSyncer {
         val task = RepoPackTask(owner, repo, options, auto)
         val result: Enqueue
         synchronized(lock) {
+            appContext = app
             if (_state.value.running?.fullName == task.fullName) return Enqueue.ALREADY_RUNNING
             queue.enqueue(task)
             _state.update { it.copy(queued = queue.snapshot(), outcome = null) }
@@ -251,6 +308,33 @@ object RepoPackSyncer {
         }
     }
 
+    /**
+     * Stops automatic refreshes only: waiting auto tasks are dropped and a running auto task is
+     * cancelled. Manual tasks keep their place and are drained by a fresh worker.
+     *
+     * The old worker is joined before the replacement starts, so its staging cleanup cannot race
+     * with the next task's staging directory.
+     */
+    fun cancelAuto() {
+        synchronized(lock) {
+            queue.removeAuto()
+            _state.update { it.copy(queued = queue.snapshot()) }
+            val runningAuto = _state.value.running?.auto == true
+            if (!runningAuto) return
+            generation += 1
+            val previous = worker
+            previous?.cancel()
+            _state.update { it.copy(running = null, progress = null) }
+            val app = appContext
+            if (app != null && queue.snapshot().isNotEmpty()) {
+                worker = scope.launch {
+                    previous?.join()
+                    drain(app)
+                }
+            }
+        }
+    }
+
     fun consumeOutcome() {
         _state.update { it.copy(outcome = null) }
     }
@@ -275,6 +359,7 @@ object RepoPackSyncer {
      */
     suspend fun enqueueStale(context: Context, account: String, limit: Int = 5) =
         withContext(Dispatchers.IO) {
+            if (!RepoPackPrefs.isEnabled()) return@withContext
             RepoPacks.index(account).filter { it.autoSync }.take(limit).forEach { meta ->
                 if (isKnown(meta.fullName)) return@forEach
                 if (runCatching { isStale(meta) }.getOrDefault(false)) {
@@ -324,10 +409,20 @@ object RepoPackSyncer {
 
         val detail = GitHubApi.repo(owner, repo)
         val branch = detail.defaultBranch?.takeIf { it.isNotBlank() } ?: "main"
-        val head = runCatching { GitHubApi.branchHeadSha(owner, repo, branch) }.getOrNull()
-            ?: GitHubApi.gitTree(owner, repo, branch).sha
-        val readme = runCatching { GitHubApi.readmeHtml(owner, repo) }.getOrNull()
-        val releaseCount = runCatching { GitHubApi.releases(owner, repo, 1).value.size }.getOrDefault(0)
+        // Three independent requests: head, README and release count.
+        val (head, readme, releaseCount) = coroutineScope {
+            val headDeferred = async {
+                runCatching { GitHubApi.branchHeadSha(owner, repo, branch) }.getOrNull()
+                    ?: GitHubApi.gitTree(owner, repo, branch).sha
+            }
+            val readmeDeferred = async {
+                runCatching { GitHubApi.readmeHtml(owner, repo) }.getOrNull()
+            }
+            val releasesDeferred = async {
+                runCatching { GitHubApi.releases(owner, repo, 1).value.size }.getOrDefault(0)
+            }
+            Triple(headDeferred.await(), readmeDeferred.await(), releasesDeferred.await())
+        }
 
         val meta = RepoPackMeta(
             account = account,
@@ -355,25 +450,35 @@ object RepoPackSyncer {
                     tree, options.includeSmall, options.includeLarge,
                 )
                 skipped += tree.tree.count { it.type == "blob" } - candidates.size
-                report(task, Phase.CODE, 0, candidates.size, 0)
-                val packed = ArrayList<RepoPackFile>(candidates.size)
-                for ((index, entry) in candidates.withIndex()) {
-                    currentCoroutineContext().ensureActive()
-                    requireSameAccount(account)
-                    if (bytes + entry.size > RepoPacks.MAX_REPO_BYTES) {
-                        skipped += candidates.size - index
-                        break
-                    }
-                    val path = entry.path
-                    val sha = entry.sha ?: continue
-                    val text = fetchBlob(owner, repo, sha)
-                    if (text.isEmpty()) throw IOException("Empty blob for $path")
-                    RepoPacks.writeText(context, meta, path, text)
-                    bytes += text.toByteArray(Charsets.UTF_8).size.toLong()
-                    packed += RepoPackFile(path = path, size = entry.size, sha = sha)
-                    report(task, Phase.CODE, index + 1, candidates.size, bytes)
+                val selection = RepoPackRules.select(candidates, RepoPacks.MAX_REPO_BYTES)
+                skipped += selection.skipped
+                val planned = selection.files.map { entry ->
+                    RepoPackFile(path = entry.path, size = entry.size, sha = entry.sha.orEmpty())
                 }
-                files = packed
+                report(task, Phase.CODE, 0, planned.size, 0)
+
+                // One archive request beats hundreds of blob calls. When it is not usable
+                // (blocked codeload, oversized archive, broken zip) fall back to the old path.
+                val fromArchive = if (planned.size >= MIN_FILES_FOR_ARCHIVE) try {
+                    extractArchive(context, meta, task, owner, repo, head, planned)
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (_: Exception) {
+                    null
+                } else {
+                    null
+                }
+                if (fromArchive != null) {
+                    files = fromArchive.files
+                    bytes = fromArchive.bytes
+                    skipped += fromArchive.skipped
+                } else {
+                    // The archive may have written half of the staging tree before failing.
+                    RepoPacks.prepare(context, meta)
+                    val fetched = fetchBlobs(context, meta, task, account, owner, repo, planned)
+                    files = fetched.first
+                    bytes = fetched.second
+                }
             }
 
             requireSameAccount(account)
@@ -402,6 +507,87 @@ object RepoPackSyncer {
         } finally {
             if (!published) RepoPacks.abort(context, meta)
         }
+    }
+
+    /**
+     * Downloads the zipball of [ref] into the cache directory and publishes the planned files into
+     * the staging tree.
+     *
+     * Returns `null` (never throws) when the archive is unavailable or unreadable, so the caller can
+     * silently degrade to the parallel blob path. A cancellation is rethrown.
+     */
+    private suspend fun extractArchive(
+        context: Context,
+        meta: RepoPackMeta,
+        task: RepoPackTask,
+        owner: String,
+        repo: String,
+        ref: String,
+        planned: List<RepoPackFile>,
+    ): RepoPackZip.Result? {
+        val archive = File(context.cacheDir, "pack-${System.nanoTime()}.zip")
+        return try {
+            report(task, Phase.ARCHIVE, 0, 0, 0)
+            var reportedBytes = 0L
+            GitHubApi.downloadZipball(owner, repo, ref, archive, MAX_ARCHIVE_BYTES) { downloaded, _ ->
+                if (downloaded - reportedBytes >= 256 * 1024) {
+                    reportedBytes = downloaded
+                    report(task, Phase.ARCHIVE, 0, 0, downloaded)
+                }
+            }
+            report(task, Phase.CODE, 0, planned.size, 0)
+            RepoPackZip.extract(
+                archive = archive,
+                candidates = planned.associateBy { it.path },
+                maxBytes = RepoPacks.MAX_REPO_BYTES,
+                write = { path, data -> RepoPacks.writeBytes(context, meta, path, data) },
+                onProgress = { done, total, bytes -> report(task, Phase.CODE, done, total, bytes) },
+            )
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            null
+        } finally {
+            runCatching { archive.delete() }
+        }
+    }
+
+    /**
+     * Fallback: one request per file, [BLOB_CONCURRENCY] at a time.
+     *
+     * Every worker checks the account before it touches the disk, so switching accounts halfway
+     * through still aborts the whole pack instead of publishing it for the old account.
+     */
+    private suspend fun fetchBlobs(
+        context: Context,
+        meta: RepoPackMeta,
+        task: RepoPackTask,
+        account: String,
+        owner: String,
+        repo: String,
+        planned: List<RepoPackFile>,
+    ): Pair<List<RepoPackFile>, Long> = coroutineScope {
+        if (planned.isEmpty()) return@coroutineScope emptyList<RepoPackFile>() to 0L
+        val permits = Semaphore(BLOB_CONCURRENCY)
+        val done = AtomicInteger()
+        val bytes = AtomicLong()
+        val packed = Collections.synchronizedList(ArrayList<RepoPackFile>(planned.size))
+        planned.map { file ->
+            async(Dispatchers.IO) {
+                permits.withPermit {
+                    currentCoroutineContext().ensureActive()
+                    requireSameAccount(account)
+                    val text = fetchBlob(owner, repo, file.sha)
+                    if (text.isEmpty()) throw IOException("Empty blob for ${file.path}")
+                    RepoPacks.writeText(context, meta, file.path, text)
+                    val size = text.toByteArray(Charsets.UTF_8).size.toLong()
+                    bytes.addAndGet(size)
+                    packed += RepoPackFile(file.path, size, file.sha)
+                    report(task, Phase.CODE, done.incrementAndGet(), planned.size, bytes.get())
+                }
+            }
+        }.awaitAll()
+        packed.sortedBy { it.path } to bytes.get()
     }
 
     /** Pages through `state=all` (issues and PRs together), capped by [MAX_ISSUES]. */
@@ -475,7 +661,7 @@ object RepoPackSyncer {
         includeSmall = includeSmall,
         includeLarge = includeLarge,
         includeIssues = includeIssues,
-        autoSync = true,
+        autoSync = autoSync,
     )
 
     private class AccountChangedException : Exception()

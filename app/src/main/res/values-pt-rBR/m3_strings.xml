@@ -1085,6 +1085,16 @@ O GitHub não tem canal de push para clientes de terceiros, então isto é uma c
     <string name="m3_pack_syncing_meta">Lendo o repositório…</string>
     <string name="m3_pack_offline_banner">Cópia offline · sincronizada %1$s</string>
     <string name="m3_offline_repos">Repositórios offline</string>
+    <string name="m3_pack_auto_sync_all">Sincronizar repositórios offline</string>
+    <string name="m3_pack_auto_sync_all_hint">Atualiza em segundo plano quando a branch avança. Desligado não há atualizações automáticas.</string>
+    <string name="m3_pack_quota">%1$d repositórios · %2$s / %3$s</string>
+    <string name="m3_pack_badge_code">Código</string>
+    <string name="m3_pack_badge_meta">Somente metadados</string>
+    <string name="m3_pack_badge_issues">Issues</string>
+    <string name="m3_pack_skipped_short">%1$d ignorados</string>
+    <string name="m3_pack_contents">Inclui %1$s</string>
+    <string name="m3_pack_phase_archive">Baixando arquivo…</string>
+    <string name="m3_pack_auto_stopped">Sincronização automática parada</string>
 
     <!-- repo pack: switches, progress, confirmations -->
     <string name="m3_pack_include_small">Arquivos de texto pequenos (≤ 2 MB)</string>

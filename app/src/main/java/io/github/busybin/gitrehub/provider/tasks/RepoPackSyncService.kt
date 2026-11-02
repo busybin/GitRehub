@@ -99,6 +99,8 @@ class RepoPackSyncService : Service() {
                     ),
                 )
                 builder.setProgress(progress.total, progress.done, false)
+            } else if (progress.phase == RepoPackSyncer.Phase.ARCHIVE && progress.bytes > 0) {
+                builder.setContentText(formatBytes(progress.bytes))
             } else {
                 builder.setContentText(getString(R.string.m3_pack_syncing_meta))
             }

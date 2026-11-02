@@ -1258,6 +1258,27 @@ object GitHubApi {
     suspend fun fileText(url: String): String =
         GitHubClient.getTextUrl(url, accept = "application/vnd.github.VERSION.raw")
 
+    /**
+     * Whole-repository archive for [ref] (`GET /repos/{o}/{r}/zipball/{ref}`).
+     *
+     * GitHub answers `302` to a signed `codeload.github.com` URL that is valid without a token, so
+     * the archive arrives in one request instead of one request per file. The partial file is
+     * deleted on failure; callers fall back to blob downloads.
+     */
+    suspend fun downloadZipball(
+        owner: String,
+        repo: String,
+        ref: String,
+        target: java.io.File,
+        maxBytes: Long,
+        onProgress: (downloaded: Long, total: Long) -> Unit = { _, _ -> },
+    ): Long = GitHubClient.download(
+        path = "/repos/$owner/$repo/zipball/${encodePath(ref)}",
+        target = target,
+        maxBytes = maxBytes,
+        onProgress = onProgress,
+    )
+
     // ---------------------------------------------------------------- contents: write paths
 
     /**

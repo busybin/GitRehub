@@ -5,9 +5,11 @@ import io.github.busybin.gitrehub.BuildConfig
 import io.github.busybin.gitrehub.provider.rest.interceptors.AuthenticationInterceptor
 import io.github.busybin.gitrehub.provider.rest.interceptors.CacheResponseInterceptor
 import io.github.busybin.gitrehub.provider.rest.interceptors.OfflineRequestInterceptor
+import okhttp3.Dispatcher
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
+import java.util.concurrent.TimeUnit
 
 object HttpProvider {
 
@@ -41,6 +43,27 @@ object HttpProvider {
         client.addInterceptor(OfflineRequestInterceptor())
         return client.build()
     }
+
+    /**
+     * Client for large transfers (repository zipballs) and the parallel blob fallback.
+     *
+     * Deliberately **without** the disk cache: a 100 MB archive would evict every cached API answer
+     * for one download, and zipballs are single-use anyway. Read timeout is generous because the
+     * archive often comes from `codeload.github.com` on a slow phone connection.
+     */
+    fun provideDownloadClient(): OkHttpClient = OkHttpClient.Builder()
+        .dispatcher(
+            Dispatcher().apply {
+                maxRequests = 32
+                maxRequestsPerHost = 8
+            },
+        )
+        .connectTimeout(20, TimeUnit.SECONDS)
+        .readTimeout(90, TimeUnit.SECONDS)
+        .writeTimeout(30, TimeUnit.SECONDS)
+        .retryOnConnectionFailure(true)
+        .addInterceptor(AuthenticationInterceptor())
+        .build()
 
     /**
      * Same as [provideOkHttpClient] but **never touches the network**: the interceptor that

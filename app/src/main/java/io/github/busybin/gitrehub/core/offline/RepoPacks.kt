@@ -160,6 +160,12 @@ object RepoPacks {
         return runCatching { File(File(dir(context, meta), "files"), safe).readText() }.getOrNull()
     }
 
+    /** Raw bytes of one packaged file; used by the code screen and tests. */
+    fun bytes(context: Context, meta: RepoPackMeta, path: String): ByteArray? {
+        val safe = safePath(path) ?: return null
+        return runCatching { File(File(dir(context, meta), "files"), safe).readBytes() }.getOrNull()
+    }
+
     /**
      * Creates an empty staging tree for the download; returns that directory.
      *
@@ -175,10 +181,30 @@ object RepoPacks {
 
     /** Writes one fetched file into the staging tree; a failed write aborts the whole sync. */
     fun writeText(context: Context, meta: RepoPackMeta, path: String, text: String) {
+        writeBytes(context, meta, path, text.toByteArray(Charsets.UTF_8))
+    }
+
+    /**
+     * Byte-level write used by the zipball path. The archive already contains UTF-8 bytes, so this
+     * avoids decoding and re-encoding every file just to compute its size.
+     */
+    fun writeBytes(context: Context, meta: RepoPackMeta, path: String, data: ByteArray) {
         val safe = safePath(path) ?: return
         val out = File(File(stagingDir(context, meta), "files"), safe)
         out.parentFile?.mkdirs()
-        out.writeText(text)
+        out.writeBytes(data)
+    }
+
+    /** Flips auto-sync for one published pack without touching its files. */
+    fun setAutoSync(context: Context, meta: RepoPackMeta, enabled: Boolean) {
+        val next = readIndex().map {
+            if (it.account == meta.account && it.owner == meta.owner && it.repo == meta.repo) {
+                it.copy(autoSync = enabled)
+            } else {
+                it
+            }
+        }
+        writeIndex(next, context)
     }
 
     /** Drops the staged download after a failure or a cancel. Published packs are untouched. */

@@ -83,4 +83,24 @@ class RepoPackRulesTest {
         assertEquals(32, a.length)
         assertTrue(a != b)
     }
+
+    @Test
+    fun selectionStopsAtTheQuotaAndCountsTheRestAsSkipped() {
+        val candidates = listOf(
+            GitTreeEntry(path = "a.txt", type = "blob", size = 10, sha = "a"),
+            GitTreeEntry(path = "b.txt", type = "blob", size = 10, sha = "b"),
+            GitTreeEntry(path = "c.txt", type = "blob", size = 10, sha = "c"),
+        )
+        val selection = RepoPackRules.select(candidates, maxBytes = 20)
+        assertEquals(listOf("a.txt", "b.txt"), selection.files.map { it.path })
+        assertEquals(1, selection.skipped)
+    }
+
+    @Test
+    fun selectionKeepsEverythingThatFits() {
+        val candidates = listOf(GitTreeEntry(path = "a.txt", type = "blob", size = 10, sha = "a"))
+        val selection = RepoPackRules.select(candidates, maxBytes = 10)
+        assertEquals(1, selection.files.size)
+        assertEquals(0, selection.skipped)
+    }
 }

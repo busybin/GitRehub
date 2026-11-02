@@ -1083,6 +1083,16 @@
     <string name="m3_pack_syncing_meta">Читаем репозиторий…</string>
     <string name="m3_pack_offline_banner">Офлайн-копия · синхронизирована %1$s</string>
     <string name="m3_offline_repos">Репозитории офлайн</string>
+    <string name="m3_pack_auto_sync_all">Синхронизировать офлайн-репозитории</string>
+    <string name="m3_pack_auto_sync_all_hint">Обновляет в фоне при новых коммитах. Выключено — без автообновления.</string>
+    <string name="m3_pack_quota">%1$d репозиториев · %2$s / %3$s</string>
+    <string name="m3_pack_badge_code">Код</string>
+    <string name="m3_pack_badge_meta">Только метаданные</string>
+    <string name="m3_pack_badge_issues">Issues</string>
+    <string name="m3_pack_skipped_short">Пропущено: %1$d</string>
+    <string name="m3_pack_contents">Содержит %1$s</string>
+    <string name="m3_pack_phase_archive">Загрузка архива…</string>
+    <string name="m3_pack_auto_stopped">Автосинхронизация остановлена</string>
 
     <!-- repo pack: switches, progress, confirmations -->
     <string name="m3_pack_include_small">Небольшие текстовые файлы (≤ 2 МБ)</string>

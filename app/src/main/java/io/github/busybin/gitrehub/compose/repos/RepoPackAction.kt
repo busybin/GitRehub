@@ -261,7 +261,14 @@ private fun RepoPackDialog(
                                 LinearProgressIndicator(Modifier.fillMaxWidth())
                                 Spacer(Modifier.height(6.dp))
                                 Text(
-                                    text = stringResource(R.string.m3_pack_syncing_meta),
+                                    text = if (
+                                        progress?.phase == RepoPackSyncer.Phase.ARCHIVE &&
+                                        (progress?.bytes ?: 0L) > 0
+                                    ) {
+                                        formatBytes(progress?.bytes ?: 0L)
+                                    } else {
+                                        stringResource(R.string.m3_pack_syncing_meta)
+                                    },
                                     style = MaterialTheme.typography.bodySmall,
                                 )
                             }
