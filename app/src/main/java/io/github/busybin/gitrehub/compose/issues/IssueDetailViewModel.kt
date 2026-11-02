@@ -22,7 +22,10 @@ import io.github.busybin.gitrehub.core.model.TimelineEvent
 import io.github.busybin.gitrehub.core.model.RepoPermissions
 import io.github.busybin.gitrehub.core.model.User
 import io.github.busybin.gitrehub.core.net.ApiException
+import io.github.busybin.gitrehub.App
 import io.github.busybin.gitrehub.core.net.GitHubApi
+import io.github.busybin.gitrehub.core.offline.RepoPacks
+import io.github.busybin.gitrehub.helper.OfflineStatus
 import io.github.busybin.gitrehub.core.model.Commit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -76,6 +79,8 @@ data class IssueDetailData(
     val autoMerge: AutoMergeRequest? = null,
     /** What the signed-in account may do here; null when the repo lookup failed. */
     val permissions: RepoPermissions? = null,
+    /** Rendered from the offline pack: no comments, no events. */
+    val localOnly: Boolean = false,
 )
 
 /** Candidates for the manage drawer: all repo labels, assignable users and milestones. */
@@ -443,6 +448,9 @@ class IssueDetailViewModel : ViewModel() {
     }
 
     private suspend fun fetch(owner: String, repo: String, number: Int): IssueDetailData {
+        if (!OfflineStatus.isOnline) {
+            localThread(owner, repo, number)?.let { return it }
+        }
         val issue = GitHubApi.issue(owner, repo, number)
         // Actions (close/edit/manage/merge) are only offered when the API says this account may do
         // them: a read-only visitor on someone else's repository must not see live buttons.
@@ -481,5 +489,25 @@ class IssueDetailViewModel : ViewModel() {
             _myLogin.value = runCatching { Session.currentAccount()?.login }.getOrNull()
         }
         return IssueDetailData(issue, pr, comments, commits, events, checks, autoMerge, permissions)
+    }
+
+    /** One issue straight out of the repository pack (body only — comments are not packed). */
+    private suspend fun localThread(owner: String, repo: String, number: Int): IssueDetailData? {
+        val account = runCatching { Session.currentAccount()?.login }.getOrNull() ?: return null
+        val meta = RepoPacks.get(account, owner, repo) ?: return null
+        if (!meta.includeIssues) return null
+        val issue = RepoPacks.issues(App.getInstance(), meta).firstOrNull { it.number == number }
+            ?: return null
+        return IssueDetailData(
+            issue = issue,
+            pullRequest = null,
+            comments = emptyList(),
+            commits = emptyList(),
+            events = emptyList(),
+            checks = emptyList(),
+            autoMerge = null,
+            permissions = null,
+            localOnly = true,
+        )
     }
 }

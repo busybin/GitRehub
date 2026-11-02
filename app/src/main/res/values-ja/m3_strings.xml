@@ -1071,7 +1071,7 @@ GitHub にはサードパーティ製クライアント向けのプッシュチ�
     <string name="m3_pack_title">リポジトリのオフライン保存</string>
     <string name="m3_pack_not_saved">まだ保存されていません</string>
     <string name="m3_pack_saved">保存済み %1$s · %2$s</string>
-    <string name="m3_pack_stats">%1$d ファイル · %2$d リリース</string>
+    <string name="m3_pack_stats">%1$d ファイル · %2$d 件の Issue/PR</string>
     <string name="m3_pack_skipped">%1$d ファイルをスキップ（バイナリまたは 2 MB 超）</string>
     <string name="m3_pack_include_code">ソースコードも保存</string>
     <string name="m3_pack_include_code_hint">テキストファイルのみ、1 ファイル 2 MB まで。</string>
@@ -1085,4 +1085,23 @@ GitHub にはサードパーティ製クライアント向けのプッシュチ�
     <string name="m3_pack_syncing_meta">リポジトリを読み込み中…</string>
     <string name="m3_pack_offline_banner">オフラインコピー · %1$s に同期</string>
     <string name="m3_offline_repos">オフラインのリポジトリ</string>
+
+    <!-- repo pack: switches, progress, confirmations -->
+    <string name="m3_pack_include_small">小さいテキストファイル（2 MB 以下）</string>
+    <string name="m3_pack_include_large">大きいテキストファイル（2〜20 MB）</string>
+    <string name="m3_pack_include_issues">Issue と PR</string>
+    <string name="m3_pack_auto_sync">自動同期</string>
+    <string name="m3_pack_auto_sync_hint">ブランチが進んだら更新します。</string>
+    <string name="m3_pack_issues_count">%1$d 件</string>
+    <string name="m3_pack_none">含まれません</string>
+    <string name="m3_pack_sync_progress">%1$d / %2$d · %3$s</string>
+    <string name="m3_pack_delete_confirm_title">オフラインコピーを削除しますか？</string>
+    <string name="m3_pack_delete_confirm_message">保存したファイルを端末から削除します。</string>
+    <string name="m3_pack_sync_notification_title">%1$s を保存中</string>
+    <string name="m3_pack_sync_notification_text">%1$d / %2$d · %3$s</string>
+    <string name="m3_saved_delete_confirm_title">この保存を削除しますか？</string>
+    <string name="m3_saved_delete_confirm_message">端末からこのファイルを削除します。</string>
+
+    <!-- offline issue banner -->
+    <string name="m3_issue_offline_banner">オフラインコピー · コメントは含みません</string>
 </resources>

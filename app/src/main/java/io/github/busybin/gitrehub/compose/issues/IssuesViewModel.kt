@@ -10,7 +10,11 @@ import io.github.busybin.gitrehub.core.model.Issue
 import io.github.busybin.gitrehub.core.model.Label
 import io.github.busybin.gitrehub.core.model.Milestone
 import io.github.busybin.gitrehub.core.model.User
+import io.github.busybin.gitrehub.App
+import io.github.busybin.gitrehub.core.auth.Session
 import io.github.busybin.gitrehub.core.net.GitHubApi
+import io.github.busybin.gitrehub.core.offline.RepoPacks
+import io.github.busybin.gitrehub.helper.OfflineStatus
 import io.github.busybin.gitrehub.core.net.hasMore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -158,6 +162,10 @@ class IssuesViewModel : PagedViewModel<Issue>() {
 
     override suspend fun fetch(page: Int): PageResult<Issue> {
         if (owner.isBlank() || repo.isBlank()) return PageResult(emptyList(), false)
+        // Offline with a pack that included issues: serve the local copies, no network at all.
+        if (!OfflineStatus.isOnline) {
+            localIssues()?.let { return PageResult(if (page == 1) it else emptyList(), false) }
+        }
         val query = currentQuery
         val out = mutableListOf<Issue>()
         var more = false
@@ -192,6 +200,23 @@ class IssuesViewModel : PagedViewModel<Issue>() {
         // An empty page must not advertise more rows: there is nothing to scroll, so the screen
         // would never ask for the next page.
         return PageResult(out, more && out.isNotEmpty())
+    }
+
+    /** Issues/PRs stored in the repository pack, filtered like the online list. */
+    private suspend fun localIssues(): List<Issue>? {
+        val account = runCatching { Session.currentAccount()?.login }.getOrNull() ?: return null
+        val meta = RepoPacks.get(account, owner, repo) ?: return null
+        if (!meta.includeIssues) return null
+        val all = RepoPacks.issues(App.getInstance(), meta)
+        return all
+            .filter { it.isPullRequest == (kind == IssueKind.PULL) }
+            .filter {
+                when (currentQuery.state) {
+                    IssueFilter.OPEN -> !it.isClosed
+                    IssueFilter.CLOSED -> it.isClosed
+                    IssueFilter.ALL -> true
+                }
+            }
     }
 
     private fun Issue.matchesKind(): Boolean =

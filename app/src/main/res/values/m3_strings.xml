@@ -1088,7 +1088,7 @@ GitHub has no push channel for third-party clients, so this is real polling: the
     <string name="m3_pack_title">Offline repository</string>
     <string name="m3_pack_not_saved">Not saved yet</string>
     <string name="m3_pack_saved">Saved %1$s · %2$s</string>
-    <string name="m3_pack_stats">%1$d files · %2$d releases</string>
+    <string name="m3_pack_stats">%1$d files · %2$d issues</string>
     <string name="m3_pack_skipped">%1$d files skipped (binary or over 2 MB)</string>
     <string name="m3_pack_include_code">Also save source code</string>
     <string name="m3_pack_include_code_hint">Text files only, up to 2 MB each.</string>
@@ -1102,4 +1102,23 @@ GitHub has no push channel for third-party clients, so this is real polling: the
     <string name="m3_pack_syncing_meta">Reading repository…</string>
     <string name="m3_pack_offline_banner">Offline copy · synced %1$s</string>
     <string name="m3_offline_repos">Offline repositories</string>
+
+    <!-- repo pack: switches, progress, confirmations -->
+    <string name="m3_pack_include_small">Small text files (≤ 2 MB)</string>
+    <string name="m3_pack_include_large">Large text files (2–20 MB)</string>
+    <string name="m3_pack_include_issues">Issues and pull requests</string>
+    <string name="m3_pack_auto_sync">Sync automatically</string>
+    <string name="m3_pack_auto_sync_hint">Refresh when the branch moves.</string>
+    <string name="m3_pack_issues_count">%1$d items</string>
+    <string name="m3_pack_none">Not included</string>
+    <string name="m3_pack_sync_progress">%1$d / %2$d · %3$s</string>
+    <string name="m3_pack_delete_confirm_title">Delete the offline copy?</string>
+    <string name="m3_pack_delete_confirm_message">The saved files are removed from this device.</string>
+    <string name="m3_pack_sync_notification_title">Saving %1$s</string>
+    <string name="m3_pack_sync_notification_text">%1$d / %2$d · %3$s</string>
+    <string name="m3_saved_delete_confirm_title">Remove this saved copy?</string>
+    <string name="m3_saved_delete_confirm_message">The file is deleted from this device.</string>
+
+    <!-- offline issue banner -->
+    <string name="m3_issue_offline_banner">Offline copy · comments are not included</string>
 </resources>

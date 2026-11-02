@@ -41,6 +41,7 @@ import io.github.busybin.gitrehub.core.offline.RepoPacks
 import io.github.busybin.gitrehub.compose.common.formatBytes
 import java.util.Date
 import io.github.busybin.gitrehub.R
+import io.github.busybin.gitrehub.compose.common.ConfirmDialog
 import io.github.busybin.gitrehub.compose.common.MetaText
 import io.github.busybin.gitrehub.compose.common.relativeTime
 import io.github.busybin.gitrehub.core.auth.Session
@@ -60,6 +61,8 @@ fun SavedScreen(
     val context = LocalContext.current
     var items by remember { mutableStateOf<List<SavedThreadMeta>>(emptyList()) }
     var packs by remember { mutableStateOf<List<RepoPackMeta>>(emptyList()) }
+    var pendingThread by remember { mutableStateOf<SavedThreadMeta?>(null) }
+    var pendingPack by remember { mutableStateOf<RepoPackMeta?>(null) }
     val packRevision by RepoPacks.revision.collectAsStateWithLifecycle()
     var loading by remember { mutableStateOf(true) }
 
@@ -69,6 +72,35 @@ fun SavedScreen(
         items = if (login == null) emptyList() else OfflineSaves.index(login)
         packs = if (login == null) emptyList() else RepoPacks.index(login)
         loading = false
+    }
+
+    pendingThread?.let { meta ->
+        ConfirmDialog(
+            title = stringResource(R.string.m3_saved_delete_confirm_title),
+            message = stringResource(R.string.m3_saved_delete_confirm_message),
+            confirmLabel = stringResource(R.string.m3_remove),
+            destructive = true,
+            onConfirm = {
+                OfflineSaves.remove(context, meta)
+                items = items.filterNot { it.key == meta.key }
+                pendingThread = null
+            },
+            onDismiss = { pendingThread = null },
+        )
+    }
+    pendingPack?.let { pack ->
+        ConfirmDialog(
+            title = stringResource(R.string.m3_pack_delete_confirm_title),
+            message = stringResource(R.string.m3_pack_delete_confirm_message),
+            confirmLabel = stringResource(R.string.m3_pack_remove),
+            destructive = true,
+            onConfirm = {
+                RepoPacks.remove(context, pack)
+                packs = packs.filterNot { it.fullName == pack.fullName }
+                pendingPack = null
+            },
+            onDismiss = { pendingPack = null },
+        )
     }
 
     Box(Modifier.fillMaxSize()) {
@@ -100,10 +132,7 @@ fun SavedScreen(
                     items(packs, key = { "pack-${it.fullName}" }) { pack ->
                         RepoPackRow(
                             pack = pack,
-                            onRemove = {
-                                RepoPacks.remove(context, pack)
-                                packs = packs.filterNot { it.fullName == pack.fullName }
-                            },
+                            onRemove = { pendingPack = pack },
                         )
                     }
                 }
@@ -120,10 +149,7 @@ fun SavedScreen(
                     SavedRow(
                         meta = meta,
                         onOpen = { onOpen(meta) },
-                        onDelete = {
-                            OfflineSaves.remove(context, meta)
-                            items = items.filterNot { it.key == meta.key }
-                        },
+                        onDelete = { pendingThread = meta },
                     )
                 }
             }

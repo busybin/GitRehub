@@ -1071,7 +1071,7 @@ GitHub n\'a pas de canal push pour les clients tiers, il s\'agit donc d\'une vé
     <string name="m3_pack_title">Dépôt hors ligne</string>
     <string name="m3_pack_not_saved">Pas encore enregistré</string>
     <string name="m3_pack_saved">Enregistré %1$s · %2$s</string>
-    <string name="m3_pack_stats">%1$d fichiers · %2$d versions</string>
+    <string name="m3_pack_stats">%1$d fichiers · %2$d tickets</string>
     <string name="m3_pack_skipped">%1$d fichiers ignorés (binaires ou > 2 Mo)</string>
     <string name="m3_pack_include_code">Enregistrer aussi le code</string>
     <string name="m3_pack_include_code_hint">Fichiers texte uniquement, 2 Mo max chacun.</string>
@@ -1085,4 +1085,23 @@ GitHub n\'a pas de canal push pour les clients tiers, il s\'agit donc d\'une vé
     <string name="m3_pack_syncing_meta">Lecture du dépôt…</string>
     <string name="m3_pack_offline_banner">Copie hors ligne · synchronisée %1$s</string>
     <string name="m3_offline_repos">Dépôts hors ligne</string>
+
+    <!-- repo pack: switches, progress, confirmations -->
+    <string name="m3_pack_include_small">Petits fichiers texte (≤ 2 Mo)</string>
+    <string name="m3_pack_include_large">Gros fichiers texte (2–20 Mo)</string>
+    <string name="m3_pack_include_issues">Tickets et pull requests</string>
+    <string name="m3_pack_auto_sync">Synchroniser automatiquement</string>
+    <string name="m3_pack_auto_sync_hint">Actualiser quand la branche avance.</string>
+    <string name="m3_pack_issues_count">%1$d éléments</string>
+    <string name="m3_pack_none">Non inclus</string>
+    <string name="m3_pack_sync_progress">%1$d / %2$d · %3$s</string>
+    <string name="m3_pack_delete_confirm_title">Supprimer la copie hors ligne ?</string>
+    <string name="m3_pack_delete_confirm_message">Les fichiers enregistrés seront supprimés de cet appareil.</string>
+    <string name="m3_pack_sync_notification_title">Enregistrement de %1$s</string>
+    <string name="m3_pack_sync_notification_text">%1$d / %2$d · %3$s</string>
+    <string name="m3_saved_delete_confirm_title">Supprimer cette copie ?</string>
+    <string name="m3_saved_delete_confirm_message">Le fichier sera supprimé de cet appareil.</string>
+
+    <!-- offline issue banner -->
+    <string name="m3_issue_offline_banner">Copie hors ligne · sans commentaires</string>
 </resources>

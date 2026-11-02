@@ -1071,7 +1071,7 @@ O GitHub não tem canal de push para clientes de terceiros, então isto é uma c
     <string name="m3_pack_title">Repositório offline</string>
     <string name="m3_pack_not_saved">Ainda não salvo</string>
     <string name="m3_pack_saved">Salvo %1$s · %2$s</string>
-    <string name="m3_pack_stats">%1$d arquivos · %2$d versões</string>
+    <string name="m3_pack_stats">%1$d arquivos · %2$d issues</string>
     <string name="m3_pack_skipped">%1$d arquivos ignorados (binários ou acima de 2 MB)</string>
     <string name="m3_pack_include_code">Salvar também o código</string>
     <string name="m3_pack_include_code_hint">Somente arquivos de texto, até 2 MB cada.</string>
@@ -1085,4 +1085,23 @@ O GitHub não tem canal de push para clientes de terceiros, então isto é uma c
     <string name="m3_pack_syncing_meta">Lendo o repositório…</string>
     <string name="m3_pack_offline_banner">Cópia offline · sincronizada %1$s</string>
     <string name="m3_offline_repos">Repositórios offline</string>
+
+    <!-- repo pack: switches, progress, confirmations -->
+    <string name="m3_pack_include_small">Arquivos de texto pequenos (≤ 2 MB)</string>
+    <string name="m3_pack_include_large">Arquivos de texto grandes (2–20 MB)</string>
+    <string name="m3_pack_include_issues">Issues e pull requests</string>
+    <string name="m3_pack_auto_sync">Sincronizar automaticamente</string>
+    <string name="m3_pack_auto_sync_hint">Atualizar quando o branch avançar.</string>
+    <string name="m3_pack_issues_count">%1$d itens</string>
+    <string name="m3_pack_none">Não incluído</string>
+    <string name="m3_pack_sync_progress">%1$d / %2$d · %3$s</string>
+    <string name="m3_pack_delete_confirm_title">Excluir a cópia offline?</string>
+    <string name="m3_pack_delete_confirm_message">Os arquivos salvos serão removidos deste dispositivo.</string>
+    <string name="m3_pack_sync_notification_title">Salvando %1$s</string>
+    <string name="m3_pack_sync_notification_text">%1$d / %2$d · %3$s</string>
+    <string name="m3_saved_delete_confirm_title">Remover esta cópia salva?</string>
+    <string name="m3_saved_delete_confirm_message">O arquivo será removido deste dispositivo.</string>
+
+    <!-- offline issue banner -->
+    <string name="m3_issue_offline_banner">Cópia offline · sem comentários</string>
 </resources>

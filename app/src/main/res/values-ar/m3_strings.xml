@@ -1071,7 +1071,7 @@
     <string name="m3_pack_title">مستودع دون اتصال</string>
     <string name="m3_pack_not_saved">لم يُحفظ بعد</string>
     <string name="m3_pack_saved">محفوظ %1$s · %2$s</string>
-    <string name="m3_pack_stats">%1$d ملفًا · %2$d إصدار</string>
+    <string name="m3_pack_stats">%1$d ملفًا · %2$d مشكلة</string>
     <string name="m3_pack_skipped">تم تخطي %1$d ملفًا (ثنائي أو أكبر من 2 ميغابايت)</string>
     <string name="m3_pack_include_code">حفظ الشيفرة أيضًا</string>
     <string name="m3_pack_include_code_hint">ملفات نصية فقط، بحد أقصى 2 ميغابايت لكل ملف.</string>
@@ -1085,4 +1085,23 @@
     <string name="m3_pack_syncing_meta">جارٍ قراءة المستودع…</string>
     <string name="m3_pack_offline_banner">نسخة دون اتصال · زُوّدت %1$s</string>
     <string name="m3_offline_repos">المستودعات دون اتصال</string>
+
+    <!-- repo pack: switches, progress, confirmations -->
+    <string name="m3_pack_include_small">ملفات نصية صغيرة (≤ 2 ميغابايت)</string>
+    <string name="m3_pack_include_large">ملفات نصية كبيرة (2–20 ميغابايت)</string>
+    <string name="m3_pack_include_issues">المشكلات وطلبات السحب</string>
+    <string name="m3_pack_auto_sync">المزامنة تلقائيًا</string>
+    <string name="m3_pack_auto_sync_hint">التحديث عند تقدّم الفرع.</string>
+    <string name="m3_pack_issues_count">%1$d عنصرًا</string>
+    <string name="m3_pack_none">غير مشمول</string>
+    <string name="m3_pack_sync_progress">%1$d / %2$d · %3$s</string>
+    <string name="m3_pack_delete_confirm_title">هل تريد حذف النسخة دون اتصال؟</string>
+    <string name="m3_pack_delete_confirm_message">ستُحذف الملفات المحفوظة من هذا الجهاز.</string>
+    <string name="m3_pack_sync_notification_title">جارٍ حفظ %1$s</string>
+    <string name="m3_pack_sync_notification_text">%1$d / %2$d · %3$s</string>
+    <string name="m3_saved_delete_confirm_title">هل تريد إزالة هذه النسخة؟</string>
+    <string name="m3_saved_delete_confirm_message">سيُحذف الملف من هذا الجهاز.</string>
+
+    <!-- offline issue banner -->
+    <string name="m3_issue_offline_banner">نسخة دون اتصال · بدون تعليقات</string>
 </resources>

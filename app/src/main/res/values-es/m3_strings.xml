@@ -1071,7 +1071,7 @@ GitHub no tiene canal de notificaciones push para los clientes de terceros, así
     <string name="m3_pack_title">Repositorio sin conexión</string>
     <string name="m3_pack_not_saved">Aún no guardado</string>
     <string name="m3_pack_saved">Guardado %1$s · %2$s</string>
-    <string name="m3_pack_stats">%1$d archivos · %2$d versiones</string>
+    <string name="m3_pack_stats">%1$d archivos · %2$d incidencias</string>
     <string name="m3_pack_skipped">%1$d archivos omitidos (binarios o de más de 2 MB)</string>
     <string name="m3_pack_include_code">Guardar también el código</string>
     <string name="m3_pack_include_code_hint">Solo archivos de texto, hasta 2 MB cada uno.</string>
@@ -1085,4 +1085,23 @@ GitHub no tiene canal de notificaciones push para los clientes de terceros, así
     <string name="m3_pack_syncing_meta">Leyendo el repositorio…</string>
     <string name="m3_pack_offline_banner">Copia sin conexión · sincronizada %1$s</string>
     <string name="m3_offline_repos">Repositorios sin conexión</string>
+
+    <!-- repo pack: switches, progress, confirmations -->
+    <string name="m3_pack_include_small">Archivos de texto pequeños (≤ 2 MB)</string>
+    <string name="m3_pack_include_large">Archivos de texto grandes (2–20 MB)</string>
+    <string name="m3_pack_include_issues">Incidencias y pull requests</string>
+    <string name="m3_pack_auto_sync">Sincronizar automáticamente</string>
+    <string name="m3_pack_auto_sync_hint">Actualizar cuando avance la rama.</string>
+    <string name="m3_pack_issues_count">%1$d elementos</string>
+    <string name="m3_pack_none">No incluido</string>
+    <string name="m3_pack_sync_progress">%1$d / %2$d · %3$s</string>
+    <string name="m3_pack_delete_confirm_title">¿Borrar la copia sin conexión?</string>
+    <string name="m3_pack_delete_confirm_message">Los archivos guardados se eliminarán de este dispositivo.</string>
+    <string name="m3_pack_sync_notification_title">Guardando %1$s</string>
+    <string name="m3_pack_sync_notification_text">%1$d / %2$d · %3$s</string>
+    <string name="m3_saved_delete_confirm_title">¿Quitar esta copia guardada?</string>
+    <string name="m3_saved_delete_confirm_message">El archivo se eliminará de este dispositivo.</string>
+
+    <!-- offline issue banner -->
+    <string name="m3_issue_offline_banner">Copia sin conexión · sin comentarios</string>
 </resources>

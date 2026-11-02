@@ -3,6 +3,7 @@ package io.github.busybin.gitrehub.core.offline
 import android.content.Context
 import io.github.busybin.gitrehub.App
 import io.github.busybin.gitrehub.core.model.CodeEntry
+import io.github.busybin.gitrehub.core.model.Issue
 import io.github.busybin.gitrehub.core.model.Repo
 import io.github.busybin.gitrehub.helper.PrefHelper
 import kotlinx.serialization.Serializable
@@ -33,7 +34,15 @@ data class RepoPackMeta(
     val bytes: Long = 0L,
     val fileCount: Int = 0,
     val skipped: Int = 0,
-    val includeCode: Boolean = false,
+    /** Small text files (≤ [RepoPackRules.SMALL_MAX_BYTES]). */
+    val includeSmall: Boolean = false,
+    /** Large text files (between small and [RepoPackRules.LARGE_MAX_BYTES]). */
+    val includeLarge: Boolean = false,
+    /** Issues and pull requests (metadata + body, no comments). */
+    val includeIssues: Boolean = false,
+    /** Refresh this pack automatically when the default branch moves. */
+    val autoSync: Boolean = true,
+    val issueCount: Int = 0,
     val releaseCount: Int = 0,
 ) {
     val fullName: String get() = "$owner/$repo"
@@ -89,6 +98,11 @@ object RepoPacks {
     fun readmeHtml(context: Context, meta: RepoPackMeta): String? = runCatching {
         File(dir(context, meta), "readme.html").readText().takeIf { it.isNotBlank() }
     }.getOrNull()
+
+    /** Issues and PRs packed with the repository (metadata + body, no comments). */
+    fun issues(context: Context, meta: RepoPackMeta): List<Issue> = runCatching {
+        json.decodeFromString<List<Issue>>(File(dir(context, meta), "issues.json").readText())
+    }.getOrDefault(emptyList())
 
     fun tree(context: Context, meta: RepoPackMeta): List<RepoPackFile> = runCatching {
         json.decodeFromString(
@@ -157,12 +171,14 @@ object RepoPacks {
         repo: Repo,
         readmeHtml: String?,
         files: List<RepoPackFile>,
+        issues: List<Issue> = emptyList(),
     ) {
         val target = dir(context, meta)
         File(target, "meta.json").writeText(json.encodeToString(meta))
         File(target, "repo.json").writeText(json.encodeToString(repo))
         File(target, "tree.json").writeText(json.encodeToString(RepoPackTree(files)))
         readmeHtml?.let { File(target, "readme.html").writeText(it) }
+        File(target, "issues.json").writeText(json.encodeToString(issues))
         val next = (readIndex().filterNot {
             it.account == meta.account && it.owner == meta.owner && it.repo == meta.repo
         } + meta).sortedByDescending { it.syncedAt }

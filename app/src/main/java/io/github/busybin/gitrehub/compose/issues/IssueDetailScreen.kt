@@ -210,6 +210,21 @@ fun IssueDetailScreen(
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(14.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
+                if (data.localOnly) {
+                    item {
+                        androidx.compose.material3.Surface(
+                            color = MaterialTheme.colorScheme.secondaryContainer,
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(
+                                text = stringResource(R.string.m3_issue_offline_banner),
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.padding(12.dp),
+                            )
+                        }
+                    }
+                }
                 item {
                     Text(
                         text = issue.title.orEmpty(),

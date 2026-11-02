@@ -27,7 +27,7 @@ class RepoPackRulesTest {
 
     @Test
     fun hugeAndEmptyFilesAreSkipped() {
-        assertFalse(RepoPackRules.isTextPath("big.json", RepoPackRules.MAX_FILE_BYTES + 1))
+        assertFalse(RepoPackRules.isTextPath("big.json", RepoPackRules.LARGE_MAX_BYTES + 1))
         assertFalse(RepoPackRules.isTextPath("empty.txt", 0))
     }
 
@@ -48,9 +48,24 @@ class RepoPackRulesTest {
                 GitTreeEntry(path = "Main.kt", type = "blob", size = 700, sha = "d"),
             ),
         )
-        val (files, bytes) = RepoPackRules.textFiles(tree)
+        val (files, smallBytes, _) = RepoPackRules.textFiles(tree, includeSmall = true, includeLarge = false)
         assertEquals(listOf("README.md", "Main.kt"), files.map { it.path })
-        assertEquals(1_000L, bytes)
+        assertEquals(1_000L, smallBytes)
+    }
+
+    @Test
+    fun largeFilesAreOnlyPackedWhenAsked() {
+        val tree = GitTree(
+            tree = listOf(
+                GitTreeEntry(path = "small.txt", type = "blob", size = 100, sha = "a"),
+                GitTreeEntry(path = "big.txt", type = "blob", size = RepoPackRules.SMALL_MAX_BYTES + 1, sha = "b"),
+            ),
+        )
+        val (withoutLarge, _, largeBytes) = RepoPackRules.textFiles(tree, true, false)
+        assertEquals(listOf("small.txt"), withoutLarge.map { it.path })
+        assertEquals(RepoPackRules.SMALL_MAX_BYTES + 1, largeBytes)
+        val (withLarge, _, _) = RepoPackRules.textFiles(tree, true, true)
+        assertEquals(listOf("small.txt", "big.txt"), withLarge.map { it.path })
     }
 
     @Test

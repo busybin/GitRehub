@@ -1085,7 +1085,7 @@ github 不给第三方客户端推送通道，所以这是真的轮询：最短 
     <string name="m3_pack_title">离线仓库</string>
     <string name="m3_pack_not_saved">还没有离线副本</string>
     <string name="m3_pack_saved">已保存 %1$s · %2$s</string>
-    <string name="m3_pack_stats">%1$d 个文件 · %2$d 个发布</string>
+    <string name="m3_pack_stats">%1$d 个文件 · %2$d 条 Issue/PR</string>
     <string name="m3_pack_skipped">跳过 %1$d 个文件（二进制或超过 2 MB）</string>
     <string name="m3_pack_include_code">同时保存源代码</string>
     <string name="m3_pack_include_code_hint">仅文本文件，单个不超过 2 MB。</string>
@@ -1099,4 +1099,23 @@ github 不给第三方客户端推送通道，所以这是真的轮询：最短 
     <string name="m3_pack_syncing_meta">正在读取仓库…</string>
     <string name="m3_pack_offline_banner">离线副本 · 同步于 %1$s</string>
     <string name="m3_offline_repos">离线仓库</string>
+
+    <!-- repo pack: switches, progress, confirmations -->
+    <string name="m3_pack_include_small">小文件（≤ 2 MB）</string>
+    <string name="m3_pack_include_large">大文件（2–20 MB）</string>
+    <string name="m3_pack_include_issues">Issues 与 PR</string>
+    <string name="m3_pack_auto_sync">以后自动同步</string>
+    <string name="m3_pack_auto_sync_hint">分支有新提交时自动更新。</string>
+    <string name="m3_pack_issues_count">%1$d 条</string>
+    <string name="m3_pack_none">不包含</string>
+    <string name="m3_pack_sync_progress">%1$d / %2$d · %3$s</string>
+    <string name="m3_pack_delete_confirm_title">删除离线副本？</string>
+    <string name="m3_pack_delete_confirm_message">保存的文件会从本机删除。</string>
+    <string name="m3_pack_sync_notification_title">正在保存 %1$s</string>
+    <string name="m3_pack_sync_notification_text">%1$d / %2$d · %3$s</string>
+    <string name="m3_saved_delete_confirm_title">删除这条离线保存？</string>
+    <string name="m3_saved_delete_confirm_message">文件会从本机删除。</string>
+
+    <!-- offline issue banner -->
+    <string name="m3_issue_offline_banner">离线副本 · 不含评论</string>
 </resources>

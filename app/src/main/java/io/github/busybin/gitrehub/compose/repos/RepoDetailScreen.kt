@@ -198,20 +198,38 @@ fun RepoDetailScreen(
     ) { detail ->
         val packProgress by RepoPackSyncer.progress.collectAsStateWithLifecycle()
         if (packProgress?.fullName == "$owner/$name") {
-            Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp)) {
-                LinearProgressIndicator(Modifier.fillMaxWidth())
-                Text(
-                    text = if ((packProgress?.total ?: 0) > 0) {
-                        stringResource(
-                            R.string.m3_pack_syncing,
-                            packProgress?.done ?: 0,
-                            packProgress?.total ?: 0,
+            Surface(
+                color = MaterialTheme.colorScheme.secondaryContainer,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+            ) {
+                Column(Modifier.padding(10.dp)) {
+                    val done = packProgress?.done ?: 0
+                    val total = packProgress?.total ?: 0
+                    if (total > 0) {
+                        LinearProgressIndicator(
+                            progress = { done.toFloat() / total },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            text = stringResource(
+                                R.string.m3_pack_sync_progress,
+                                done,
+                                total,
+                                io.github.busybin.gitrehub.compose.common.formatBytes(packProgress?.bytes ?: 0L),
+                            ),
+                            style = MaterialTheme.typography.bodySmall,
                         )
                     } else {
-                        stringResource(R.string.m3_pack_syncing_meta)
-                    },
-                    style = MaterialTheme.typography.bodySmall,
-                )
+                        LinearProgressIndicator(Modifier.fillMaxWidth())
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            text = stringResource(R.string.m3_pack_syncing_meta),
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
+                }
             }
         }
         if (detail.localOnly) {

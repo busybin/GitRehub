@@ -4,7 +4,9 @@ import android.content.Context
 import io.github.busybin.gitrehub.core.auth.Session
 import io.github.busybin.gitrehub.core.model.GitTree
 import io.github.busybin.gitrehub.core.model.GitTreeEntry
+import io.github.busybin.gitrehub.core.model.Issue
 import io.github.busybin.gitrehub.core.net.GitHubApi
+import io.github.busybin.gitrehub.provider.tasks.RepoPackSyncService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -24,8 +26,11 @@ import kotlinx.coroutines.withContext
  */
 object RepoPackRules {
 
-    /** Single-file ceiling: a 30 MB minified bundle would blow the per-repo quota in one file. */
-    const val MAX_FILE_BYTES = 2L * 1024 * 1024
+    /** Below this a text file counts as "small" (the switch users leave on by default). */
+    const val SMALL_MAX_BYTES = 2L * 1024 * 1024
+
+    /** Absolute ceiling: anything bigger is never packed, even with "large files" on. */
+    const val LARGE_MAX_BYTES = 20L * 1024 * 1024
 
     private val BINARY = setOf(
         "png", "jpg", "jpeg", "gif", "webp", "ico", "bmp", "tif", "tiff", "psd", "ai",
@@ -33,44 +38,75 @@ object RepoPackRules {
         "so", "dll", "exe", "dylib", "class", "o", "a", "obj", "wasm",
         "ttf", "otf", "woff", "woff2", "eot",
         "mp3", "mp4", "m4a", "wav", "flac", "ogg", "webm", "mkv", "avi", "mov",
-        "blend", "fbx", "glb", "gltf", "stl", "obj", "dae",
+        "blend", "fbx", "glb", "gltf", "stl", "dae",
         "db", "sqlite", "bin", "dat", "iso", "img",
         "jks", "keystore", "p12", "pfx",
     )
 
     fun isTextPath(path: String, size: Long): Boolean {
-        if (size <= 0 || size > MAX_FILE_BYTES) return false
+        if (size <= 0 || size > LARGE_MAX_BYTES) return false
         val clean = path.trim('/')
         if (clean.isBlank() || clean.startsWith(".git/") || "/node_modules/" in "/$clean/") return false
         val ext = clean.substringAfterLast('.', "").lowercase()
         return ext !in BINARY
     }
 
-    /** Blobs that belong in the pack, with the total their sizes add up to. */
-    fun textFiles(tree: GitTree): Pair<List<GitTreeEntry>, Long> {
-        val files = tree.tree.filter {
+    fun isLarge(size: Long): Boolean = size > SMALL_MAX_BYTES
+
+    /**
+     * Blobs in the pack given the two switches. Small and large are independent on purpose: a
+     * repository with a few giant generated files should still be savable without them.
+     */
+    fun textFiles(
+        tree: GitTree,
+        includeSmall: Boolean,
+        includeLarge: Boolean,
+    ): Triple<List<GitTreeEntry>, Long, Long> {
+        val candidates = tree.tree.filter {
             it.type == "blob" && isTextPath(it.path, it.size) && !it.sha.isNullOrBlank()
         }
-        return files to files.sumOf { it.size }
+        val small = candidates.filter { !isLarge(it.size) }
+        val large = candidates.filter { isLarge(it.size) }
+        val chosen = small.takeIf { includeSmall }.orEmpty() + large.takeIf { includeLarge }.orEmpty()
+        return Triple(chosen, small.sumOf { it.size }, large.sumOf { it.size })
     }
 }
+
+/** What the dialog asks the user, and what a sync then does. */
+data class RepoPackOptions(
+    val includeSmall: Boolean = true,
+    val includeLarge: Boolean = false,
+    val includeIssues: Boolean = false,
+    val autoSync: Boolean = true,
+)
 
 /**
  * Downloads and refreshes whole-repository packs.
  *
- * One sync at a time, on a process-wide scope: the user may leave the repository screen while the
- * download continues. Everything is sequential on purpose — a burst of blob requests is exactly
- * what triggers GitHub's secondary rate limit.
+ * One sync at a time, on a process-wide scope, with a foreground service behind it so the progress
+ * notification survives leaving the app.
  */
 object RepoPackSyncer {
 
     data class Progress(
         val fullName: String,
         val step: String,
+        /** 0 while the size is still unknown (indeterminate bar). */
         val done: Int = 0,
         val total: Int = 0,
         val bytes: Long = 0L,
     )
+
+    data class Estimate(
+        val smallCount: Int = 0,
+        val smallBytes: Long = 0,
+        val largeCount: Int = 0,
+        val largeBytes: Long = 0,
+        val issueCount: Int = 0,
+    )
+
+    /** Cap on packed issues: a repository with 5k issues would otherwise own the whole quota. */
+    const val MAX_ISSUES = 1000
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val mutex = Mutex()
@@ -78,40 +114,44 @@ object RepoPackSyncer {
     private val _progress = MutableStateFlow<Progress?>(null)
     val progress: StateFlow<Progress?> = _progress.asStateFlow()
 
-    /** Size of the text files of [branch], used by the "include source code" switch. */
-    suspend fun estimate(owner: String, repo: String, branch: String?): Pair<Int, Long> =
+    /** Sizes for the dialog's three switches; one tree request and one issue-count request. */
+    suspend fun estimate(owner: String, repo: String, branch: String?): Estimate =
         withContext(Dispatchers.IO) {
             val tree = GitHubApi.gitTree(owner, repo, branch)
-            val (files, bytes) = RepoPackRules.textFiles(tree)
-            files.size to bytes
+            val result = RepoPackRules.textFiles(tree, includeSmall = true, includeLarge = true)
+            val small = result.first.filter { !RepoPackRules.isLarge(it.size) }
+            val large = result.first.filter { RepoPackRules.isLarge(it.size) }
+            Estimate(
+                smallCount = small.size,
+                smallBytes = result.second,
+                largeCount = large.size,
+                largeBytes = result.third,
+                issueCount = issueCount(owner, repo),
+            )
         }
 
-    /**
-     * Starts a sync in the background. Returns false when another sync is already running; packs
-     * are small enough that queueing would only confuse the progress UI.
-     */
-    fun start(
-        context: Context,
-        owner: String,
-        repo: String,
-        includeCode: Boolean,
-    ): Boolean {
+    /** Total issue + PR count; `per_page=1` keeps the payload tiny, the total is the last page. */
+    private suspend fun issueCount(owner: String, repo: String): Int = runCatching {
+        val page = GitHubApi.issuesSince(owner, repo, "1970-01-01T00:00:00Z")
+        page.links.last ?: page.value.size
+    }.getOrDefault(0)
+
+    /** Starts a sync (foreground service + notification). False when one is already running. */
+    fun start(context: Context, owner: String, repo: String, options: RepoPackOptions): Boolean {
         if (_progress.value != null) return false
         val app = context.applicationContext
-        scope.launch {
-            mutex.withLock { runSync(app, owner, repo, includeCode) }
-        }
+        RepoPackSyncService.start(app, owner, repo, options)
         return true
     }
 
-    private suspend fun runSync(context: Context, owner: String, repo: String, includeCode: Boolean) {
-        try {
-            sync(context, owner, repo, includeCode)
-        } catch (_: Throwable) {
-            // A failed pack must not leave the UI stuck on "syncing"; the old pack stays as it was.
-        } finally {
-            _progress.value = null
-        }
+    /** Runs the sync on the caller's coroutine; used by [RepoPackSyncService]. */
+    suspend fun syncNow(
+        context: Context,
+        owner: String,
+        repo: String,
+        options: RepoPackOptions,
+    ) = withContext(Dispatchers.IO) {
+        mutex.withLock { runSync(context, owner, repo, options) }
     }
 
     /** True when the default branch moved since the pack was taken. */
@@ -122,19 +162,43 @@ object RepoPackSyncer {
         head != meta.headSha
     }
 
-    /** Refreshes every pack of the current account whose branch moved (at most [limit] per pass). */
+    /** Refreshes packs that opted into auto-sync and whose branch moved (at most [limit] a pass). */
     suspend fun syncStale(context: Context, account: String, limit: Int = 5) = withContext(Dispatchers.IO) {
         if (_progress.value != null) return@withContext
-        mutex.withLock {
-            RepoPacks.index(account).take(limit).forEach { meta ->
-                if (runCatching { isStale(meta) }.getOrDefault(false)) {
-                    runSync(context, meta.owner, meta.repo, meta.includeCode)
-                }
+        RepoPacks.index(account).filter { it.autoSync }.take(limit).forEach { meta ->
+            if (runCatching { isStale(meta) }.getOrDefault(false)) {
+                val options = RepoPackOptions(
+                    includeSmall = meta.includeSmall,
+                    includeLarge = meta.includeLarge,
+                    includeIssues = meta.includeIssues,
+                    autoSync = true,
+                )
+                mutex.withLock { runSync(context, meta.owner, meta.repo, options) }
             }
         }
     }
 
-    private suspend fun sync(context: Context, owner: String, repo: String, includeCode: Boolean) {
+    private suspend fun runSync(
+        context: Context,
+        owner: String,
+        repo: String,
+        options: RepoPackOptions,
+    ) {
+        try {
+            sync(context, owner, repo, options)
+        } catch (_: Throwable) {
+            // A failed pack must not leave the UI stuck on "syncing"; the old pack stays as it was.
+        } finally {
+            _progress.value = null
+        }
+    }
+
+    private suspend fun sync(
+        context: Context,
+        owner: String,
+        repo: String,
+        options: RepoPackOptions,
+    ) {
         val account = Session.currentAccount()?.login ?: return
         _progress.value = Progress("$owner/$repo", "meta")
         val detail = GitHubApi.repo(owner, repo)
@@ -151,7 +215,10 @@ object RepoPackSyncer {
             branch = branch,
             headSha = head,
             syncedAt = System.currentTimeMillis(),
-            includeCode = includeCode,
+            includeSmall = options.includeSmall,
+            includeLarge = options.includeLarge,
+            includeIssues = options.includeIssues,
+            autoSync = options.autoSync,
             releaseCount = releaseCount,
         )
         RepoPacks.prepare(context, meta)
@@ -159,9 +226,11 @@ object RepoPackSyncer {
         var files = emptyList<RepoPackFile>()
         var bytes = 0L
         var skipped = 0
-        if (includeCode) {
+        if (options.includeSmall || options.includeLarge) {
             val tree = GitHubApi.gitTree(owner, repo, head)
-            val (candidates, _) = RepoPackRules.textFiles(tree)
+            val (candidates, _, _) = RepoPackRules.textFiles(
+                tree, options.includeSmall, options.includeLarge,
+            )
             val allBlobs = tree.tree.count { it.type == "blob" }
             skipped += allBlobs - candidates.size
             _progress.value = Progress(meta.fullName, "code", 0, candidates.size)
@@ -188,12 +257,54 @@ object RepoPackSyncer {
             files = packed
         }
 
+        var issues: List<Issue> = emptyList()
+        if (options.includeIssues) {
+            issues = fetchIssues(context, owner, repo, account, meta.fullName)
+        }
+
         RepoPacks.finish(
             context = context,
-            meta = meta.copy(bytes = bytes, fileCount = files.size, skipped = skipped),
+            meta = meta.copy(
+                bytes = bytes,
+                fileCount = files.size,
+                skipped = skipped,
+                issueCount = issues.size,
+            ),
             repo = detail,
             readmeHtml = readme,
             files = files,
+            issues = issues,
         )
+    }
+
+    /** Pages through `state=all` (issues and PRs together), capped by [MAX_ISSUES]. */
+    private suspend fun fetchIssues(
+        context: Context,
+        owner: String,
+        repo: String,
+        account: String,
+        fullName: String,
+    ): List<Issue> {
+        val collected = ArrayList<Issue>()
+        val expected = issueCount(owner, repo).coerceAtMost(MAX_ISSUES)
+        var page = 1
+        while (collected.size < MAX_ISSUES) {
+            _progress.value = Progress(fullName, "issues", collected.size, expected)
+            val response = runCatching {
+                GitHubApi.repoIssues(
+                    owner = owner,
+                    repo = repo,
+                    state = "all",
+                    sort = "updated",
+                    page = page,
+                )
+            }.getOrNull() ?: break
+            if (response.value.isEmpty()) break
+            collected += response.value
+            if (response.links.next == null) break
+            if (runCatching { Session.currentAccount()?.login }.getOrNull() != account) break
+            page += 1
+        }
+        return collected.take(MAX_ISSUES)
     }
 }

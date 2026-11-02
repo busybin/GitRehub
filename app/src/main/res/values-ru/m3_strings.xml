@@ -1069,7 +1069,7 @@
     <string name="m3_pack_title">Репозиторий офлайн</string>
     <string name="m3_pack_not_saved">Ещё не сохранено</string>
     <string name="m3_pack_saved">Сохранено %1$s · %2$s</string>
-    <string name="m3_pack_stats">Файлов: %1$d · релизов: %2$d</string>
+    <string name="m3_pack_stats">Файлов: %1$d · задач: %2$d</string>
     <string name="m3_pack_skipped">Пропущено файлов: %1$d (бинарные или > 2 МБ)</string>
     <string name="m3_pack_include_code">Сохранять и исходники</string>
     <string name="m3_pack_include_code_hint">Только текстовые файлы, до 2 МБ каждый.</string>
@@ -1083,4 +1083,23 @@
     <string name="m3_pack_syncing_meta">Читаем репозиторий…</string>
     <string name="m3_pack_offline_banner">Офлайн-копия · синхронизирована %1$s</string>
     <string name="m3_offline_repos">Репозитории офлайн</string>
+
+    <!-- repo pack: switches, progress, confirmations -->
+    <string name="m3_pack_include_small">Небольшие текстовые файлы (≤ 2 МБ)</string>
+    <string name="m3_pack_include_large">Большие текстовые файлы (2–20 МБ)</string>
+    <string name="m3_pack_include_issues">Задачи и pull request</string>
+    <string name="m3_pack_auto_sync">Синхронизировать автоматически</string>
+    <string name="m3_pack_auto_sync_hint">Обновлять при новых коммитах в ветке.</string>
+    <string name="m3_pack_issues_count">%1$d записей</string>
+    <string name="m3_pack_none">Не включено</string>
+    <string name="m3_pack_sync_progress">%1$d / %2$d · %3$s</string>
+    <string name="m3_pack_delete_confirm_title">Удалить офлайн-копию?</string>
+    <string name="m3_pack_delete_confirm_message">Сохранённые файлы будут удалены с устройства.</string>
+    <string name="m3_pack_sync_notification_title">Сохранение %1$s</string>
+    <string name="m3_pack_sync_notification_text">%1$d / %2$d · %3$s</string>
+    <string name="m3_saved_delete_confirm_title">Удалить сохранённую копию?</string>
+    <string name="m3_saved_delete_confirm_message">Файл будет удалён с устройства.</string>
+
+    <!-- offline issue banner -->
+    <string name="m3_issue_offline_banner">Офлайн-копия · без комментариев</string>
 </resources>
