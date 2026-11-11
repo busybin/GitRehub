@@ -147,7 +147,13 @@ fun ProfileHeader(
 @Composable
 internal fun Stat(label: String, value: String) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+        // The figure is monospace and tabular so the three columns line up at any font size.
+        Text(
+            value,
+            style = MaterialTheme.typography.titleLarge.copy(fontFeatureSettings = "tnum"),
+            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+        )
+        Spacer(Modifier.height(2.dp))
         Text(
             label,
             style = MaterialTheme.typography.labelMedium,

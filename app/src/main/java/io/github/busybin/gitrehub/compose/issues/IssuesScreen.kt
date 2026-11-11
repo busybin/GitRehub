@@ -75,6 +75,8 @@ import io.github.busybin.gitrehub.compose.common.render
 import io.github.busybin.gitrehub.compose.common.Avatar
 import io.github.busybin.gitrehub.compose.common.MetaText
 import io.github.busybin.gitrehub.compose.common.Pill
+import io.github.busybin.gitrehub.compose.common.labelColor
+import io.github.busybin.gitrehub.compose.common.openGreen
 import io.github.busybin.gitrehub.compose.common.isWideLayout
 import io.github.busybin.gitrehub.compose.common.relativeTime
 import io.github.busybin.gitrehub.core.model.Issue
@@ -575,12 +577,10 @@ fun IssueRow(
                 onLongClick = onLongPress,
             ),
         colors = CardDefaults.cardColors(
-            // Highlight the row shown in the right column on wide screens.
-            containerColor = when {
-                checked -> MaterialTheme.colorScheme.primaryContainer
-                selected -> MaterialTheme.colorScheme.secondaryContainer
-                else -> MaterialTheme.colorScheme.surfaceContainerLow
-            },
+            // Highlight the row shown in the right column on wide screens. Both states are one
+            // neutral step, not an accent fill: the row itself carries the colour.
+            containerColor = if (checked || selected) MaterialTheme.colorScheme.surfaceContainerHigh
+            else MaterialTheme.colorScheme.surfaceContainerLow,
         ),
         shape = tokens.cardShape,
     ) {
@@ -599,8 +599,7 @@ fun IssueRow(
                     Icons.Outlined.ErrorOutline
                 },
                 contentDescription = null,
-                tint = if (closed) MaterialTheme.colorScheme.outline
-                else Color(0xFF1A7F37),
+                tint = if (closed) MaterialTheme.colorScheme.outline else openGreen(),
                 modifier = Modifier
                     .padding(top = 2.dp)
                     .size(20.dp),
@@ -609,7 +608,7 @@ fun IssueRow(
             Column(Modifier.weight(1f)) {
                 Text(
                     text = issue.title.orEmpty(),
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Medium,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
@@ -619,7 +618,8 @@ fun IssueRow(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    MetaText("#${issue.number} · ${relativeTime(issue.createdAt)}")
+                    MetaText("#${issue.number}", mono = true)
+                    MetaText(relativeTime(issue.createdAt))
                     if (isPullRequest) Pill(stringResource(R.string.m3_notif_pr))
                     if (issue.comments > 0) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -639,7 +639,7 @@ fun IssueRow(
                     Spacer(Modifier.height(8.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         labels.take(3).forEach { label ->
-                            Pill(label.name.orEmpty())
+                            Pill(label.name.orEmpty(), leadingDot = labelColor(label.color))
                         }
                     }
                 }

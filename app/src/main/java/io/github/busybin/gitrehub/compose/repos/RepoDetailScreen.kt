@@ -63,11 +63,12 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
 import androidx.compose.material3.rememberModalBottomSheetState
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Text
@@ -84,6 +85,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.geometry.CornerRadius
@@ -165,6 +167,7 @@ fun RepoDetailScreen(
     val vm: RepoDetailViewModel = viewModel()
     val state by vm.state.collectAsStateWithLifecycle()
     val starBusy by vm.starBusy.collectAsStateWithLifecycle()
+    val refreshing by vm.refreshing.collectAsStateWithLifecycle()
     val forkBusy by vm.forkBusy.collectAsStateWithLifecycle()
     val forkOwned by vm.forkOwned.collectAsStateWithLifecycle()
     val forked by vm.forked.collectAsStateWithLifecycle()
@@ -259,563 +262,571 @@ fun RepoDetailScreen(
         }
 
         var containerHeight by remember { mutableIntStateOf(0) }
-        Box(Modifier.fillMaxSize().onSizeChanged { containerHeight = it.height }) {
-            // In-page anchors (`#xxx` in a README) must scroll inside this same container: remember its
-            // top Y in the window, then convert the README block's window position into a content offset.
-            var containerTopInWindow by remember { mutableFloatStateOf(0f) }
-            var readmeTop by remember { mutableFloatStateOf(0f) }
-            var readmeOffset by remember { mutableFloatStateOf(-1f) }
-            val sections = outline.sections
-            val currentSection by remember(sections) {
-                derivedStateOf {
-                    when {
-                        sections.isEmpty() -> 0
-                        // The page may end mid-section: at the bottom the last heading is the one
-                        // being read, even though its top is still below the viewport head.
-                        scrollState.maxValue > 0 && scrollState.value >= scrollState.maxValue - 8 ->
-                            sections.lastIndex
-                        else -> {
-                            // Viewport head in README coordinates, a quarter down so a heading
-                            // becomes current once it reaches the reading area. Derived from the
-                            // scroll offset, not from the view's window position: that one is not
-                            // updated while the container scrolls.
-                            val base = if (readmeOffset >= 0f) {
-                                readmeOffset
-                            } else {
-                                scrollState.value + (readmeTop - containerTopInWindow)
+        PullToRefreshBox(
+            isRefreshing = refreshing,
+            onRefresh = { vm.refresh() },
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            Box(Modifier.fillMaxSize().onSizeChanged { containerHeight = it.height }) {
+                // In-page anchors (`#xxx` in a README) must scroll inside this same container: remember its
+                // top Y in the window, then convert the README block's window position into a content offset.
+                var containerTopInWindow by remember { mutableFloatStateOf(0f) }
+                var readmeTop by remember { mutableFloatStateOf(0f) }
+                var readmeOffset by remember { mutableFloatStateOf(-1f) }
+                val sections = outline.sections
+                val currentSection by remember(sections) {
+                    derivedStateOf {
+                        when {
+                            sections.isEmpty() -> 0
+                            // The page may end mid-section: at the bottom the last heading is the one
+                            // being read, even though its top is still below the viewport head.
+                            scrollState.maxValue > 0 && scrollState.value >= scrollState.maxValue - 8 ->
+                                sections.lastIndex
+                            else -> {
+                                // Viewport head in README coordinates, a quarter down so a heading
+                                // becomes current once it reaches the reading area. Derived from the
+                                // scroll offset, not from the view's window position: that one is not
+                                // updated while the container scrolls.
+                                val base = if (readmeOffset >= 0f) {
+                                    readmeOffset
+                                } else {
+                                    scrollState.value + (readmeTop - containerTopInWindow)
+                                }
+                                val line = scrollState.value - base + containerHeight * 0.25f
+                                sections.indexOfLast { (outline.yOf(it) ?: Int.MAX_VALUE) <= line }
+                                    .coerceAtLeast(0)
                             }
-                            val line = scrollState.value - base + containerHeight * 0.25f
-                            sections.indexOfLast { (outline.yOf(it) ?: Int.MAX_VALUE) <= line }
-                                .coerceAtLeast(0)
                         }
                     }
                 }
-            }
-            fun jumpTo(index: Int, animate: Boolean) {
-                val section = sections.getOrNull(index) ?: return
-                val y = outline.yOf(section) ?: return
-                val base = if (readmeOffset >= 0f) {
-                    readmeOffset
-                } else {
-                    scrollState.value + (readmeTop - containerTopInWindow)
-                }
-                val target = base + y - with(density) { 8.dp.toPx() }
-                if (animate) {
-                    scope.launch { scrollState.animateScrollTo(target.toInt().coerceAtLeast(0)) }
-                } else {
-                    scope.launch { scrollState.scrollTo(target.toInt().coerceAtLeast(0)) }
-                }
-            }
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .verticalScroll(scrollState)
-                    .onGloballyPositioned { containerTopInWindow = it.positionInWindow().y }
-                    .padding(14.dp),
-            ) {
-                // Part of the scrolling page on purpose: a root-level sibling would be covered by
-                // the page (NavHost stacks root children), which is how the old banner disappeared.
-                if (detail.localOnly) {
-                    androidx.compose.material3.Surface(
-                        color = MaterialTheme.colorScheme.secondaryContainer,
-                        shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
-                        modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp),
-                    ) {
-                        Text(
-                            text = stringResource(
-                                R.string.m3_pack_offline_banner,
-                                relativeTime(java.util.Date(detail.packSyncedAt)),
-                            ),
-                            style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                        )
+                fun jumpTo(index: Int, animate: Boolean) {
+                    val section = sections.getOrNull(index) ?: return
+                    val y = outline.yOf(section) ?: return
+                    val base = if (readmeOffset >= 0f) {
+                        readmeOffset
+                    } else {
+                        scrollState.value + (readmeTop - containerTopInWindow)
+                    }
+                    val target = base + y - with(density) { 8.dp.toPx() }
+                    if (animate) {
+                        scope.launch { scrollState.animateScrollTo(target.toInt().coerceAtLeast(0)) }
+                    } else {
+                        scope.launch { scrollState.scrollTo(target.toInt().coerceAtLeast(0)) }
                     }
                 }
-                Row(
-                    modifier = Modifier.clickable {
-                        onOpenUser(repo.owner?.login ?: owner)
-                    },
-                    verticalAlignment = Alignment.CenterVertically,
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(scrollState)
+                        .onGloballyPositioned { containerTopInWindow = it.positionInWindow().y }
+                        .padding(14.dp),
                 ) {
-                    Avatar(repo.owner?.avatarUrl, size = 28.dp)
-                    Spacer(Modifier.width(8.dp))
-                    Column {
-                        Text(
-                            text = repo.owner?.login ?: owner,
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.primary,
-                            fontWeight = FontWeight.Medium,
-                        )
-                        Text(
-                            text = repo.name.ifBlank { name },
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                        )
+                    // Part of the scrolling page on purpose: a root-level sibling would be covered by
+                    // the page (NavHost stacks root children), which is how the old banner disappeared.
+                    if (detail.localOnly) {
+                        androidx.compose.material3.Surface(
+                            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp),
+                        ) {
+                            Text(
+                                text = stringResource(
+                                    R.string.m3_pack_offline_banner,
+                                    relativeTime(java.util.Date(detail.packSyncedAt)),
+                                ),
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                            )
+                        }
                     }
-                }
-                // A fork should show who the upstream is, and link to it.
-                val parent = repo.parent
-                val parentOwner = parent?.owner?.login
-                val parentName = parent?.name
-                if (!parentOwner.isNullOrBlank() && !parentName.isNullOrBlank()) {
-                    Spacer(Modifier.height(4.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Outlined.ForkRight,
-                            contentDescription = null,
-                            modifier = Modifier.size(14.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Spacer(Modifier.width(6.dp))
+                    Row(
+                        modifier = Modifier.clickable {
+                            onOpenUser(repo.owner?.login ?: owner)
+                        },
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Avatar(repo.owner?.avatarUrl, size = 32.dp)
+                        Spacer(Modifier.width(10.dp))
+                        Column {
+                            Text(
+                                text = repo.owner?.login ?: owner,
+                                style = MaterialTheme.typography.labelMedium,
+                                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            Text(
+                                text = repo.name.ifBlank { name },
+                                style = MaterialTheme.typography.titleLarge,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    }
+                    // A fork should show who the upstream is, and link to it.
+                    val parent = repo.parent
+                    val parentOwner = parent?.owner?.login
+                    val parentName = parent?.name
+                    if (!parentOwner.isNullOrBlank() && !parentName.isNullOrBlank()) {
+                        Spacer(Modifier.height(4.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Outlined.ForkRight,
+                                contentDescription = null,
+                                modifier = Modifier.size(14.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                text = stringResource(R.string.m3_forked_from),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                text = "$parentOwner/$parentName",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.clickable { onOpenRepo(parentOwner, parentName) },
+                            )
+                        }
+                    }
+                    if (!repo.description.isNullOrBlank()) {
+                        Spacer(Modifier.height(6.dp))
                         Text(
-                            text = stringResource(R.string.m3_forked_from),
-                            style = MaterialTheme.typography.labelMedium,
+                            text = repo.description,
+                            style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
-                        Spacer(Modifier.width(6.dp))
-                        Text(
-                            text = "$parentOwner/$parentName",
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.clickable { onOpenRepo(parentOwner, parentName) },
-                        )
                     }
-                }
-                if (!repo.description.isNullOrBlank()) {
-                    Spacer(Modifier.height(6.dp))
-                    Text(
-                        text = repo.description,
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                if (repo.topics.isNotEmpty()) {
-                    Spacer(Modifier.height(8.dp))
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp),
-                    ) {
-                        repo.topics.forEach { topic -> Pill(topic) }
+                    if (repo.topics.isNotEmpty()) {
+                        Spacer(Modifier.height(8.dp))
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            repo.topics.forEach { topic -> Pill(topic) }
+                        }
                     }
-                }
 
-                // ----- Stat chips (tappable: stars -> stargazers, forks -> fork list)
-                Spacer(Modifier.height(12.dp))
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    if (!repo.language.isNullOrBlank()) {
+                    // ----- Stat chips (tappable: stars -> stargazers, forks -> fork list)
+                    Spacer(Modifier.height(12.dp))
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        if (!repo.language.isNullOrBlank()) {
+                            StatChip(
+                                icon = null,
+                                value = repo.language,
+                                dot = languageColor(context, repo.language),
+                                onClick = null,
+                            )
+                        }
                         StatChip(
-                            icon = null,
-                            value = repo.language,
-                            dot = languageColor(context, repo.language),
-                            onClick = null,
+                            icon = Icons.Outlined.StarBorder,
+                            value = compactNumber(repo.stargazersCount),
+                            label = stringResource(R.string.m3_starred_pill),
+                            onClick = { onOpenStargazers(owner, name) },
+                        )
+                        StatChip(
+                            icon = Icons.Outlined.ForkRight,
+                            value = compactNumber(repo.forksCount),
+                            label = stringResource(R.string.m3_forks),
+                            onClick = { onOpenForks(owner, name) },
+                        )
+                        StatChip(
+                            icon = Icons.Outlined.Groups,
+                            value = compactNumber(repo.watchersCount),
+                            label = stringResource(R.string.m3_watchers),
+                            onClick = { onOpenWatchers(owner, name) },
                         )
                     }
-                    StatChip(
-                        icon = Icons.Outlined.StarBorder,
-                        value = compactNumber(repo.stargazersCount),
-                        label = stringResource(R.string.m3_starred_pill),
-                        onClick = { onOpenStargazers(owner, name) },
-                    )
-                    StatChip(
-                        icon = Icons.Outlined.ForkRight,
-                        value = compactNumber(repo.forksCount),
-                        label = stringResource(R.string.m3_forks),
-                        onClick = { onOpenForks(owner, name) },
-                    )
-                    StatChip(
-                        icon = Icons.Outlined.Groups,
-                        value = compactNumber(repo.watchersCount),
-                        label = stringResource(R.string.m3_watchers),
-                        onClick = { onOpenWatchers(owner, name) },
-                    )
-                }
 
-                // ----- Primary actions: star / fork / watch (same look; blue = already done)
-                Spacer(Modifier.height(14.dp))
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    ToggleActionButton(
-                        active = detail.starring,
-                        enabled = !starBusy,
-                        icon = if (detail.starring) Icons.Filled.Star else Icons.Outlined.StarBorder,
-                        label = stringResource(if (detail.starring) R.string.m3_starred_pill else R.string.m3_star),
-                        onClick = { confirmStar = true },
-                    )
-                    ToggleActionButton(
-                        active = forked,
-                        enabled = !forkBusy && !forkOwned,
-                        icon = Icons.Outlined.ForkRight,
-                        label = stringResource(if (forked) R.string.m3_forked else R.string.m3_fork),
-                        onClick = {
-                            if (forked) {
-                                val full = forkFullName
-                                if (full != null && "/" in full) {
-                                    onOpenRepo(full.substringBefore("/"), full.substringAfter("/"))
-                                }
-                            } else {
-                                showForkDialog = true
-                            }
-                        },
-                    )
-                    ToggleActionButton(
-                        active = detail.watching,
-                        enabled = !watchBusy,
-                        icon = if (detail.watching) Icons.Filled.Notifications else Icons.Outlined.Notifications,
-                        label = stringResource(
-                            when {
-                                !detail.watching -> R.string.m3_watch
-                                detail.watchIgnored -> R.string.m3_watching_ignored
-                                else -> R.string.m3_watching
-                            }
-                        ),
-                        onClick = { showWatch = true },
-                    )
-                }
-
-                // ----- Navigation chips (with open counts; unavailable features are greyed out)
-                Spacer(Modifier.height(14.dp))
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    NavChip(
-                        icon = Icons.Outlined.Insights,
-                        label = stringResource(R.string.m3_activity),
-                        onClick = { onOpenActivity(owner, name) },
-                    )
-                    if (repo.permissions?.canWrite == true) {
-                        NavChip(
-                            icon = Icons.Outlined.QueryStats,
-                            label = stringResource(R.string.m3_insights),
-                            onClick = { onOpenInsights(owner, name) },
-                        )
-                        NavChip(
-                            icon = Icons.Outlined.Edit,
-                            label = stringResource(R.string.m3_repo_edit),
-                            onClick = { showEditRepo = true },
-                        )
-                    }
-                    NavChip(
-                        icon = Icons.Outlined.Groups,
-                        label = stringResource(R.string.m3_contributors),
-                        badge = countBadge(detail.counts.contributors),
-                        onClick = { onOpenContributors(owner, name) },
-                    )
-                    NavChip(
-                        icon = null,
-                        label = stringResource(R.string.m3_issues),
-                        badge = detail.counts.issues.toString(),
-                        enabled = repo.hasIssues,
-                        onClick = { onOpenIssues(owner, name) },
-                    )
-                    NavChip(
-                        icon = null,
-                        label = stringResource(R.string.m3_pulls),
-                        badge = detail.counts.pulls.toString(),
-                        onClick = { onOpenPulls(owner, name) },
-                    )
-                    NavChip(
-                        icon = Icons.Outlined.CallSplit,
-                        label = stringResource(R.string.m3_branch),
-                        badge = detail.counts.branches.toString(),
-                        onClick = { onOpenBranches(owner, name) },
-                    )
-                    NavChip(
-                        icon = Icons.Outlined.Label,
-                        label = stringResource(R.string.m3_tag),
-                        onClick = { onOpenTags(owner, name) },
-                    )
-                    NavChip(
-                        icon = Icons.Outlined.NewReleases,
-                        label = stringResource(R.string.m3_releases),
-                        onClick = { onOpenReleases(owner, name) },
-                    )
-                    NavChip(
-                        icon = Icons.Outlined.QuestionAnswer,
-                        label = stringResource(R.string.m3_title_discussions),
-                        enabled = repo.hasDiscussions,
-                        onClick = { onOpenDiscussions(owner, name) },
-                    )
-                    NavChip(
-                        icon = null,
-                        label = stringResource(R.string.m3_title_actions),
-                        onClick = { onOpenActions(owner, name) },
-                    )
-                    NavChip(
-                        icon = Icons.Outlined.Label,
-                        label = stringResource(R.string.m3_labels),
-                        enabled = repo.permissions?.canTriage == true,
-                        onClick = { onOpenLabels(owner, name) },
-                    )
-                    NavChip(
-                        icon = null,
-                        label = stringResource(R.string.m3_milestones),
-                        enabled = repo.permissions?.canTriage == true,
-                        onClick = { onOpenMilestones(owner, name) },
-                    )
-                    NavChip(
-                        icon = null,
-                        label = stringResource(R.string.m3_code),
-                        onClick = { onOpenCode(owner, name) },
-                    )
-                    NavChip(
-                        icon = null,
-                        label = "Download ZIP",
-                        onClick = {
-                            val branch = repo.defaultBranch ?: "main"
-                            val url = "https://github.com/$owner/$name/archive/refs/heads/${Uri.encode(branch)}.zip"
-                            download(url, "$name-$branch.zip")
-                        },
-                    )
-                }
-
-                // ----- Language composition (a proportional bar plus percentages, like the web)
-                if (detail.languages.isNotEmpty()) {
-                    Spacer(Modifier.height(18.dp))
-                    Text(stringResource(R.string.m3_languages), style = MaterialTheme.typography.titleMedium)
-                    Spacer(Modifier.height(8.dp))
-                    LanguageBar(detail.languages.map { it.name to it.percent })
-                    Spacer(Modifier.height(8.dp))
+                    // ----- Primary actions: star / fork / watch (same look; blue = already done)
+                    Spacer(Modifier.height(14.dp))
                     FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(14.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        detail.languages.take(8).forEach { slice ->
-                            Row(verticalAlignment = Alignment.CenterVertically) {
+                        ToggleActionButton(
+                            active = detail.starring,
+                            enabled = !starBusy,
+                            icon = if (detail.starring) Icons.Filled.Star else Icons.Outlined.StarBorder,
+                            label = stringResource(if (detail.starring) R.string.m3_starred_pill else R.string.m3_star),
+                            onClick = { confirmStar = true },
+                        )
+                        ToggleActionButton(
+                            active = forked,
+                            enabled = !forkBusy && !forkOwned,
+                            icon = Icons.Outlined.ForkRight,
+                            label = stringResource(if (forked) R.string.m3_forked else R.string.m3_fork),
+                            onClick = {
+                                if (forked) {
+                                    val full = forkFullName
+                                    if (full != null && "/" in full) {
+                                        onOpenRepo(full.substringBefore("/"), full.substringAfter("/"))
+                                    }
+                                } else {
+                                    showForkDialog = true
+                                }
+                            },
+                        )
+                        ToggleActionButton(
+                            active = detail.watching,
+                            enabled = !watchBusy,
+                            icon = if (detail.watching) Icons.Filled.Notifications else Icons.Outlined.Notifications,
+                            label = stringResource(
+                                when {
+                                    !detail.watching -> R.string.m3_watch
+                                    detail.watchIgnored -> R.string.m3_watching_ignored
+                                    else -> R.string.m3_watching
+                                }
+                            ),
+                            onClick = { showWatch = true },
+                        )
+                    }
+
+                    // ----- Navigation chips (with open counts; unavailable features are greyed out)
+                    Spacer(Modifier.height(14.dp))
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        NavChip(
+                            icon = Icons.Outlined.Insights,
+                            label = stringResource(R.string.m3_activity),
+                            onClick = { onOpenActivity(owner, name) },
+                        )
+                        if (repo.permissions?.canWrite == true) {
+                            NavChip(
+                                icon = Icons.Outlined.QueryStats,
+                                label = stringResource(R.string.m3_insights),
+                                onClick = { onOpenInsights(owner, name) },
+                            )
+                            NavChip(
+                                icon = Icons.Outlined.Edit,
+                                label = stringResource(R.string.m3_repo_edit),
+                                onClick = { showEditRepo = true },
+                            )
+                        }
+                        NavChip(
+                            icon = Icons.Outlined.Groups,
+                            label = stringResource(R.string.m3_contributors),
+                            badge = countBadge(detail.counts.contributors),
+                            onClick = { onOpenContributors(owner, name) },
+                        )
+                        NavChip(
+                            icon = null,
+                            label = stringResource(R.string.m3_issues),
+                            badge = detail.counts.issues.toString(),
+                            enabled = repo.hasIssues,
+                            onClick = { onOpenIssues(owner, name) },
+                        )
+                        NavChip(
+                            icon = null,
+                            label = stringResource(R.string.m3_pulls),
+                            badge = detail.counts.pulls.toString(),
+                            enabled = repo.hasPullRequests,
+                            onClick = { onOpenPulls(owner, name) },
+                        )
+                        NavChip(
+                            icon = Icons.Outlined.CallSplit,
+                            label = stringResource(R.string.m3_branch),
+                            badge = detail.counts.branches.toString(),
+                            onClick = { onOpenBranches(owner, name) },
+                        )
+                        NavChip(
+                            icon = Icons.Outlined.Label,
+                            label = stringResource(R.string.m3_tag),
+                            onClick = { onOpenTags(owner, name) },
+                        )
+                        NavChip(
+                            icon = Icons.Outlined.NewReleases,
+                            label = stringResource(R.string.m3_releases),
+                            onClick = { onOpenReleases(owner, name) },
+                        )
+                        NavChip(
+                            icon = Icons.Outlined.QuestionAnswer,
+                            label = stringResource(R.string.m3_title_discussions),
+                            enabled = repo.hasDiscussions,
+                            onClick = { onOpenDiscussions(owner, name) },
+                        )
+                        NavChip(
+                            icon = null,
+                            label = stringResource(R.string.m3_title_actions),
+                            onClick = { onOpenActions(owner, name) },
+                        )
+                        NavChip(
+                            icon = Icons.Outlined.Label,
+                            label = stringResource(R.string.m3_labels),
+                            enabled = repo.permissions?.canTriage == true,
+                            onClick = { onOpenLabels(owner, name) },
+                        )
+                        NavChip(
+                            icon = null,
+                            label = stringResource(R.string.m3_milestones),
+                            enabled = repo.permissions?.canTriage == true,
+                            onClick = { onOpenMilestones(owner, name) },
+                        )
+                        NavChip(
+                            icon = null,
+                            label = stringResource(R.string.m3_code),
+                            onClick = { onOpenCode(owner, name) },
+                        )
+                        NavChip(
+                            icon = null,
+                            label = "Download ZIP",
+                            onClick = {
+                                val branch = repo.defaultBranch ?: "main"
+                                val url = "https://github.com/$owner/$name/archive/refs/heads/${Uri.encode(branch)}.zip"
+                                download(url, "$name-$branch.zip")
+                            },
+                        )
+                    }
+
+                    // ----- Language composition (a proportional bar plus percentages, like the web)
+                    if (detail.languages.isNotEmpty()) {
+                        Spacer(Modifier.height(18.dp))
+                        Text(stringResource(R.string.m3_languages), style = MaterialTheme.typography.titleMedium)
+                        Spacer(Modifier.height(8.dp))
+                        LanguageBar(detail.languages.map { it.name to it.percent })
+                        Spacer(Modifier.height(8.dp))
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(14.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            detail.languages.take(8).forEach { slice ->
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Box(
+                                        Modifier.size(9.dp).clip(CircleShape)
+                                            .background(languageColor(context, slice.name))
+                                    )
+                                    Spacer(Modifier.width(5.dp))
+                                    Text(
+                                        text = slice.name,
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.Medium,
+                                    )
+                                    Spacer(Modifier.width(4.dp))
+                                    Text(
+                                        text = stringResource(R.string.m3_percent, formatPercent(slice.percent)),
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // ----- Contributors (avatar + count)
+                    if (detail.contributors.isNotEmpty()) {
+                        Spacer(Modifier.height(18.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(stringResource(R.string.m3_contributors), style = MaterialTheme.typography.titleMedium)
+                            Spacer(Modifier.width(8.dp))
+                            CountBadge(countBadge(detail.counts.contributors) ?: detail.contributors.size.toString())
+                            Spacer(Modifier.weight(1f))
+                            TextButton(onClick = { onOpenContributors(owner, name) }) {
+                                Text(stringResource(R.string.m3_expand))
+                            }
+                        }
+                        Spacer(Modifier.height(6.dp))
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.horizontalScroll(rememberScrollState()),
+                        ) {
+                            detail.contributors.take(16).forEach { user ->
                                 Box(
-                                    Modifier.size(9.dp).clip(CircleShape)
-                                        .background(languageColor(context, slice.name))
+                                    Modifier.clip(CircleShape).clickable(enabled = user.login.isNotBlank()) {
+                                        onOpenUser(user.login)
+                                    },
+                                ) {
+                                    Avatar(user.avatarUrl, size = 34.dp)
+                                }
+                            }
+                        }
+                    }
+
+                    val lastPush = repo.pushedAt ?: repo.updatedAt
+                    if (lastPush != null) {
+                        Spacer(Modifier.height(16.dp))
+                        MetaText(stringResource(R.string.m3_updated_ago, relativeTime(lastPush)))
+                    }
+
+                    detail.digest?.let { digest ->
+                        Spacer(Modifier.height(14.dp))
+                        RepoDigestCard(
+                            digest = digest,
+                            onOpenCommits = { onOpenActivity(owner, name) },
+                            onOpenIssues = { onOpenIssues(owner, name) },
+                            onOpenRelease = { onOpenReleases(owner, name) },
+                        )
+                    }
+
+                    Spacer(Modifier.height(14.dp))
+                    HorizontalDivider()
+                    Spacer(Modifier.height(14.dp))
+
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("README", style = MaterialTheme.typography.titleMedium)
+                        Spacer(Modifier.weight(1f))
+                        if (sections.size >= 2) {
+                            IconButton(onClick = { showOutline = true }, modifier = Modifier.size(32.dp)) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Outlined.Toc,
+                                    contentDescription = stringResource(R.string.m3_outline),
+                                    modifier = Modifier.size(20.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
-                                Spacer(Modifier.width(5.dp))
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(8.dp))
+
+                    if (detail.readmeHtml.isNullOrBlank()) {
+                        Card(
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                            ),
+                        ) {
+                            Column(Modifier.padding(16.dp)) {
                                 Text(
-                                    text = slice.name,
-                                    style = MaterialTheme.typography.labelMedium,
-                                    fontWeight = FontWeight.Medium,
-                                )
-                                Spacer(Modifier.width(4.dp))
-                                Text(
-                                    text = stringResource(R.string.m3_percent, formatPercent(slice.percent)),
-                                    style = MaterialTheme.typography.labelMedium,
+                                    stringResource(R.string.m3_repo_no_readme),
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             }
                         }
-                    }
-                }
-
-                // ----- Contributors (avatar + count)
-                if (detail.contributors.isNotEmpty()) {
-                    Spacer(Modifier.height(18.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(stringResource(R.string.m3_contributors), style = MaterialTheme.typography.titleMedium)
-                        Spacer(Modifier.width(8.dp))
-                        CountBadge(countBadge(detail.counts.contributors) ?: detail.contributors.size.toString())
-                        Spacer(Modifier.weight(1f))
-                        TextButton(onClick = { onOpenContributors(owner, name) }) {
-                            Text(stringResource(R.string.m3_expand))
+                    } else {
+                        Box(
+                            Modifier
+                                .fillMaxWidth()
+                                .onGloballyPositioned { readmeTop = it.positionInWindow().y },
+                        ) {
+                            HtmlText(
+                                html = detail.readmeHtml,
+                                baseUrl = repoRawBaseUrl(owner, name, repo.defaultBranch),
+                                linkBaseUrl = repoBlobBaseUrl(owner, name, repo.defaultBranch),
+                                outline = outline,
+                                // Jump to that section of the same page (`#xxx` in a README).
+                                onAnchor = { _, yInView, viewTopInWindow ->
+                                    val target =
+                                        scrollState.value + (viewTopInWindow + yInView - containerTopInWindow)
+                                    scope.launch {
+                                        scrollState.animateScrollTo(target.toInt().coerceAtLeast(0))
+                                    }
+                                },
+                            )
                         }
                     }
-                    Spacer(Modifier.height(6.dp))
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.horizontalScroll(rememberScrollState()),
+
+                    Spacer(Modifier.height(20.dp))
+                    TextButton(
+                        onClick = {
+                            val url = repo.htmlUrl ?: "https://github.com/$owner/$name"
+                            if (!BrowserLauncher.open(context, url)) linkToCopy = url
+                        }
                     ) {
-                        detail.contributors.take(16).forEach { user ->
-                            Box(
-                                Modifier.clip(CircleShape).clickable(enabled = user.login.isNotBlank()) {
-                                    onOpenUser(user.login)
-                                },
-                            ) {
-                                Avatar(user.avatarUrl, size = 34.dp)
+                        Icon(Icons.Outlined.OpenInNew, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text(stringResource(R.string.m3_view_full_repo))
+                    }
+                    Spacer(Modifier.height(24.dp))
+                }
+
+                // Only once the README has moved in: while the repo header is on screen the outline is
+                // noise, and the rail would sit over content nobody is reading yet.
+                // The README starts below a tall header: remember where that is in content coordinates
+                // once, then show the outline only after the user has scrolled down to it.
+                LaunchedEffect(readmeTop, containerTopInWindow) {
+                    if (readmeOffset < 0f && readmeTop > 0f && containerTopInWindow > 0f) {
+                        readmeOffset = scrollState.value + (readmeTop - containerTopInWindow)
+                    }
+                }
+                val viewport = if (containerHeight > 0) {
+                    containerHeight.toFloat()
+                } else {
+                    with(density) { LocalConfiguration.current.screenHeightDp.dp.toPx() }
+                }
+                val showRail = sections.size >= 2 &&
+                    (readmeOffset < 0f || scrollState.value + viewport * 0.5f >= readmeOffset)
+                if (showRail) {
+                    SectionRail(
+                        sections = sections,
+                        current = currentSection,
+                        onSeek = { jumpTo(it, animate = false) },
+                        onOpen = { showOutline = true },
+                        modifier = Modifier
+                            .align(Alignment.CenterEnd)
+                            .height(320.dp),
+                    )
+                }
+
+                if (showOutline && sections.size >= 2) {
+                    ModalBottomSheet(
+                        onDismissRequest = { showOutline = false },
+                        sheetState = sheetState,
+                    ) {
+                        Text(
+                            text = stringResource(R.string.m3_outline),
+                            style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.padding(start = 20.dp, end = 20.dp, bottom = 4.dp),
+                        )
+                        LazyColumn(Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
+                            itemsIndexed(sections) { index, section ->
+                                val selected = index == currentSection
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            showOutline = false
+                                            jumpTo(index, animate = true)
+                                        }
+                                        .padding(
+                                            start = 20.dp + 14.dp * (section.level - 1).coerceIn(0, 2),
+                                            end = 20.dp,
+                                            top = 10.dp,
+                                            bottom = 10.dp,
+                                        ),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Text(
+                                        text = section.title,
+                                        style = if (section.level <= 1) {
+                                            MaterialTheme.typography.titleSmall
+                                        } else {
+                                            MaterialTheme.typography.bodyMedium
+                                        },
+                                        color = if (selected) {
+                                            MaterialTheme.colorScheme.primary
+                                        } else {
+                                            MaterialTheme.colorScheme.onSurface
+                                        },
+                                        fontWeight = if (selected) FontWeight.SemiBold else null,
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                }
                             }
                         }
                     }
                 }
 
-                val lastPush = repo.pushedAt ?: repo.updatedAt
-                if (lastPush != null) {
-                    Spacer(Modifier.height(16.dp))
-                    MetaText(stringResource(R.string.m3_updated_ago, relativeTime(lastPush)))
-                }
-
-                detail.digest?.let { digest ->
-                    Spacer(Modifier.height(14.dp))
-                    RepoDigestCard(
-                        digest = digest,
-                        onOpenCommits = { onOpenActivity(owner, name) },
-                        onOpenIssues = { onOpenIssues(owner, name) },
-                        onOpenRelease = { onOpenReleases(owner, name) },
-                    )
-                }
-
-                Spacer(Modifier.height(14.dp))
-                HorizontalDivider()
-                Spacer(Modifier.height(14.dp))
-
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("README", style = MaterialTheme.typography.titleMedium)
-                    Spacer(Modifier.weight(1f))
-                    if (sections.size >= 2) {
-                        IconButton(onClick = { showOutline = true }, modifier = Modifier.size(32.dp)) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Outlined.Toc,
-                                contentDescription = stringResource(R.string.m3_outline),
-                                modifier = Modifier.size(20.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
-                }
-                Spacer(Modifier.height(8.dp))
-
-                if (detail.readmeHtml.isNullOrBlank()) {
-                    Card(
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                        ),
+                AnimatedVisibility(
+                    visible = showBackToTop,
+                    modifier = Modifier.align(Alignment.BottomEnd).padding(14.dp),
+                    enter = fadeIn() + scaleIn(),
+                    exit = fadeOut() + scaleOut(),
+                ) {
+                    SmallFloatingActionButton(
+                        onClick = { scope.launch { scrollState.animateScrollTo(0) } },
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
                     ) {
-                        Column(Modifier.padding(16.dp)) {
-                            Text(
-                                stringResource(R.string.m3_repo_no_readme),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
-                } else {
-                    Box(
-                        Modifier
-                            .fillMaxWidth()
-                            .onGloballyPositioned { readmeTop = it.positionInWindow().y },
-                    ) {
-                        HtmlText(
-                            html = detail.readmeHtml,
-                            baseUrl = repoRawBaseUrl(owner, name, repo.defaultBranch),
-                            linkBaseUrl = repoBlobBaseUrl(owner, name, repo.defaultBranch),
-                            outline = outline,
-                            // Jump to that section of the same page (`#xxx` in a README).
-                            onAnchor = { _, yInView, viewTopInWindow ->
-                                val target =
-                                    scrollState.value + (viewTopInWindow + yInView - containerTopInWindow)
-                                scope.launch {
-                                    scrollState.animateScrollTo(target.toInt().coerceAtLeast(0))
-                                }
-                            },
+                        Icon(
+                            imageVector = Icons.Outlined.ExpandLess,
+                            contentDescription = stringResource(R.string.m3_back_to_top),
                         )
                     }
-                }
-
-                Spacer(Modifier.height(20.dp))
-                TextButton(
-                    onClick = {
-                        val url = repo.htmlUrl ?: "https://github.com/$owner/$name"
-                        if (!BrowserLauncher.open(context, url)) linkToCopy = url
-                    }
-                ) {
-                    Icon(Icons.Outlined.OpenInNew, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text(stringResource(R.string.m3_view_full_repo))
-                }
-                Spacer(Modifier.height(24.dp))
-            }
-
-            // Only once the README has moved in: while the repo header is on screen the outline is
-            // noise, and the rail would sit over content nobody is reading yet.
-            // The README starts below a tall header: remember where that is in content coordinates
-            // once, then show the outline only after the user has scrolled down to it.
-            LaunchedEffect(readmeTop, containerTopInWindow) {
-                if (readmeOffset < 0f && readmeTop > 0f && containerTopInWindow > 0f) {
-                    readmeOffset = scrollState.value + (readmeTop - containerTopInWindow)
-                }
-            }
-            val viewport = if (containerHeight > 0) {
-                containerHeight.toFloat()
-            } else {
-                with(density) { LocalConfiguration.current.screenHeightDp.dp.toPx() }
-            }
-            val showRail = sections.size >= 2 &&
-                (readmeOffset < 0f || scrollState.value + viewport * 0.5f >= readmeOffset)
-            if (showRail) {
-                SectionRail(
-                    sections = sections,
-                    current = currentSection,
-                    onSeek = { jumpTo(it, animate = false) },
-                    onOpen = { showOutline = true },
-                    modifier = Modifier
-                        .align(Alignment.CenterEnd)
-                        .height(320.dp),
-                )
-            }
-
-            if (showOutline && sections.size >= 2) {
-                ModalBottomSheet(
-                    onDismissRequest = { showOutline = false },
-                    sheetState = sheetState,
-                ) {
-                    Text(
-                        text = stringResource(R.string.m3_outline),
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.padding(start = 20.dp, end = 20.dp, bottom = 4.dp),
-                    )
-                    LazyColumn(Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
-                        itemsIndexed(sections) { index, section ->
-                            val selected = index == currentSection
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable {
-                                        showOutline = false
-                                        jumpTo(index, animate = true)
-                                    }
-                                    .padding(
-                                        start = 20.dp + 14.dp * (section.level - 1).coerceIn(0, 2),
-                                        end = 20.dp,
-                                        top = 10.dp,
-                                        bottom = 10.dp,
-                                    ),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Text(
-                                    text = section.title,
-                                    style = if (section.level <= 1) {
-                                        MaterialTheme.typography.titleSmall
-                                    } else {
-                                        MaterialTheme.typography.bodyMedium
-                                    },
-                                    color = if (selected) {
-                                        MaterialTheme.colorScheme.primary
-                                    } else {
-                                        MaterialTheme.colorScheme.onSurface
-                                    },
-                                    fontWeight = if (selected) FontWeight.SemiBold else null,
-                                    maxLines = 2,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            AnimatedVisibility(
-                visible = showBackToTop,
-                modifier = Modifier.align(Alignment.BottomEnd).padding(14.dp),
-                enter = fadeIn() + scaleIn(),
-                exit = fadeOut() + scaleOut(),
-            ) {
-                SmallFloatingActionButton(
-                    onClick = { scope.launch { scrollState.animateScrollTo(0) } },
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.ExpandLess,
-                        contentDescription = stringResource(R.string.m3_back_to_top),
-                    )
                 }
             }
         }
@@ -832,36 +843,36 @@ private fun StatChip(
     dot: Color? = null,
     onClick: (() -> Unit)? = null,
 ) {
+    // Counts are quiet meta, not filled pills: one muted icon, one tabular figure, one muted word.
     Row(
         modifier = Modifier
-            .clip(RoundedCornerShape(50))
-            .background(MaterialTheme.colorScheme.secondaryContainer)
             .then(if (onClick != null) Modifier.clickable { onClick() } else Modifier)
-            .padding(horizontal = 12.dp, vertical = 6.dp),
+            .padding(horizontal = 4.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (dot != null) {
-            Box(Modifier.size(9.dp).clip(CircleShape).background(dot))
+            Box(Modifier.size(8.dp).clip(CircleShape).background(dot))
         } else if (icon != null) {
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                modifier = Modifier.size(15.dp),
-                tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                modifier = Modifier.size(14.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
         Spacer(Modifier.width(6.dp))
         Text(
             text = value,
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onSecondaryContainer,
+            style = MaterialTheme.typography.labelLarge.copy(fontFeatureSettings = "tnum"),
+            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+            color = MaterialTheme.colorScheme.onSurface,
         )
         if (label != null) {
             Spacer(Modifier.width(4.dp))
             Text(
                 text = label,
                 style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.75f),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
     }
@@ -884,6 +895,7 @@ private fun NavChip(
         else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
     Row(
         modifier = Modifier
+            .alpha(if (enabled) 1f else 0.55f)
             .clip(RoundedCornerShape(12.dp))
             .background(container)
             .clickable(enabled = enabled) { onClick() }

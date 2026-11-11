@@ -56,6 +56,7 @@ class RepoJsonTest {
         assertEquals(12L, repo.openIssuesCount)
         assertEquals("trunk", repo.defaultBranch)
         assertTrue(repo.hasIssues)
+        assertTrue(repo.hasPullRequests)
         assertTrue(repo.hasDiscussions)
         assertTrue(repo.fork)
         assertFalse(repo.isPrivate)
@@ -75,6 +76,19 @@ class RepoJsonTest {
         assertEquals("someone/solo", repo.nameWithOwner)
         assertNull(repo.pushedAt)
         assertFalse(repo.permissions?.canWrite == true)
+        // Absent flags keep GitHub's own defaults: pulls are on unless the payload says otherwise.
+        assertTrue(repo.hasPullRequests)
+    }
+
+    /** A repo with Issues/Pulls disabled must be able to grey both chips out. */
+    @Test
+    fun `disabled features are decoded`() {
+        val repo = json.decodeFromString(
+            Repo.serializer(),
+            """{"id":4,"name":"r","full_name":"me/r","has_issues":false,"has_pull_requests":false}""",
+        )
+        assertFalse(repo.hasIssues)
+        assertFalse(repo.hasPullRequests)
     }
 
     @Test

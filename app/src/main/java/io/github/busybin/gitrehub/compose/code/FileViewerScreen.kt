@@ -137,15 +137,16 @@ fun FileViewerScreen(
                     text = file.name,
                     style = MaterialTheme.typography.titleMedium,
                     fontFamily = FontFamily.Monospace,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.Medium,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(2.dp))
+                // Path on its own monospace line: it is the identifier you actually read here.
+                MetaText(file.path, mono = true, maxLines = 2)
+                Spacer(Modifier.height(2.dp))
                 MetaText(
                     buildString {
-                        append(file.path)
-                        append(" · ")
                         append(humanSize(file.size))
                         if (!file.ref.isNullOrBlank()) append(" · ${file.ref}")
                         file.lastModified?.let {

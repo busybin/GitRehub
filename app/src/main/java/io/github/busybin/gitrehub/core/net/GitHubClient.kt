@@ -78,9 +78,17 @@ object GitHubClient {
     /** No disk cache, wide dispatcher: repository zipballs and the parallel blob fallback. */
     private val downloadClient: OkHttpClient by lazy { HttpProvider.provideDownloadClient() }
 
-    /** Explicit token: used to validate a token before it is stored, never for normal calls. */
+    /**
+     * Clients keyed by one explicit token. Used to validate a token before it is stored, and by the
+     * background pollers, which query every stored account. One client per stored token: building
+     * one per request would throw away the connection pool on every 15-second poll.
+     */
+    private val tokenClients = java.util.concurrent.ConcurrentHashMap<String, OkHttpClient>()
+
     private fun clientFor(token: String?, cacheOnly: Boolean): OkHttpClient = when {
-        !token.isNullOrBlank() -> HttpProvider.provideOkHttpClient(AuthenticationInterceptor(token))
+        !token.isNullOrBlank() -> tokenClients.getOrPut(token) {
+            HttpProvider.provideOkHttpClient(AuthenticationInterceptor(token))
+        }
         cacheOnly -> cacheOnlyClient
         else -> sharedClient
     }
@@ -103,20 +111,29 @@ object GitHubClient {
      * GET an absolute URL taken from a payload (`latest_comment_url` and friends). The path is
      * re-rooted on [apiRoot] so a mock / smoke build stays on the mock host instead of github.com.
      */
-    suspend fun <T> getUrl(url: String, serializer: KSerializer<T>): ApiResponse<T> =
+    suspend fun <T> getUrl(
+        url: String,
+        serializer: KSerializer<T>,
+        token: String? = null,
+    ): ApiResponse<T> =
         withContext(Dispatchers.IO) {
             val path = url.trim().substringAfter("://", url).substringAfter('/', "")
             val target = (apiRoot + "/" + path).toHttpUrl()
             val (body, headers) = execute(
                 Request.Builder().url(target).get().build(),
-                token = null,
+                token = token,
                 cacheOnly = false,
             )
             ApiResponse(decode(body, serializer), PageLinks.parse(headers["Link"]), scopesOf(headers))
         }
 
     /** For endpoints whose answer body is empty or irrelevant (`204`/`205`): only the status matters. */
-    suspend fun sendNoContent(method: String, path: String, body: JsonElement? = null) =
+    suspend fun sendNoContent(
+        method: String,
+        path: String,
+        body: JsonElement? = null,
+        token: String? = null,
+    ) =
         withContext(Dispatchers.IO) {
             // OkHttp rejects a null body for PUT/POST/PATCH; an empty one is what GitHub expects
             // for the star/watch endpoints.
@@ -127,7 +144,7 @@ object GitHubClient {
             }
             execute(
                 Request.Builder().url(apiRoot + path).method(method, payload).build(),
-                token = null,
+                token = token,
                 cacheOnly = false,
             )
             Unit

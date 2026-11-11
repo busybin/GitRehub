@@ -90,6 +90,43 @@ internal fun parseInteractions(root: JsonElement, format: Json): List<Event> {
     return out
 }
 
+/** Everything the feed's one GraphQL round-trip returns. */
+data class RepoOverview(
+    val interactions: List<Event> = emptyList(),
+    val watchers: List<RepoWatchers> = emptyList(),
+)
+
+/** One repository's current watchers (notification subscribers), as the overview query sees them. */
+data class RepoWatchers(
+    val repo: String,
+    val totalCount: Int = 0,
+    val watchers: List<RepoWatcher> = emptyList(),
+)
+
+data class RepoWatcher(val login: String, val avatarUrl: String? = null)
+
+/**
+ * The `watchers` half of the same GraphQL answer. There is no timestamp and no event for a new
+ * watcher, so the caller compares this snapshot with the one it stored itself (see
+ * `compose/feed/WatchLog`). Only the first [WATCHERS_PER_REPO] are returned by the query.
+ */
+internal fun parseRepoWatchers(root: JsonElement, format: Json): List<RepoWatchers> {
+    val viewer = runCatching { format.decodeFromJsonElement(InteractionEnvelope.serializer(), root) }
+        .getOrNull()?.viewer ?: return emptyList()
+    return viewer.repositories?.nodes.orEmpty().mapNotNull { node ->
+        val fullName = node.nameWithOwner.takeIf { it.contains('/') } ?: return@mapNotNull null
+        RepoWatchers(
+            repo = fullName,
+            totalCount = node.watchers?.totalCount ?: 0,
+            watchers = node.watchers?.nodes.orEmpty()
+                .mapNotNull { user ->
+                    user.login.takeIf { it.isNotBlank() }
+                        ?.let { RepoWatcher(it, user.avatarUrl) }
+                },
+        )
+    }
+}
+
 private fun synthesized(
     type: EventType,
     actor: InteractionUser,
@@ -115,7 +152,7 @@ private fun synthesized(
 )
 
 /** Stable negative id: it can never collide with a real event id, and the same event always hashes the same value. */
-private fun syntheticId(vararg parts: String?): Long =
+internal fun syntheticId(vararg parts: String?): Long =
     -(abs(parts.joinToString("|").hashCode().toLong()) + 1)
 
 @Serializable
@@ -137,6 +174,13 @@ private data class InteractionRepo(
     val forks: InteractionForks? = null,
     val pullRequests: InteractionSubjects? = null,
     val issues: InteractionSubjects? = null,
+    val watchers: InteractionWatchers? = null,
+)
+
+@Serializable
+private data class InteractionWatchers(
+    val totalCount: Int = 0,
+    val nodes: List<InteractionUser> = emptyList(),
 )
 
 @Serializable

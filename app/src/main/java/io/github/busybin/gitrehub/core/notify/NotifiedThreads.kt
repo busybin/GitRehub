@@ -23,5 +23,12 @@ object NotifiedThreads {
         PrefHelper.putStringSet(KEY, kept.toSet())
     }
 
+    /** Drops [ids] after their shade rows were removed (thread read elsewhere, or the entry aged out). */
+    fun forget(ids: Collection<Long>) {
+        if (ids.isEmpty()) return
+        val drop = ids.mapTo(HashSet()) { it.toString() }
+        PrefHelper.putStringSet(KEY, PrefHelper.getStringSet(KEY) - drop)
+    }
+
     fun clear() = PrefHelper.putStringSet(KEY, emptySet())
 }

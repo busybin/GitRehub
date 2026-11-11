@@ -36,11 +36,26 @@
     <string name="m3_load_more_failed">Não foi possível carregar mais, toque para tentar de novo</string>
     <string name="m3_offline_banner">Modo offline: exibindo conteúdo em cache</string>
     <string name="m3_just_now">Agora mesmo</string>
-    <string name="m3_minutes_ago">%1$d minutos atrás</string>
-    <string name="m3_hours_ago">%1$d horas atrás</string>
-    <string name="m3_days_ago">%1$d dias atrás</string>
-    <string name="m3_months_ago">%1$d meses atrás</string>
-    <string name="m3_years_ago">%1$d anos atrás</string>
+    <plurals name="m3_minutes_ago">
+        <item quantity="one">%1$d minuto atrás</item>
+        <item quantity="other">%1$d minutos atrás</item>
+    </plurals>
+    <plurals name="m3_hours_ago">
+        <item quantity="one">%1$d hora atrás</item>
+        <item quantity="other">%1$d horas atrás</item>
+    </plurals>
+    <plurals name="m3_days_ago">
+        <item quantity="one">%1$d dia atrás</item>
+        <item quantity="other">%1$d dias atrás</item>
+    </plurals>
+    <plurals name="m3_months_ago">
+        <item quantity="one">%1$d mês atrás</item>
+        <item quantity="other">%1$d meses atrás</item>
+    </plurals>
+    <plurals name="m3_years_ago">
+        <item quantity="one">%1$d ano atrás</item>
+        <item quantity="other">%1$d anos atrás</item>
+    </plurals>
 
     <!-- navigation / top bar / drawer -->
     <string name="m3_tab_feed">Atividade</string>
@@ -94,6 +109,7 @@
     <string name="m3_accounts_current_pill">Atual</string>
     <string name="m3_accounts_remove_desc">Remover @%1$s</string>
     <string name="m3_accounts_switch_failed">Falha ao trocar: a conta pode ter sido excluída</string>
+    <string name="m3_accounts_switched">Alternado para @%1$s</string>
     <string name="m3_accounts_removed">Conta @%1$s removida</string>
     <string name="m3_accounts_remove_failed">Falha ao remover: a conta atual não pode ser removida</string>
 
@@ -160,6 +176,7 @@
     <string name="m3_verb_new">nova atividade</string>
     <string name="m3_verb_star">favoritou</string>
     <string name="m3_verb_fork">fez fork de</string>
+    <string name="m3_verb_watch_started">começou a acompanhar</string>
     <string name="m3_verb_created">criou</string>
     <string name="m3_verb_deleted">excluiu</string>
     <string name="m3_verb_pushed">enviou para</string>
@@ -206,6 +223,7 @@
     <string name="m3_filter_keywords_placeholder">ex.: algum usuário, algum repositório</string>
     <string name="m3_group_push">Envios / downloads</string>
     <string name="m3_group_star">Favoritos / forks</string>
+    <string name="m3_group_watch">Seguidores</string>
     <string name="m3_group_issue">Issues</string>
     <string name="m3_group_pr">Pull requests</string>
     <string name="m3_group_comment">Comentários / revisões</string>
@@ -222,6 +240,7 @@
     <string name="m3_time_30d">Últimos 30 dias</string>
     <string name="m3_source_all">Tudo</string>
     <string name="m3_source_mine">Iniciado por mim</string>
+    <string name="m3_source_others">Iniciado por outros</string>
     <string name="m3_source_interactions">Outros nos meus repositórios</string>
     <string name="m3_read_all">Tudo</string>
     <string name="m3_read_unread">Somente não lidos (ocultar lidos)</string>
@@ -231,9 +250,10 @@
     <!-- repositories / trending -->
     <string name="m3_repos_mine">Meus repositórios</string>
     <string name="m3_repos_starred">Favoritos</string>
+    <string name="m3_repos_recent">Recentes</string>
     <string name="m3_no_repos">Nenhum repositório</string>
     <string name="m3_updated_ago">Último envio %1$s</string>
-    <string name="m3_repos_updated_ago">Último envio %1$s</string>
+    <string name="m3_repos_updated_ago">Enviado %1$s</string>
     <string name="m3_trending_today">Hoje</string>
     <string name="m3_trending_week">Esta semana</string>
     <string name="m3_trending_any_language">Qualquer idioma</string>
@@ -509,7 +529,7 @@ O GitHub não tem canal de push para clientes de terceiros, então isto é uma c
     <!-- 2026-10-18: repository detail overhaul -->
     <string name="m3_rendered">Renderizado</string>
     <string name="m3_raw">Bruto</string>
-    <string name="m3_last_modified">Última modificação %1$s</string>
+    <string name="m3_last_modified">Modificado %1$s</string>
     <string name="m3_contributors">Contribuidores</string>
     <string name="m3_languages">Idiomas</string>
     <string name="m3_stargazers">Pessoas que favoritaram</string>
@@ -576,6 +596,7 @@ O GitHub não tem canal de push para clientes de terceiros, então isto é uma c
     <string name="m3_update_changelog">Novidades</string>
     <string name="m3_update_install_permission">Permita que o GitRehub instale apps e toque de novo</string>
     <string name="m3_update_install_ready">Abrindo o instalador…</string>
+    <string name="m3_update_downloaded">%1$s transferido. Toque para instalar.</string>
     <string name="m3_version_short">Versão %1$s</string>
     <string name="m3_interface_density">Densidade da interface</string>
     <string name="m3_interface_density_desc">Escala o preenchimento e o espaçamento em todo o app.</string>
@@ -625,6 +646,12 @@ O GitHub não tem canal de push para clientes de terceiros, então isto é uma c
     <string name="m3_new_issue_need_title">O título é obrigatório</string>
     <string name="m3_new_issue_options_failed">Não foi possível carregar rótulos e responsáveis</string>
     <string name="m3_new_issue_loading_options">Carregando rótulos, responsáveis e marcos…</string>
+    <string name="m3_new_discussion">Nova discussão</string>
+    <string name="m3_new_discussion_category">Categoria</string>
+    <string name="m3_new_discussion_submit">Criar discussão</string>
+    <string name="m3_new_discussion_need_title">Um título é obrigatório</string>
+    <string name="m3_new_discussion_need_category">Escolha uma categoria primeiro</string>
+    <string name="m3_new_discussion_categories_failed">Não foi possível carregar as categorias</string>
     <string name="m3_commit">Commit</string>
     <string name="m3_commits">Commits</string>
     <string name="m3_commit_no_diff">Este commit não tem alterações de arquivos.</string>

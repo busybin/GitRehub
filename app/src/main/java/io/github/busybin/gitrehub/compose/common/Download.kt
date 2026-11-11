@@ -26,6 +26,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.core.content.ContextCompat
 import io.github.busybin.gitrehub.R
+import io.github.busybin.gitrehub.core.notify.DownloadNotifications
 import java.io.File
 import java.net.URLConnection
 
@@ -134,8 +135,13 @@ object Downloader {
             .setMimeType(mime)
             .setAllowedOverMetered(true)
             .setAllowedOverRoaming(true)
-            // Show only the in-progress entry; the completion notification comes from DownloadCompleteReceiver.
-            .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE)
+            // The in-progress entry is always ours; the completed one is posted by
+            // DownloadCompleteReceiver, which only works while this app may post notifications. When it
+            // may not, keep DownloadManager's own completed entry instead of dropping it on finish.
+            .setNotificationVisibility(
+                if (DownloadNotifications.canNotify(context)) DownloadManager.Request.VISIBILITY_VISIBLE
+                else DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED
+            )
             .addRequestHeader("User-Agent", "GitRehub")
         if (!needsStoragePermission(context)) {
             request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, name)

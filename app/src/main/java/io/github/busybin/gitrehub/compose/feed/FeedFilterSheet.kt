@@ -27,7 +27,11 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -141,9 +145,21 @@ private fun FeedFilterSheetContent(
         SectionTitle(stringResource(R.string.m3_filter_keywords))
         Hint(stringResource(R.string.m3_filter_keywords_hint))
         Spacer(Modifier.height(8.dp))
+        // Local draft: the pref is still written on every keystroke, but the field must not be
+        // re-rendered from the normalized keyword list mid-typing (that ate spaces and moved the
+        // cursor). The effect only resyncs when the prefs change elsewhere, e.g. "Clear filters".
+        var keywordDraft by remember { mutableStateOf(joinKeywords(filter.keywords)) }
+        LaunchedEffect(filter.keywords) {
+            if (parseKeywords(keywordDraft) != filter.keywords) {
+                keywordDraft = joinKeywords(filter.keywords)
+            }
+        }
         OutlinedTextField(
-            value = joinKeywords(filter.keywords),
-            onValueChange = { FeedPrefs.setBlocked(it) },
+            value = keywordDraft,
+            onValueChange = {
+                keywordDraft = it
+                FeedPrefs.setBlocked(it)
+            },
             placeholder = { Text(stringResource(R.string.m3_filter_keywords_placeholder)) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),

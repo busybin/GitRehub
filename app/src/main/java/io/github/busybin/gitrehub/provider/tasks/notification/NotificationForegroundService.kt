@@ -17,10 +17,11 @@ import io.github.busybin.gitrehub.compose.MainComposeActivity
 import io.github.busybin.gitrehub.compose.notifications.NotificationPrefs
 import io.github.busybin.gitrehub.core.auth.Session
 import io.github.busybin.gitrehub.core.model.Notification
-import io.github.busybin.gitrehub.core.net.GitHubApi
 import io.github.busybin.gitrehub.core.notify.NotifyChannel
 import io.github.busybin.gitrehub.core.notify.NotifiedThreads
+import io.github.busybin.gitrehub.core.notify.NotificationPoller
 import io.github.busybin.gitrehub.core.notify.NotificationPoster
+import io.github.busybin.gitrehub.helper.InputHelper
 import io.github.busybin.gitrehub.helper.ParseDateFormat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -36,15 +37,20 @@ import kotlinx.coroutines.launch
  * third-party clients, so "seconds" means polling `GET /notifications` every [INTERVAL_SECONDS]. A
  * foreground service is not deferred like JobScheduler during Doze, at the cost of a permanent
  * "listening" notification. [NotificationSchedulerJobTask] remains for power-saving mode.
+ *
+ * Every stored account is polled ([NotificationPoller]); the first round of each account only
+ * records a baseline, so adding an account does not fire its whole backlog.
  */
 class NotificationForegroundService : Service() {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var loop: Job? = null
 
-    /** Unread ids seen last round, so only newly appeared ones notify. */
-    private var previousUnread: Set<Long> = emptySet()
-    private var firstRound = true
+    /** Unread ids seen last round per account, so only newly appeared ones notify. */
+    private val previousUnread = mutableMapOf<String, Set<Long>>()
+
+    /** Accounts whose backlog has already been recorded without notifying. */
+    private val baselined = mutableSetOf<String>()
 
     override fun onCreate() {
         super.onCreate()
@@ -82,46 +88,65 @@ class NotificationForegroundService : Service() {
 
     private suspend fun poll() {
         if (!Session.isLoggedIn) return
-        val items = runCatching {
-            GitHubApi.notifications(since = ParseDateFormat.lastWeekDate).value
-        }.getOrNull() ?: return
-        val unread = items.filter { it.unread }
-        val unreadIds = unread.map { it.numericId }.toSet()
-        if (firstRound) {
-            // First round records the baseline only; never fire for the historical backlog.
-            firstRound = false
-            NotifiedThreads.remember(unreadIds)
-        } else {
-            // Quiet hours: keep the baseline untouched, so everything that arrived overnight still
-            // pops once the window ends (a single summary, not one alarm per thread).
-            if (NotificationPrefs.isQuietNow()) {
-                updatePersistent(unread.size)
-                return
-            }
-            // Skip what the interval job already showed: after an Android 15 timeout the two pollers
-            // hand over to each other, and nothing should pop up twice.
-            val shown = NotifiedThreads.ids()
-            val fresh = unread.filter { it.numericId !in previousUnread && it.numericId !in shown }
-            if (fresh.isNotEmpty()) {
-                notifyNew(fresh)
-                NotifiedThreads.remember(fresh.map { it.numericId })
-            }
+        val round = NotificationPoller.fetch(since = ParseDateFormat.lastWeekDate) ?: return
+        val inboxes = round.inboxes
+        val total = NotificationPoller.unreadCount(inboxes)
+        // Quiet hours: keep the baselines untouched, so everything that arrived overnight still
+        // pops once the window ends (a single summary, not one alarm per thread).
+        if (NotificationPrefs.isQuietNow()) {
+            updatePersistent(total)
+            return
         }
-        previousUnread = unreadIds
-        updatePersistent(unread.size)
+        // Skip what the interval job already showed: after an Android 15 timeout the two pollers
+        // hand over to each other, and nothing should pop up twice.
+        val shown = NotifiedThreads.ids()
+        val fresh = ArrayList<Pair<String, Notification>>()
+        for (inbox in inboxes) {
+            val ids = inbox.threads.filter { it.unread }.map { it.numericId }.toSet()
+            if (inbox.login !in baselined) {
+                // First round of this account records the baseline only; never fire for its backlog.
+                baselined += inbox.login
+                NotifiedThreads.remember(ids)
+            } else {
+                val before = previousUnread[inbox.login].orEmpty()
+                inbox.threads
+                    .filter { it.unread && it.numericId !in before && it.numericId !in shown }
+                    .forEach { thread -> fresh += inbox.login to thread }
+            }
+            previousUnread[inbox.login] = ids
+        }
+        val live = inboxes.map { it.login }.toSet()
+        previousUnread.keys.retainAll(live)
+        baselined.retainAll(live)
+        if (fresh.isNotEmpty()) {
+            val distinct = fresh.distinctBy { it.second.numericId }.take(5)
+            notifyNew(distinct, total)
+            NotifiedThreads.remember(fresh.map { it.second.numericId })
+        }
+        updatePersistent(total)
     }
 
-    private fun notifyNew(items: List<Notification>) {
-        val open = PendingIntent.getActivity(
-            this, 0,
-            Intent(this, MainComposeActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-        )
+    private fun notifyNew(items: List<Pair<String, Notification>>, unreadTotal: Int) {
         NotificationPoster.post(
             context = this,
-            items = items.take(5).map { NotificationPoster.Pending(it) },
-            unreadTotal = items.size,
-            contentIntent = { open },
+            items = items.map { (login, thread) ->
+                NotificationPoster.Pending(thread, login = login)
+            },
+            unreadTotal = unreadTotal,
+            contentIntent = { entry ->
+                PendingIntent.getService(
+                    this,
+                    InputHelper.getSafeIntId(entry.thread.numericId),
+                    ReadNotificationService.start(
+                        this,
+                        entry.thread.numericId,
+                        entry.thread.subject?.url ?: entry.thread.url.orEmpty(),
+                        login = entry.login,
+                    ),
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+                )
+            },
+            showAccount = items.map { it.first }.distinct().size > 1,
         )
     }
 
@@ -169,7 +194,7 @@ class NotificationForegroundService : Service() {
     }
 
     companion object {
-        /** Poll interval: 15s ≈ 240 requests/hour, well under GitHub's 5000/hour authenticated limit. */
+        /** Poll interval: 15s ≈ 240 requests/hour per account, well under GitHub's 5000/hour limit. */
         const val INTERVAL_SECONDS = 15L
         private const val CHANNEL_SERVICE = "gitrehub_watcher"
         private const val PERSISTENT_ID = 0x6101

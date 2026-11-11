@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -18,10 +19,12 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.OpenInNew
+import androidx.compose.material.icons.outlined.Reply
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -34,19 +37,20 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.busybin.gitrehub.R
 import io.github.busybin.gitrehub.compose.common.AsyncContent
 import io.github.busybin.gitrehub.compose.common.Avatar
+import io.github.busybin.gitrehub.compose.common.EditSheet
 import io.github.busybin.gitrehub.compose.common.LinkCopyDialog
 import io.github.busybin.gitrehub.compose.common.LoadState
 import io.github.busybin.gitrehub.compose.common.LocalTokens
@@ -79,6 +83,7 @@ fun DiscussionDetailScreen(
     val message by vm.message.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
     val tokens = LocalTokens.current
+    var showCommentSheet by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(owner, repo, number) { vm.load(owner, repo, number) }
     // A failed answer toggle has nowhere else to show; clear it so it does not stick forever.
@@ -100,77 +105,111 @@ fun DiscussionDetailScreen(
         if (shouldLoadMore && commentsHasMore) vm.loadMoreComments()
     }
 
-    PullToRefreshBox(
-        isRefreshing = commentsRefreshing,
-        onRefresh = { vm.refreshComments() },
-    ) {
-        AsyncContent(
-            state = state,
-            onRetry = { vm.load(owner, repo, number, force = true) },
-        ) { discussion ->
-            LazyColumn(
-                state = listState,
-                contentPadding = PaddingValues(tokens.listPadding),
-                verticalArrangement = Arrangement.spacedBy(tokens.itemSpacing),
-            ) {
-                item(key = "header") {
-                    DiscussionHeader(discussion, owner, repo)
-                }
-
-                message?.let { text ->
-                    item(key = "answer-message") {
-                        Text(
-                            text = text.render(),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.error,
-                        )
-                    }
-                }
-
-                when (val current = comments) {
-                    is LoadState.Loading -> item(key = "comments-loading") {
-                        Box(
-                            Modifier.fillMaxWidth().padding(16.dp),
-                            contentAlignment = Alignment.Center,
-                        ) { CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp) }
+    Box(Modifier.fillMaxSize()) {
+        PullToRefreshBox(
+            isRefreshing = commentsRefreshing,
+            onRefresh = { vm.refreshComments() },
+        ) {
+            AsyncContent(
+                state = state,
+                onRetry = { vm.load(owner, repo, number, force = true) },
+            ) { discussion ->
+                LazyColumn(
+                    state = listState,
+                    contentPadding = PaddingValues(tokens.listPadding),
+                    verticalArrangement = Arrangement.spacedBy(tokens.itemSpacing),
+                ) {
+                    item(key = "header") {
+                        DiscussionHeader(discussion, owner, repo)
                     }
 
-                    is LoadState.Failure -> item(key = "comments-failure") {
-                        Box(
-                            Modifier.fillMaxWidth().padding(8.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            TextButton(onClick = { vm.refreshComments() }) {
-                                Text(stringResource(R.string.m3_load_more_failed))
-                            }
+                    message?.let { text ->
+                        item(key = "answer-message") {
+                            Text(
+                                text = text.render(),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error,
+                            )
                         }
                     }
 
-                    is LoadState.Ready -> items(current.value, key = { it.id }) { comment ->
-                        CommentCard(
-                            comment = comment,
-                            owner = owner,
-                            repo = repo,
-                            onOpenUser = onOpenUser,
-                            accepted = answer?.answerCommentId == comment.id,
-                            canMark = discussion.category?.isAnswerable == true && answer != null,
-                            onToggleAnswer = {
-                                vm.markAnswer(comment, answer?.answerCommentId != comment.id)
-                            },
-                        )
-                    }
-                }
+                    when (val current = comments) {
+                        is LoadState.Loading -> item(key = "comments-loading") {
+                            Box(
+                                Modifier.fillMaxWidth().padding(16.dp),
+                                contentAlignment = Alignment.Center,
+                            ) { CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp) }
+                        }
 
-                if (commentsLoadingMore) {
-                    item(key = "comments-more") {
-                        Box(
-                            Modifier.fillMaxWidth().padding(16.dp),
-                            contentAlignment = Alignment.Center,
-                        ) { CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp) }
+                        is LoadState.Failure -> item(key = "comments-failure") {
+                            Box(
+                                Modifier.fillMaxWidth().padding(8.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                TextButton(onClick = { vm.refreshComments() }) {
+                                    Text(stringResource(R.string.m3_load_more_failed))
+                                }
+                            }
+                        }
+
+                        is LoadState.Ready -> items(current.value, key = { it.id }) { comment ->
+                            CommentCard(
+                                comment = comment,
+                                owner = owner,
+                                repo = repo,
+                                onOpenUser = onOpenUser,
+                                accepted = answer?.answerCommentId == comment.id,
+                                canMark = discussion.category?.isAnswerable == true && answer != null,
+                                onToggleAnswer = {
+                                    vm.markAnswer(comment, answer?.answerCommentId != comment.id)
+                                },
+                            )
+                        }
+                    }
+
+                    if (commentsLoadingMore) {
+                        item(key = "comments-more") {
+                            Box(
+                                Modifier.fillMaxWidth().padding(16.dp),
+                                contentAlignment = Alignment.Center,
+                            ) { CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp) }
+                        }
                     }
                 }
             }
         }
+
+        // Comments are GraphQL-only; joining the discussion is the one write action here.
+        if (state is LoadState.Ready) {
+            FloatingActionButton(
+                onClick = { showCommentSheet = true },
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(16.dp),
+            ) {
+                Icon(
+                    Icons.Outlined.Reply,
+                    contentDescription = stringResource(R.string.m3_write_comment),
+                )
+            }
+        }
+    }
+
+    if (showCommentSheet) {
+        EditSheet(
+            heading = stringResource(R.string.m3_write_comment),
+            showTitle = false,
+            initialTitle = "",
+            initialBody = "",
+            submitLabel = stringResource(R.string.m3_write_comment_send),
+            onDismiss = { showCommentSheet = false },
+            onSubmit = { _, body ->
+                showCommentSheet = false
+                vm.postComment(body)
+            },
+            repo = "$owner/$repo",
+            imageBaseUrl = repoRawBaseUrl(owner, repo),
+        )
     }
 }
 
@@ -183,7 +222,6 @@ private fun DiscussionHeader(discussion: Discussion, owner: String, repo: String
         Text(
             text = discussion.title.orEmpty(),
             style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
         )
         Spacer(Modifier.height(8.dp))
         Row(

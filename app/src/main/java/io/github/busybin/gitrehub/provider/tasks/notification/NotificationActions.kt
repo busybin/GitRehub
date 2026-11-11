@@ -17,23 +17,32 @@ import io.github.busybin.gitrehub.helper.InputHelper
  *
  * Done is GitHub's own "Done" button: `DELETE /notifications/threads/{id}/subscription` also marks
  * the thread read and takes it out of the inbox, which is why the service handles both in one call.
+ *
+ * Every action carries the login of the account the thread belongs to: the pollers watch all stored
+ * accounts, so "as the current account" is not good enough for mark-read, Done or reply.
  */
 object NotificationActions {
 
     const val KEY_REPLY = "gitrehub_reply"
 
     /** Where a reply goes; null for commit/release threads that have no comment endpoint. */
-    data class ReplyTarget(val owner: String, val repo: String, val number: Int, val threadId: Long)
+    data class ReplyTarget(
+        val owner: String,
+        val repo: String,
+        val number: Int,
+        val threadId: Long,
+        val login: String? = null,
+    )
 
     /** Parses `…/repos/{owner}/{repo}/issues|pulls/{number}`. */
-    fun replyTarget(thread: Notification): ReplyTarget? {
+    fun replyTarget(thread: Notification, login: String? = null): ReplyTarget? {
         val url = thread.subject?.url ?: return null
         val parts = url.removeSuffix("/").split("/")
         val repos = parts.indexOf("repos")
         if (repos < 0 || parts.size < repos + 5) return null
         if (parts[repos + 3] != "issues" && parts[repos + 3] != "pulls") return null
         val number = parts[repos + 4].toIntOrNull() ?: return null
-        return ReplyTarget(parts[repos + 1], parts[repos + 2], number, thread.numericId)
+        return ReplyTarget(parts[repos + 1], parts[repos + 2], number, thread.numericId, login)
     }
 
     /** Appends the three actions to [builder]; callers set the content intent themselves. */
@@ -41,6 +50,7 @@ object NotificationActions {
         context: Context,
         builder: NotificationCompat.Builder,
         thread: Notification,
+        login: String?,
         readIntent: PendingIntent,
     ) {
         builder.addAction(
@@ -51,9 +61,9 @@ object NotificationActions {
         builder.addAction(
             R.drawable.ic_done,
             context.getString(R.string.m3_notif_done),
-            doneIntent(context, thread.numericId),
+            doneIntent(context, thread.numericId, login),
         )
-        val target = replyTarget(thread) ?: return
+        val target = replyTarget(thread, login) ?: return
         val remote = RemoteInput.Builder(KEY_REPLY)
             .setLabel(context.getString(R.string.m3_notif_reply_hint))
             .build()
@@ -77,6 +87,7 @@ object NotificationActions {
                     "repo" to target.repo,
                     "number" to target.number,
                     "thread" to target.threadId,
+                    BundleConstant.ACCOUNT to target.login,
                 )
             )
         }
@@ -88,11 +99,14 @@ object NotificationActions {
         )
     }
 
-    fun doneIntent(context: Context, id: Long): PendingIntent {
-        val intent = Intent(context, ReadNotificationService::class.java).putExtras(
+    fun doneIntent(context: Context, id: Long, login: String?): PendingIntent {
+        val intent = Intent(context, ReadNotificationService::class.java).apply {
+            action = ReadNotificationService.ACTION_DONE
+        }.putExtras(
             bundleOf(
                 BundleConstant.EXTRA_TYPE to ReadNotificationService.UN_SUBSCRIBE,
                 BundleConstant.ID to id,
+                BundleConstant.ACCOUNT to login,
             )
         )
         return PendingIntent.getService(
@@ -104,11 +118,14 @@ object NotificationActions {
     }
 
     /** Mark one thread read from the shade (READ_SINGLE). */
-    fun readIntent(context: Context, id: Long): PendingIntent {
-        val intent = Intent(context, ReadNotificationService::class.java).putExtras(
+    fun readIntent(context: Context, id: Long, login: String?): PendingIntent {
+        val intent = Intent(context, ReadNotificationService::class.java).apply {
+            action = ReadNotificationService.ACTION_READ
+        }.putExtras(
             bundleOf(
                 BundleConstant.EXTRA_TYPE to ReadNotificationService.READ_SINGLE,
                 BundleConstant.ID to id,
+                BundleConstant.ACCOUNT to login,
             )
         )
         return PendingIntent.getService(

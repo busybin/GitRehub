@@ -2,7 +2,9 @@ package io.github.busybin.gitrehub.compose.feed
 
 import io.github.busybin.gitrehub.core.model.Event
 import io.github.busybin.gitrehub.core.model.EventType
+import io.github.busybin.gitrehub.core.model.RepoWatchers
 import io.github.busybin.gitrehub.core.model.parseInteractions
+import io.github.busybin.gitrehub.core.model.parseRepoWatchers
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -134,5 +136,56 @@ class InteractionsTest {
         assertEquals(emptyList<Any>(), parse("{}"))
         assertEquals(emptyList<Any>(), parse("""{"viewer":null}"""))
         assertEquals(emptyList<Any>(), parse("""{"viewer":{"repositories":null}}"""))
+    }
+
+    /** The watcher half of the same answer: who subscribed, plus the total the UI may show. */
+    @Test
+    fun watchersAreParsedSeparatelyFromInteractions() {
+        val watchers = parseRepoWatchers(
+            json.parseToJsonElement(
+                """
+                {
+                  "viewer": {
+                    "login": "busybin",
+                    "repositories": {
+                      "nodes": [
+                        {
+                          "nameWithOwner": "busybin/GitRehub",
+                          "watchers": {
+                            "totalCount": 3,
+                            "nodes": [
+                              {"login": "ON3EF", "avatarUrl": "https://avatars/on3ef"},
+                              {"login": "busybin", "avatarUrl": null},
+                              {"login": "", "avatarUrl": null}
+                            ]
+                          }
+                        },
+                        {"nameWithOwner": "not-a-full-name", "watchers": {"totalCount": 1}}
+                      ]
+                    }
+                  }
+                }
+                """.trimIndent(),
+            ),
+            json,
+        )
+        val repo = watchers.single()
+        assertEquals("busybin/GitRehub", repo.repo)
+        assertEquals(3, repo.totalCount)
+        assertEquals(listOf("ON3EF", "busybin"), repo.watchers.map { it.login })
+        assertEquals("https://avatars/on3ef", repo.watchers.first().avatarUrl)
+    }
+
+    @Test
+    fun aRepositoryWithoutAWatcherBlockYieldsAnEmptySnapshot() {
+        assertEquals(
+            listOf(RepoWatchers(repo = "me/a")),
+            parseRepoWatchers(
+                json.parseToJsonElement(
+                    """{"viewer":{"repositories":{"nodes":[{"nameWithOwner":"me/a"}]}}}"""
+                ),
+                json,
+            ),
+        )
     }
 }

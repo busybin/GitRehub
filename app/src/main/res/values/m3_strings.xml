@@ -36,11 +36,26 @@
     <string name="m3_load_more_failed">Couldn\'t load more, tap to retry</string>
     <string name="m3_offline_banner">Offline mode: showing cached content</string>
     <string name="m3_just_now">Just now</string>
-    <string name="m3_minutes_ago">%1$d minutes ago</string>
-    <string name="m3_hours_ago">%1$d hours ago</string>
-    <string name="m3_days_ago">%1$d days ago</string>
-    <string name="m3_months_ago">%1$d months ago</string>
-    <string name="m3_years_ago">%1$d years ago</string>
+    <plurals name="m3_minutes_ago">
+        <item quantity="one">%1$d minute ago</item>
+        <item quantity="other">%1$d minutes ago</item>
+    </plurals>
+    <plurals name="m3_hours_ago">
+        <item quantity="one">%1$d hour ago</item>
+        <item quantity="other">%1$d hours ago</item>
+    </plurals>
+    <plurals name="m3_days_ago">
+        <item quantity="one">%1$d day ago</item>
+        <item quantity="other">%1$d days ago</item>
+    </plurals>
+    <plurals name="m3_months_ago">
+        <item quantity="one">%1$d month ago</item>
+        <item quantity="other">%1$d months ago</item>
+    </plurals>
+    <plurals name="m3_years_ago">
+        <item quantity="one">%1$d year ago</item>
+        <item quantity="other">%1$d years ago</item>
+    </plurals>
 
     <!-- navigation / top bar / drawer -->
     <string name="m3_tab_feed">Activity</string>
@@ -94,6 +109,7 @@
     <string name="m3_accounts_current_pill">Current</string>
     <string name="m3_accounts_remove_desc">Remove @%1$s</string>
     <string name="m3_accounts_switch_failed">Switch failed: the account may have been deleted</string>
+    <string name="m3_accounts_switched">Switched to @%1$s</string>
     <string name="m3_accounts_removed">Removed @%1$s</string>
     <string name="m3_accounts_remove_failed">Remove failed: the current account cannot be removed</string>
 
@@ -161,6 +177,7 @@
     <string name="m3_verb_new">new activity</string>
     <string name="m3_verb_star">starred</string>
     <string name="m3_verb_fork">forked</string>
+    <string name="m3_verb_watch_started">started watching</string>
     <string name="m3_verb_created">created</string>
     <string name="m3_verb_deleted">deleted</string>
     <string name="m3_verb_pushed">pushed to</string>
@@ -207,6 +224,7 @@
     <string name="m3_filter_keywords_placeholder">e.g. some user, some repo</string>
     <string name="m3_group_push">Pushes / downloads</string>
     <string name="m3_group_star">Stars / forks</string>
+    <string name="m3_group_watch">Watchers</string>
     <string name="m3_group_issue">Issues</string>
     <string name="m3_group_pr">Pull requests</string>
     <string name="m3_group_comment">Comments / reviews</string>
@@ -223,6 +241,7 @@
     <string name="m3_time_30d">Last 30 days</string>
     <string name="m3_source_all">All</string>
     <string name="m3_source_mine">Started by me</string>
+    <string name="m3_source_others">Started by others</string>
     <string name="m3_source_interactions">Others on my repos</string>
     <string name="m3_read_all">All</string>
     <string name="m3_read_unread">Unread only (hide read)</string>
@@ -232,9 +251,10 @@
     <!-- repositories / trending -->
     <string name="m3_repos_mine">My repositories</string>
     <string name="m3_repos_starred">Starred</string>
+    <string name="m3_repos_recent">Recent</string>
     <string name="m3_no_repos">No repositories</string>
     <string name="m3_updated_ago">Last push %1$s</string>
-    <string name="m3_repos_updated_ago">Last push %1$s</string>
+    <string name="m3_repos_updated_ago">Pushed %1$s</string>
     <string name="m3_trending_today">Today</string>
     <string name="m3_trending_week">This week</string>
     <string name="m3_trending_any_language">Any language</string>
@@ -510,7 +530,7 @@ GitHub has no push channel for third-party clients, so this is real polling: the
     <!-- 2026-10-18: repository detail overhaul -->
     <string name="m3_rendered">Rendered</string>
     <string name="m3_raw">Raw</string>
-    <string name="m3_last_modified">Last modified %1$s</string>
+    <string name="m3_last_modified">Modified %1$s</string>
     <string name="m3_contributors">Contributors</string>
     <string name="m3_languages">Languages</string>
     <string name="m3_stargazers">Stargazers</string>
@@ -577,6 +597,7 @@ GitHub has no push channel for third-party clients, so this is real polling: the
     <string name="m3_update_changelog">What\'s new</string>
     <string name="m3_update_install_permission">Allow GitRehub to install apps, then tap again</string>
     <string name="m3_update_install_ready">Opening the installer…</string>
+    <string name="m3_update_downloaded">Downloaded %1$s. Tap to install.</string>
     <string name="m3_version_short">Version %1$s</string>
     <string name="m3_interface_density">Interface density</string>
     <string name="m3_interface_density_desc">Scales padding and spacing across the app.</string>
@@ -626,6 +647,12 @@ GitHub has no push channel for third-party clients, so this is real polling: the
     <string name="m3_new_issue_need_title">A title is required</string>
     <string name="m3_new_issue_options_failed">Couldn\'t load labels and assignees</string>
     <string name="m3_new_issue_loading_options">Loading labels, assignees and milestones…</string>
+    <string name="m3_new_discussion">New discussion</string>
+    <string name="m3_new_discussion_category">Category</string>
+    <string name="m3_new_discussion_submit">Create discussion</string>
+    <string name="m3_new_discussion_need_title">A title is required</string>
+    <string name="m3_new_discussion_need_category">Pick a category first</string>
+    <string name="m3_new_discussion_categories_failed">Couldn\'t load the discussion categories</string>
     <string name="m3_commit">Commit</string>
     <string name="m3_commits">Commits</string>
     <string name="m3_commit_no_diff">This commit has no file changes.</string>

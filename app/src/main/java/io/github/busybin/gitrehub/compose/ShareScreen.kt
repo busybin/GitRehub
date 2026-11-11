@@ -46,6 +46,7 @@ fun ShareScreen(
     onDone: () -> Unit,
 ) {
     val context = LocalContext.current
+    val copiedText = stringResource(R.string.m3_share_copied)
     val favorites by SavedPrefs.favorites.collectAsStateWithLifecycle()
     val url = remember(text) {
         text.split(Regex("\\s+")).firstOrNull {
@@ -127,7 +128,7 @@ fun ShareScreen(
         Spacer(Modifier.height(8.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedButton(onClick = {
-                copyText(context, text, context.getString(R.string.m3_share_copied))
+                copyText(context, text, copiedText)
                 onDone()
             }) { Text(stringResource(R.string.m3_share_copy)) }
             Spacer(Modifier.width(4.dp))

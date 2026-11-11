@@ -19,8 +19,15 @@ import io.github.busybin.gitrehub.provider.tasks.notification.NotificationAction
  */
 object NotificationPoster {
 
-    /** A thread plus, when the poller could fetch it, its latest comment. */
-    data class Pending(val thread: Notification, val comment: Comment? = null)
+    /**
+     * A thread plus, when the poller could fetch it, its latest comment, and the account it belongs
+     * to: every action on the shade entry has to run as that account, not as the one in use.
+     */
+    data class Pending(
+        val thread: Notification,
+        val comment: Comment? = null,
+        val login: String? = null,
+    )
 
     /**
      * Post one notification per thread, grouped per [NotifyChannel], with a per-channel summary
@@ -30,9 +37,10 @@ object NotificationPoster {
         context: Context,
         items: List<Pending>,
         unreadTotal: Int,
-        contentIntent: (Notification) -> PendingIntent,
+        contentIntent: (Pending) -> PendingIntent,
         accentColor: Int? = null,
         largeIcon: Boolean = false,
+        showAccount: Boolean = false,
     ) {
         if (items.isEmpty()) return
         NotifyChannel.ensure(context)
@@ -49,26 +57,38 @@ object NotificationPoster {
                         accentColor = accentColor,
                         largeIcon = largeIcon,
                         badge = if (group.size == 1) unreadTotal else null,
+                        showAccount = showAccount,
                     ),
                 )
             }
             if (group.size > 1) {
                 manager.notify(
                     NotifyChannel.summaryId(channel),
-                    summary(context, channel, group.size, unreadTotal, contentIntent, group.first().thread),
+                    summary(context, channel, group.size, unreadTotal, contentIntent, group.first()),
                 )
             }
         }
+    }
+
+    /**
+     * Removes every row this poster created, summaries included. Other notifications of the app
+     * (downloads, the foreground service) are untouched — `cancelAll()` used to wipe those too.
+     */
+    fun clearThreadRows(context: Context) {
+        val manager = context.getSystemService(android.app.NotificationManager::class.java) ?: return
+        NotifiedThreads.ids().forEach { manager.cancel(NotificationActions.managerId(it)) }
+        NotifyChannel.entries.forEach { manager.cancel(NotifyChannel.summaryId(it)) }
     }
 
     private fun item(
         context: Context,
         channel: NotifyChannel,
         pending: Pending,
-        contentIntent: (Notification) -> PendingIntent,
+        contentIntent: (Pending) -> PendingIntent,
         accentColor: Int?,
         largeIcon: Boolean,
         badge: Int?,
+        showAccount: Boolean,
     ): android.app.Notification {
         val thread = pending.thread
         val comment = pending.comment
@@ -82,10 +102,12 @@ object NotificationPoster {
             .setContentTitle(title)
             .setContentText(body)
             .setAutoCancel(true)
-            .setContentIntent(contentIntent(thread))
+            .setContentIntent(contentIntent(pending))
             .setWhen((comment?.createdAt ?: thread.updatedAt)?.toEpochMilli() ?: System.currentTimeMillis())
             .setShowWhen(true)
             .setGroup(channel.channelId)
+        // Several accounts share one shade: without the login a row is ambiguous.
+        if (showAccount) builder.setSubText(pending.login)
         badge?.let {
             builder.setNumber(it).setBadgeIconType(NotificationCompat.BADGE_ICON_SMALL)
         }
@@ -101,7 +123,8 @@ object NotificationPoster {
             )
         }
         NotificationActions.attach(
-            context, builder, thread, NotificationActions.readIntent(context, thread.numericId),
+            context, builder, thread, pending.login,
+            NotificationActions.readIntent(context, thread.numericId, pending.login),
         )
         return builder.build()
     }
@@ -111,8 +134,8 @@ object NotificationPoster {
         channel: NotifyChannel,
         count: Int,
         unreadTotal: Int,
-        contentIntent: (Notification) -> PendingIntent,
-        any: Notification,
+        contentIntent: (Pending) -> PendingIntent,
+        any: Pending,
     ): android.app.Notification = NotificationCompat.Builder(context, channel.channelId)
         .setSmallIcon(R.drawable.ic_notification)
         .setContentTitle(context.getString(R.string.m3_section_notifications))

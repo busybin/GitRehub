@@ -7,7 +7,7 @@ import kotlinx.serialization.json.Json
 
 /**
  * Disk copy of the "who starred / forked / opened something on my repos" snapshot
- * ([io.github.busybin.gitrehub.core.net.GitHubApi.repoInteractions]).
+ * ([io.github.busybin.gitrehub.core.net.GitHubApi.repoOverview]).
  *
  * That source is a GraphQL POST, which the OkHttp disk cache never stores. Without this copy the
  * feed painted its cached event streams first and the star/fork rows only appeared once the network

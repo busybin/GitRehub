@@ -59,7 +59,9 @@ import io.github.busybin.gitrehub.compose.common.AsyncContent
 import io.github.busybin.gitrehub.core.model.CheckRun
 import io.github.busybin.gitrehub.compose.common.Avatar
 import io.github.busybin.gitrehub.compose.common.EmptyView
+import io.github.busybin.gitrehub.compose.common.Identifier
 import io.github.busybin.gitrehub.compose.common.LoadState
+import io.github.busybin.gitrehub.compose.common.LocalTokens
 import io.github.busybin.gitrehub.compose.common.MetaText
 import io.github.busybin.gitrehub.compose.common.Pill
 import io.github.busybin.gitrehub.compose.common.render
@@ -292,10 +294,10 @@ private fun PullSummary(data: PullRequestFilesData) {
     val pr = data.pullRequest
     Card(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-        shape = RoundedCornerShape(16.dp),
+        shape = CardDefaults.shape,
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Column(Modifier.padding(14.dp)) {
+        Column(Modifier.padding(LocalTokens.current.cardPadding)) {
             Text(
                 text = pr.title.orEmpty(),
                 style = MaterialTheme.typography.titleMedium,
@@ -334,10 +336,10 @@ private fun ChecksRow(checks: List<CheckRun>) {
     val running = checks.count { !it.isDone }
     Card(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-        shape = RoundedCornerShape(16.dp),
+        shape = CardDefaults.shape,
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Column(Modifier.padding(14.dp)) {
+        Column(Modifier.padding(LocalTokens.current.cardPadding)) {
             Text(
                 text = stringResource(R.string.m3_pr_checks),
                 style = MaterialTheme.typography.titleSmall,
@@ -385,10 +387,10 @@ private fun ReviewStatus(
     val changes = reviews.count { it.state == "CHANGES_REQUESTED" }
     Card(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-        shape = RoundedCornerShape(16.dp),
+        shape = CardDefaults.shape,
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Column(Modifier.padding(14.dp)) {
+        Column(Modifier.padding(LocalTokens.current.cardPadding)) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (approved > 0) {
                     Pill(
@@ -444,10 +446,10 @@ private fun ThreadsCard(
     val shown = (if (unresolved.isNotEmpty()) unresolved else threads).take(12)
     Card(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-        shape = RoundedCornerShape(16.dp),
+        shape = CardDefaults.shape,
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Column(Modifier.padding(14.dp)) {
+        Column(Modifier.padding(LocalTokens.current.cardPadding)) {
             Text(
                 text = stringResource(
                     if (unresolved.isEmpty()) R.string.m3_pr_threads_all_resolved
@@ -525,7 +527,7 @@ private fun FilesToolbar(
 ) {
     Card(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-        shape = RoundedCornerShape(14.dp),
+        shape = CardDefaults.shape,
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(Modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
@@ -576,15 +578,15 @@ private fun FileDiffCard(
     val path = file.filename.orEmpty()
     Card(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-        shape = RoundedCornerShape(14.dp),
+        shape = CardDefaults.shape,
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(Modifier.padding(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
+                Identifier(
                     text = path,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontFamily = FontFamily.Monospace,
+                    emphasized = true,
+                    maxLines = 2,
                     modifier = Modifier
                         .weight(1f)
                         .clickable { onToggleExpand() },
@@ -596,17 +598,9 @@ private fun FileDiffCard(
             }
             Spacer(Modifier.height(6.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = "+${file.additions}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = Color(0xFF7EE787),
-                )
+                MetaText("+${file.additions}", color = Color(0xFF7EE787))
                 Spacer(Modifier.width(8.dp))
-                Text(
-                    text = "−${file.deletions}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = Color(0xFFFFA198),
-                )
+                MetaText("−${file.deletions}", color = Color(0xFFFFA198))
                 Spacer(Modifier.weight(1f))
                 Checkbox(checked = viewed, onCheckedChange = { onToggleViewed() })
                 Text(

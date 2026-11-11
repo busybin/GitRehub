@@ -75,6 +75,7 @@ fun SavedScreen(
     refreshKey: Int = 0,
 ) {
     val context = LocalContext.current
+    val autoStoppedText = stringResource(R.string.m3_pack_auto_stopped)
     val scope = rememberCoroutineScope()
     var threads by remember { mutableStateOf<List<SavedThreadMeta>>(emptyList()) }
     var packs by remember { mutableStateOf<List<RepoPackMeta>>(emptyList()) }
@@ -171,7 +172,7 @@ fun SavedScreen(
                                     RepoPackSyncer.cancelAuto()
                                     Toast.makeText(
                                         context,
-                                        context.getString(R.string.m3_pack_auto_stopped),
+                                        autoStoppedText,
                                         Toast.LENGTH_SHORT,
                                     ).show()
                                 }

@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -16,12 +17,14 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.TaskAlt
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -65,6 +68,9 @@ fun DiscussionsScreen(
     repo: String,
     onOpenDiscussion: (Int) -> Unit = {},
     onOpenUser: (String) -> Unit = {},
+    onNewDiscussion: (() -> Unit)? = null,
+    refreshSignal: Boolean = false,
+    onRefreshConsumed: () -> Unit = {},
 ) {
     val vm: DiscussionsViewModel = viewModel()
     val state by vm.state.collectAsStateWithLifecycle()
@@ -75,6 +81,14 @@ fun DiscussionsScreen(
     val tokens = LocalTokens.current
 
     LaunchedEffect(owner, repo) { vm.setup(owner, repo) }
+
+    // A discussion just created elsewhere: the list on screen is one row short.
+    LaunchedEffect(refreshSignal) {
+        if (refreshSignal) {
+            vm.refresh()
+            onRefreshConsumed()
+        }
+    }
 
     val shouldLoadMore by remember {
         derivedStateOf {
@@ -87,8 +101,9 @@ fun DiscussionsScreen(
         if (shouldLoadMore && hasMore) vm.loadMore()
     }
 
-    PullToRefreshBox(isRefreshing = refreshing, onRefresh = { vm.refresh() }) {
-        when (val current = state) {
+    Box(Modifier.fillMaxSize()) {
+        PullToRefreshBox(isRefreshing = refreshing, onRefresh = { vm.refresh() }) {
+            when (val current = state) {
             is LoadState.Loading -> SkeletonList()
 
             is LoadState.Failure ->
@@ -131,6 +146,21 @@ fun DiscussionsScreen(
                         }
                     }
                 }
+            }
+        }
+        }
+
+        if (onNewDiscussion != null && state is LoadState.Ready) {
+            FloatingActionButton(
+                onClick = onNewDiscussion,
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(16.dp),
+            ) {
+                Icon(
+                    Icons.Outlined.Add,
+                    contentDescription = stringResource(R.string.m3_new_discussion),
+                )
             }
         }
     }

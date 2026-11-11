@@ -36,11 +36,46 @@
     <string name="m3_load_more_failed">تعذّر تحميل المزيد، اضغط لإعادة المحاولة</string>
     <string name="m3_offline_banner">وضع عدم الاتصال: يتم عرض المحتوى المخزَّن</string>
     <string name="m3_just_now">الآن</string>
-    <string name="m3_minutes_ago">قبل %1$d دقيقة</string>
-    <string name="m3_hours_ago">قبل %1$d ساعة</string>
-    <string name="m3_days_ago">قبل %1$d يوم</string>
-    <string name="m3_months_ago">قبل %1$d شهر</string>
-    <string name="m3_years_ago">قبل %1$d سنة</string>
+    <plurals name="m3_minutes_ago">
+        <item quantity="zero">%1$d دقائق</item>
+        <item quantity="one">قبل دقيقة</item>
+        <item quantity="two">قبل دقيقتين</item>
+        <item quantity="few">%1$d دقائق</item>
+        <item quantity="many">%1$d دقيقة</item>
+        <item quantity="other">%1$d دقيقة</item>
+    </plurals>
+    <plurals name="m3_hours_ago">
+        <item quantity="zero">%1$d ساعات</item>
+        <item quantity="one">قبل ساعة</item>
+        <item quantity="two">قبل ساعتين</item>
+        <item quantity="few">%1$d ساعات</item>
+        <item quantity="many">%1$d ساعة</item>
+        <item quantity="other">%1$d ساعة</item>
+    </plurals>
+    <plurals name="m3_days_ago">
+        <item quantity="zero">%1$d أيام</item>
+        <item quantity="one">قبل يوم</item>
+        <item quantity="two">قبل يومين</item>
+        <item quantity="few">%1$d أيام</item>
+        <item quantity="many">%1$d يوم</item>
+        <item quantity="other">%1$d يوم</item>
+    </plurals>
+    <plurals name="m3_months_ago">
+        <item quantity="zero">%1$d أشهر</item>
+        <item quantity="one">قبل شهر</item>
+        <item quantity="two">قبل شهرين</item>
+        <item quantity="few">%1$d أشهر</item>
+        <item quantity="many">%1$d شهر</item>
+        <item quantity="other">%1$d شهر</item>
+    </plurals>
+    <plurals name="m3_years_ago">
+        <item quantity="zero">%1$d سنوات</item>
+        <item quantity="one">قبل سنة</item>
+        <item quantity="two">قبل سنتين</item>
+        <item quantity="few">%1$d سنوات</item>
+        <item quantity="many">%1$d سنة</item>
+        <item quantity="other">%1$d سنة</item>
+    </plurals>
 
     <!-- navigation / top bar / drawer -->
     <string name="m3_tab_feed">النشاط</string>
@@ -94,6 +129,7 @@
     <string name="m3_accounts_current_pill">الحالي</string>
     <string name="m3_accounts_remove_desc">إزالة @%1$s</string>
     <string name="m3_accounts_switch_failed">فشل التبديل: ربما حُذف الحساب</string>
+    <string name="m3_accounts_switched">تم التبديل إلى @%1$s</string>
     <string name="m3_accounts_removed">تمت إزالة @%1$s</string>
     <string name="m3_accounts_remove_failed">فشلت الإزالة: لا يمكن إزالة الحساب الحالي</string>
 
@@ -160,6 +196,7 @@
     <string name="m3_verb_new">نشاط جديد</string>
     <string name="m3_verb_star">أضاف نجمة</string>
     <string name="m3_verb_fork">أنشأ تفرعًا</string>
+    <string name="m3_verb_watch_started">بدأ متابعة</string>
     <string name="m3_verb_created">أنشأ</string>
     <string name="m3_verb_deleted">حذف</string>
     <string name="m3_verb_pushed">دفع إلى</string>
@@ -206,6 +243,7 @@
     <string name="m3_filter_keywords_placeholder">مثال: مستخدم ما، مستودع ما</string>
     <string name="m3_group_push">الدفع / التنزيلات</string>
     <string name="m3_group_star">النجوم / التفرعات</string>
+    <string name="m3_group_watch">المتابعون</string>
     <string name="m3_group_issue">المشكلات</string>
     <string name="m3_group_pr">طلبات السحب</string>
     <string name="m3_group_comment">التعليقات / المراجعات</string>
@@ -222,6 +260,7 @@
     <string name="m3_time_30d">آخر 30 يومًا</string>
     <string name="m3_source_all">الكل</string>
     <string name="m3_source_mine">بدأتها أنا</string>
+    <string name="m3_source_others">بدأها آخرون</string>
     <string name="m3_source_interactions">الآخرون على مستودعاتي</string>
     <string name="m3_read_all">الكل</string>
     <string name="m3_read_unread">غير المقروءة فقط (إخفاء المقروء)</string>
@@ -231,9 +270,10 @@
     <!-- repositories / trending -->
     <string name="m3_repos_mine">مستودعاتي</string>
     <string name="m3_repos_starred">المميّزة بنجمة</string>
+    <string name="m3_repos_recent">الأحدث</string>
     <string name="m3_no_repos">لا توجد مستودعات</string>
     <string name="m3_updated_ago">آخر دفع %1$s</string>
-    <string name="m3_repos_updated_ago">آخر دفع %1$s</string>
+    <string name="m3_repos_updated_ago">دُفع %1$s</string>
     <string name="m3_trending_today">اليوم</string>
     <string name="m3_trending_week">هذا الأسبوع</string>
     <string name="m3_trending_any_language">أي لغة</string>
@@ -509,7 +549,7 @@
     <!-- 2026-10-18: repository detail overhaul -->
     <string name="m3_rendered">معروض</string>
     <string name="m3_raw">خام</string>
-    <string name="m3_last_modified">آخر تعديل %1$s</string>
+    <string name="m3_last_modified">عُدّل %1$s</string>
     <string name="m3_contributors">المساهمون</string>
     <string name="m3_languages">اللغات</string>
     <string name="m3_stargazers">المميّزون بنجمة</string>
@@ -576,6 +616,7 @@
     <string name="m3_update_changelog">الجديد</string>
     <string name="m3_update_install_permission">اسمح لـ GitRehub بتثبيت التطبيقات، ثم اضغط مرة أخرى</string>
     <string name="m3_update_install_ready">جارٍ فتح أداة التثبيت…</string>
+    <string name="m3_update_downloaded">تم تنزيل %1$s. اضغط للتثبيت.</string>
     <string name="m3_version_short">الإصدار %1$s</string>
     <string name="m3_interface_density">كثافة الواجهة</string>
     <string name="m3_interface_density_desc">يضبط الهوامش والمسافات في التطبيق بأكمله.</string>
@@ -625,6 +666,12 @@
     <string name="m3_new_issue_need_title">العنوان مطلوب</string>
     <string name="m3_new_issue_options_failed">تعذّر تحميل التسميات والمسؤولين</string>
     <string name="m3_new_issue_loading_options">جارٍ تحميل التسميات والمسؤولين والمعالم…</string>
+    <string name="m3_new_discussion">نقاش جديد</string>
+    <string name="m3_new_discussion_category">الفئة</string>
+    <string name="m3_new_discussion_submit">إنشاء نقاش</string>
+    <string name="m3_new_discussion_need_title">العنوان مطلوب</string>
+    <string name="m3_new_discussion_need_category">اختر فئة أولاً</string>
+    <string name="m3_new_discussion_categories_failed">تعذّر تحميل فئات النقاش</string>
     <string name="m3_commit">التزام</string>
     <string name="m3_commits">الالتزامات</string>
     <string name="m3_commit_no_diff">لا يحتوي هذا الالتزام على تغييرات ملفات.</string>

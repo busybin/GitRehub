@@ -36,11 +36,21 @@
     <string name="m3_load_more_failed">これ以上読み込めませんでした。タップして再試行</string>
     <string name="m3_offline_banner">オフラインモード：キャッシュされた内容を表示しています</string>
     <string name="m3_just_now">たった今</string>
-    <string name="m3_minutes_ago">%1$d 分前</string>
-    <string name="m3_hours_ago">%1$d 時間前</string>
-    <string name="m3_days_ago">%1$d 日前</string>
-    <string name="m3_months_ago">%1$d か月前</string>
-    <string name="m3_years_ago">%1$d 年前</string>
+    <plurals name="m3_minutes_ago">
+        <item quantity="other">%1$d 分前</item>
+    </plurals>
+    <plurals name="m3_hours_ago">
+        <item quantity="other">%1$d 時間前</item>
+    </plurals>
+    <plurals name="m3_days_ago">
+        <item quantity="other">%1$d 日前</item>
+    </plurals>
+    <plurals name="m3_months_ago">
+        <item quantity="other">%1$d か月前</item>
+    </plurals>
+    <plurals name="m3_years_ago">
+        <item quantity="other">%1$d 年前</item>
+    </plurals>
 
     <!-- navigation / top bar / drawer -->
     <string name="m3_tab_feed">アクティビティ</string>
@@ -94,6 +104,7 @@
     <string name="m3_accounts_current_pill">現在</string>
     <string name="m3_accounts_remove_desc">@%1$s を削除</string>
     <string name="m3_accounts_switch_failed">切り替えに失敗しました：アカウントが削除された可能性があります</string>
+    <string name="m3_accounts_switched">@%1$s に切り替えました</string>
     <string name="m3_accounts_removed">@%1$s を削除しました</string>
     <string name="m3_accounts_remove_failed">削除に失敗しました：現在のアカウントは削除できません</string>
 
@@ -160,6 +171,7 @@
     <string name="m3_verb_new">新しいアクティビティ</string>
     <string name="m3_verb_star">スターを付けた</string>
     <string name="m3_verb_fork">フォークした</string>
+    <string name="m3_verb_watch_started">ウォッチを開始した</string>
     <string name="m3_verb_created">作成した</string>
     <string name="m3_verb_deleted">削除した</string>
     <string name="m3_verb_pushed">プッシュした</string>
@@ -206,6 +218,7 @@
     <string name="m3_filter_keywords_placeholder">例：some user, some repo</string>
     <string name="m3_group_push">プッシュ / ダウンロード</string>
     <string name="m3_group_star">スター / フォーク</string>
+    <string name="m3_group_watch">ウォッチャー</string>
     <string name="m3_group_issue">Issue</string>
     <string name="m3_group_pr">プルリクエスト</string>
     <string name="m3_group_comment">コメント / レビュー</string>
@@ -222,6 +235,7 @@
     <string name="m3_time_30d">過去 30 日間</string>
     <string name="m3_source_all">すべて</string>
     <string name="m3_source_mine">自分が開始したもの</string>
+    <string name="m3_source_others">他のユーザーが開始したもの</string>
     <string name="m3_source_interactions">自分のリポジトリへの反応</string>
     <string name="m3_read_all">すべて</string>
     <string name="m3_read_unread">未読のみ（既読を非表示）</string>
@@ -231,9 +245,10 @@
     <!-- repositories / trending -->
     <string name="m3_repos_mine">自分のリポジトリ</string>
     <string name="m3_repos_starred">スター付き</string>
+    <string name="m3_repos_recent">最近</string>
     <string name="m3_no_repos">リポジトリがありません</string>
     <string name="m3_updated_ago">最終プッシュ %1$s</string>
-    <string name="m3_repos_updated_ago">最終プッシュ %1$s</string>
+    <string name="m3_repos_updated_ago">%1$s にプッシュ</string>
     <string name="m3_trending_today">今日</string>
     <string name="m3_trending_week">今週</string>
     <string name="m3_trending_any_language">すべての言語</string>
@@ -509,7 +524,7 @@ GitHub にはサードパーティ製クライアント向けのプッシュチ�
     <!-- 2026-10-18: repository detail overhaul -->
     <string name="m3_rendered">レンダリング</string>
     <string name="m3_raw">Raw</string>
-    <string name="m3_last_modified">最終更新 %1$s</string>
+    <string name="m3_last_modified">%1$s に更新</string>
     <string name="m3_contributors">コントリビューター</string>
     <string name="m3_languages">言語</string>
     <string name="m3_stargazers">スターした人</string>
@@ -576,6 +591,7 @@ GitHub にはサードパーティ製クライアント向けのプッシュチ�
     <string name="m3_update_changelog">新着情報</string>
     <string name="m3_update_install_permission">GitRehub にアプリのインストールを許可してから、もう一度タップしてください</string>
     <string name="m3_update_install_ready">インストーラーを開いています…</string>
+    <string name="m3_update_downloaded">%1$s をダウンロードしました。タップしてインストール。</string>
     <string name="m3_version_short">バージョン %1$s</string>
     <string name="m3_interface_density">画面の密度</string>
     <string name="m3_interface_density_desc">アプリ全体の余白と間隔をまとめて拡大縮小します。</string>
@@ -625,6 +641,12 @@ GitHub にはサードパーティ製クライアント向けのプッシュチ�
     <string name="m3_new_issue_need_title">タイトルは必須です</string>
     <string name="m3_new_issue_options_failed">ラベルと担当者を読み込めませんでした</string>
     <string name="m3_new_issue_loading_options">ラベル・担当者・マイルストーンを読み込み中…</string>
+    <string name="m3_new_discussion">新しいディスカッション</string>
+    <string name="m3_new_discussion_category">カテゴリ</string>
+    <string name="m3_new_discussion_submit">ディスカッションを作成</string>
+    <string name="m3_new_discussion_need_title">タイトルは必須です</string>
+    <string name="m3_new_discussion_need_category">先にカテゴリを選択してください</string>
+    <string name="m3_new_discussion_categories_failed">カテゴリを読み込めませんでした</string>
     <string name="m3_commit">コミット</string>
     <string name="m3_commits">コミット履歴</string>
     <string name="m3_commit_no_diff">このコミットにはファイル変更がありません。</string>

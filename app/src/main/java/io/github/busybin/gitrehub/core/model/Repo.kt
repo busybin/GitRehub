@@ -29,6 +29,8 @@ data class Repo(
     @SerialName("open_issues_count") val openIssuesCount: Long = 0,
     @SerialName("default_branch") val defaultBranch: String? = null,
     @SerialName("has_issues") val hasIssues: Boolean = false,
+    /** Defaults to true: the field is newer than most cached responses and PRs are on by default. */
+    @SerialName("has_pull_requests") val hasPullRequests: Boolean = true,
     @SerialName("has_discussions") val hasDiscussions: Boolean = false,
     @SerialName("created_at") @Serializable(with = InstantSerializer::class) val createdAt: Instant? = null,
     @SerialName("updated_at") @Serializable(with = InstantSerializer::class) val updatedAt: Instant? = null,

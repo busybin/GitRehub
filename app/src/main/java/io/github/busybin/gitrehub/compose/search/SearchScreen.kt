@@ -1,9 +1,11 @@
 package io.github.busybin.gitrehub.compose.search
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -16,7 +18,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -25,8 +27,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material.icons.outlined.Clear
 import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -40,9 +41,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -52,6 +53,9 @@ import io.github.busybin.gitrehub.R
 import io.github.busybin.gitrehub.compose.common.AsyncContent
 import io.github.busybin.gitrehub.compose.common.Avatar
 import io.github.busybin.gitrehub.compose.common.EmptyView
+import io.github.busybin.gitrehub.compose.common.Hairline
+import io.github.busybin.gitrehub.compose.common.Identifier
+import io.github.busybin.gitrehub.compose.common.LocalTokens
 import io.github.busybin.gitrehub.compose.common.MetaText
 import io.github.busybin.gitrehub.compose.common.Pill
 import io.github.busybin.gitrehub.compose.common.SavedPrefs
@@ -177,10 +181,8 @@ fun SearchScreen(
                 if (items.isEmpty()) {
                     EmptyView(stringResource(R.string.m3_no_results))
                 } else {
-                    LazyColumn(
-                        contentPadding = PaddingValues(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
+                    val tokens = LocalTokens.current
+                    LazyColumn(contentPadding = PaddingValues(vertical = tokens.space2)) {
                         items(items.size) { index ->
                             when (val item = items[index]) {
                                 is SearchItem.RepoHit -> RepoRow(item.repo, onOpenRepo)
@@ -196,69 +198,73 @@ fun SearchScreen(
     }
 }
 
+/**
+ * One search hit, laid out like every other list in the app: a flat row with a hairline, no card.
+ * Cards here made results heavier than the feed while carrying less information.
+ */
 @Composable
-private fun RepoRow(repo: Repo, onOpenRepo: (String) -> Unit) {
-    Card(
+private fun ResultRow(onClick: (() -> Unit)?, content: @Composable ColumnScope.() -> Unit) {
+    val tokens = LocalTokens.current
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onOpenRepo(repo.nameWithOwner) },
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-        shape = RoundedCornerShape(14.dp),
-    ) {
-        Column(Modifier.padding(12.dp)) {
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+            .padding(horizontal = tokens.pagePadding, vertical = tokens.space3),
+        content = content,
+    )
+    Hairline(Modifier.padding(horizontal = tokens.pagePadding))
+}
+
+@Composable
+private fun RepoRow(repo: Repo, onOpenRepo: (String) -> Unit) {
+    ResultRow(onClick = { onOpenRepo(repo.nameWithOwner) }) {
+        Identifier(repo.nameWithOwner, emphasized = true, maxLines = 1)
+        if (!repo.description.isNullOrBlank()) {
+            Spacer(Modifier.height(2.dp))
             Text(
-                text = repo.nameWithOwner,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
+                text = repo.description!!,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
-            if (!repo.description.isNullOrBlank()) {
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text = repo.description!!,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
+        }
+        Spacer(Modifier.height(6.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            if (!repo.language.isNullOrBlank()) {
+                Box(
+                    Modifier
+                        .size(6.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.outline),
                 )
+                Spacer(Modifier.width(6.dp))
+                MetaText(repo.language!!)
+                Spacer(Modifier.width(12.dp))
             }
-            Spacer(Modifier.height(8.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                if (!repo.language.isNullOrBlank()) Pill(repo.language!!)
-                MetaText("★ ${compactNumber(repo.stargazersCount)}")
-            }
+            Icon(
+                imageVector = Icons.Outlined.StarBorder,
+                contentDescription = null,
+                modifier = Modifier.size(13.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.width(4.dp))
+            MetaText(compactNumber(repo.stargazersCount))
         }
     }
 }
 
 @Composable
 private fun UserRow(user: User, onOpenUser: (String) -> Unit = {}) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(enabled = !user.login.isNullOrBlank()) {
-                user.login?.let(onOpenUser)
-            },
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-        shape = RoundedCornerShape(14.dp),
+    ResultRow(
+        onClick = user.login?.takeIf { it.isNotBlank() }?.let { login -> { onOpenUser(login) } },
     ) {
-        Row(
-            modifier = Modifier.padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Avatar(user.avatarUrl, size = 40.dp)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Avatar(user.avatarUrl, size = 32.dp)
             Spacer(Modifier.width(12.dp))
-            Box(Modifier.weight(1f)) {
-                Column {
-                    Text(
-                        text = user.login.orEmpty(),
-                        style = MaterialTheme.typography.titleMedium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    if (user.type != null) MetaText(user.type!!)
-                }
+            Column {
+                Identifier(user.login.orEmpty(), emphasized = true, maxLines = 1)
+                user.type?.let { MetaText(it) }
             }
         }
     }
@@ -271,40 +277,40 @@ private fun IssueRow(issue: Issue, onOpenIssue: (String, String, Int) -> Unit) {
     val owner = fullName?.substringBefore('/')
     val name = fullName?.substringAfter('/', "")
     val isPull = issue.pullRequest != null
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(enabled = !owner.isNullOrBlank() && !name.isNullOrBlank()) {
-                if (owner != null && name != null) onOpenIssue(owner, name, issue.number)
-            },
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-        shape = RoundedCornerShape(14.dp),
+    ResultRow(
+        onClick = if (!owner.isNullOrBlank() && !name.isNullOrBlank()) {
+            { onOpenIssue(owner, name, issue.number) }
+        } else {
+            null
+        },
     ) {
-        Column(Modifier.padding(12.dp)) {
-            Text(
-                text = issue.title.orEmpty(),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Medium,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Spacer(Modifier.height(6.dp))
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                if (!fullName.isNullOrBlank()) MetaText(fullName)
-                Pill(
-                    stringResource(
-                        when {
-                            issue.isClosed -> R.string.m3_issue_closed
-                            isPull -> R.string.m3_notif_pr
-                            else -> R.string.m3_issue_open
-                        }
-                    )
+        Text(
+            text = issue.title.orEmpty(),
+            style = MaterialTheme.typography.bodyMedium,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Spacer(Modifier.height(4.dp))
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            if (!fullName.isNullOrBlank()) {
+                MetaText(
+                    if (isPull) "$fullName#${issue.number}" else fullName,
+                    mono = true,
                 )
-                MetaText("#${issue.number}")
             }
+            Pill(
+                stringResource(
+                    when {
+                        issue.isClosed -> R.string.m3_issue_closed
+                        isPull -> R.string.m3_notif_pr
+                        else -> R.string.m3_issue_open
+                    }
+                )
+            )
+            if (isPull) MetaText("#${issue.number}")
         }
     }
 }
@@ -320,27 +326,18 @@ private fun CodeRow(
     val owner = fullName?.substringBefore('/')
     val name = fullName?.substringAfter('/', "")
     val ref = repo?.defaultBranch
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(enabled = !owner.isNullOrBlank() && !name.isNullOrBlank() && !file.path.isNullOrBlank()) {
-                if (owner != null && name != null && file.path != null) {
-                    onOpenCode(owner, name, file.path!!, ref)
-                }
-            },
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-        shape = RoundedCornerShape(14.dp),
+    val path = file.path
+    ResultRow(
+        onClick = if (!owner.isNullOrBlank() && !name.isNullOrBlank() && !path.isNullOrBlank()) {
+            { onOpenCode(owner, name, path!!, ref) }
+        } else {
+            null
+        },
     ) {
-        Column(Modifier.padding(12.dp)) {
-            Text(
-                text = file.path.orEmpty(),
-                style = MaterialTheme.typography.titleSmall,
-                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Spacer(Modifier.height(4.dp))
-            if (!fullName.isNullOrBlank()) MetaText(fullName)
+        if (!fullName.isNullOrBlank()) {
+            Identifier("$fullName/${path.orEmpty()}", maxLines = 2)
+        } else {
+            Identifier(path.orEmpty(), maxLines = 2)
         }
     }
 }

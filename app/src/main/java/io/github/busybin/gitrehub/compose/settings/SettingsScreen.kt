@@ -12,10 +12,12 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -38,6 +40,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.SliderState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -81,6 +85,7 @@ import io.github.busybin.gitrehub.compose.common.formatBytes
 import io.github.busybin.gitrehub.compose.data.UpdateChecker
 import io.github.busybin.gitrehub.compose.data.UpdateConsent
 import io.github.busybin.gitrehub.compose.data.UpdatePrefs
+import io.github.busybin.gitrehub.core.notify.DownloadNotifications
 import io.github.busybin.gitrehub.compose.feed.FeedPrefs
 import io.github.busybin.gitrehub.compose.feed.FeedReadFilter
 import io.github.busybin.gitrehub.compose.feed.joinKeywords
@@ -97,9 +102,8 @@ import io.github.busybin.gitrehub.provider.rest.HttpCache
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.util.Locale
 
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen() {
     val themeId by ThemeState.theme.collectAsStateWithLifecycle()
@@ -173,6 +177,7 @@ fun SettingsScreen() {
                     onValueChange = { fontDraft = it },
                     onValueChangeFinished = { ThemeState.setFontScale(fontDraft) },
                     valueRange = ThemePrefs.fontScaleMin..ThemePrefs.fontScaleMax,
+                    track = { state -> PlainSliderTrack(state) },
                     modifier = Modifier.testTag("font_scale_slider"),
                 )
             }
@@ -202,6 +207,7 @@ fun SettingsScreen() {
                     onValueChange = { lineDraft = it },
                     onValueChangeFinished = { ThemeState.setLineHeight(lineDraft) },
                     valueRange = ThemePrefs.lineHeightMin..ThemePrefs.lineHeightMax,
+                    track = { state -> PlainSliderTrack(state) },
                 )
             }
         }
@@ -496,6 +502,9 @@ private fun UpdateRow() {
     LaunchedEffect(auto) { if (auto) checkNow() }
 
     val available = result as? UpdateChecker.Result.Available
+    // Read through the composition so a configuration change cannot leave a stale string behind.
+    val doneTitle = stringResource(R.string.m3_download_done_title)
+    val downloadedText = available?.let { stringResource(R.string.m3_update_downloaded, it.tag) }
 
     Column {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -538,12 +547,22 @@ private fun UpdateRow() {
                         scope.launch {
                             val file = runCatching { UpdateInstaller.download(context, apk, available.tag) }.getOrNull()
                             downloading = false
-                            if (file == null) {
+                            val tap = file?.let { UpdateInstaller.installIntent(context, it) }
+                            if (file == null || tap == null) {
                                 Toast.makeText(context, R.string.m3_update_download_failed, Toast.LENGTH_LONG).show()
-                            } else if (UpdateInstaller.install(context, file)) {
+                                return@launch
+                            }
+                            // A background activity start is silently blocked, so the notification is what
+                            // actually gets the user to the installer when the download outlived the screen.
+                            DownloadNotifications.post(
+                                context = context,
+                                id = DownloadNotifications.UPDATE_ID,
+                                title = doneTitle,
+                                text = downloadedText ?: doneTitle,
+                                tap = tap,
+                            )
+                            if (UpdateInstaller.install(context, file)) {
                                 Toast.makeText(context, R.string.m3_update_install_ready, Toast.LENGTH_SHORT).show()
-                            } else {
-                                Toast.makeText(context, R.string.m3_update_download_failed, Toast.LENGTH_LONG).show()
                             }
                         }
                     },
@@ -725,7 +744,7 @@ private fun NotificationSettings() {
                 modifier = Modifier.weight(1f),
             )
             Text(
-                text = String.format(Locale.getDefault(), "%02d:00", quietStart),
+                text = quietHour(quietStart),
                 style = MaterialTheme.typography.labelLarge,
             )
         }
@@ -742,7 +761,7 @@ private fun NotificationSettings() {
                 modifier = Modifier.weight(1f),
             )
             Text(
-                text = String.format(Locale.getDefault(), "%02d:00", quietEnd),
+                text = quietHour(quietEnd),
                 style = MaterialTheme.typography.labelLarge,
             )
         }
@@ -803,11 +822,27 @@ private fun SwipeDirectionRow(
 }
 
 @Composable
-private fun SectionTitle(text: String) {    Text(
+private fun SectionTitle(text: String) {
+    Text(
         text = text,
-        style = MaterialTheme.typography.titleMedium,
-        fontWeight = FontWeight.SemiBold,
-        modifier = Modifier.padding(bottom = 8.dp),
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(start = 4.dp, top = 16.dp, bottom = 8.dp),
+    )
+}
+
+/**
+ * Flat track: no tick marks and no stop indicator dot at the end, which on a dark theme read as a
+ * second broken thumb. The thumb keeps Material's vertical capsule.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun PlainSliderTrack(state: SliderState) {
+    SliderDefaults.Track(
+        sliderState = state,
+        modifier = Modifier.height(14.dp),
+        drawStopIndicator = { },
+        thumbTrackGapSize = 2.dp,
     )
 }
 
@@ -969,7 +1004,7 @@ private fun ThemeRow(
             Text(
                 text = stringResource(id.labelRes),
                 style = MaterialTheme.typography.bodyLarge,
-                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+                fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal,
             )
             Text(
                 text = stringResource(id.blurbRes),
@@ -1000,35 +1035,25 @@ private fun ThemeSwatch(id: ThemeId, dark: Boolean) {
         else -> fallback
     }
     val code = spec?.let { if (dark) it.darkCode else it.lightCode }
-    val shape = RoundedCornerShape(9.dp)
+    val shape = RoundedCornerShape(8.dp)
 
+    // A palette strip, not a fake list icon: three solid vertical bands of the colours the theme
+    // actually uses for accent, keywords and strings.
     Box(
         modifier = Modifier
-            .size(38.dp)
+            .size(36.dp)
             .clip(shape)
             .background(scheme.surface)
             .border(1.dp, scheme.outlineVariant, shape),
         contentAlignment = Alignment.Center,
     ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 7.dp),
-            verticalArrangement = Arrangement.spacedBy(3.dp),
-        ) {
-            SwatchBar(scheme.primary, 0.9f)
-            SwatchBar(code?.keyword ?: scheme.secondary, 1f)
-            SwatchBar(code?.string ?: scheme.onSurfaceVariant, 0.65f)
+        Row(Modifier.fillMaxSize()) {
+            Box(Modifier.weight(1f).fillMaxSize().background(scheme.primary))
+            Box(Modifier.weight(1f).fillMaxSize().background(code?.keyword ?: scheme.secondary))
+            Box(Modifier.weight(1f).fillMaxSize().background(code?.string ?: scheme.onSurfaceVariant))
         }
     }
 }
 
-@Composable
-private fun SwatchBar(color: Color, widthFraction: Float) {
-    Box(
-        Modifier
-            .fillMaxWidth(widthFraction)
-            .height(3.dp)
-            .clip(RoundedCornerShape(2.dp))
-            .background(color)
-    )
-}
-
+/** `9` → `09:00`: quiet-hour labels must not depend on the device locale. */
+private fun quietHour(hour: Int): String = hour.toString().padStart(2, '0') + ":00"

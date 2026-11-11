@@ -15,7 +15,9 @@ import io.github.busybin.gitrehub.core.model.CreatedPullRequest
 import io.github.busybin.gitrehub.core.model.DependabotAlert
 import io.github.busybin.gitrehub.core.model.Discussion
 import io.github.busybin.gitrehub.core.model.DiscussionAnswerInfo
+import io.github.busybin.gitrehub.core.model.DiscussionCategoryRef
 import io.github.busybin.gitrehub.core.model.DiscussionComment
+import io.github.busybin.gitrehub.core.model.DiscussionSetup
 import io.github.busybin.gitrehub.core.model.Event
 import io.github.busybin.gitrehub.core.model.GeneratedNotes
 import io.github.busybin.gitrehub.core.model.Gist
@@ -32,6 +34,7 @@ import io.github.busybin.gitrehub.core.model.PunchCard
 import io.github.busybin.gitrehub.core.model.Reaction
 import io.github.busybin.gitrehub.core.model.Release
 import io.github.busybin.gitrehub.core.model.Repo
+import io.github.busybin.gitrehub.core.model.RepoOverview
 import io.github.busybin.gitrehub.core.model.RepoSubscription
 import io.github.busybin.gitrehub.core.model.Review
 import io.github.busybin.gitrehub.core.model.ReviewComment
@@ -60,6 +63,7 @@ import io.github.busybin.gitrehub.core.model.parseCommitActivity
 import io.github.busybin.gitrehub.core.model.parseContributors
 import io.github.busybin.gitrehub.core.model.parseInteractions
 import io.github.busybin.gitrehub.core.model.parsePunchCard
+import io.github.busybin.gitrehub.core.model.parseRepoWatchers
 import io.github.busybin.gitrehub.core.model.parseWatchers
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
@@ -873,12 +877,19 @@ object GitHubApi {
         Issue.serializer(),
     ).value
 
-    suspend fun createComment(owner: String, repo: String, number: Int, body: String): Comment =
+    suspend fun createComment(
+        owner: String,
+        repo: String,
+        number: Int,
+        body: String,
+        token: String? = null,
+    ): Comment =
         GitHubClient.send(
             "POST",
             "/repos/$owner/$repo/issues/$number/comments",
             WriteBodies.comment(body),
             Comment.serializer(),
+            token = token,
         ).value
 
     suspend fun editComment(owner: String, repo: String, commentId: Long, body: String): Comment =
@@ -1579,6 +1590,102 @@ object GitHubApi {
         )
     }
 
+    private const val DISCUSSION_NODE_QUERY = """
+        query DiscussionNode(${'$'}owner: String!, ${'$'}repo: String!, ${'$'}number: Int!) {
+          repository(owner: ${'$'}owner, name: ${'$'}repo) {
+            discussion(number: ${'$'}number) { id }
+          }
+        }
+    """
+
+    /** GraphQL node id of one discussion; the REST object does not carry it, mutations need it. */
+    suspend fun discussionNodeId(owner: String, repo: String, number: Int): String? {
+        val data = GitHubClient.graphQl(
+            DISCUSSION_NODE_QUERY,
+            buildJsonObject {
+                put("owner", JsonPrimitive(owner))
+                put("repo", JsonPrimitive(repo))
+                put("number", JsonPrimitive(number))
+            },
+        )
+        return data["repository"]?.jsonObject?.get("discussion")
+            ?.takeIf { it !is JsonNull }?.jsonObject?.get("id")?.asStringOrNull()
+    }
+
+    /** `addDiscussionComment`. Discussions have no REST write endpoint, so this is GraphQL only. */
+    suspend fun addDiscussionComment(owner: String, repo: String, number: Int, body: String) {
+        val discussionId = discussionNodeId(owner, repo, number)
+            ?: throw ApiException(404, "Discussion #$number not found")
+        GitHubClient.graphQl(
+            "mutation AddDiscussionComment(${'$'}discussion: ID!, ${'$'}body: String!) { " +
+                "addDiscussionComment(input: {discussionId: ${'$'}discussion, body: ${'$'}body}) " +
+                "{ comment { id } } }",
+            buildJsonObject {
+                put("discussion", JsonPrimitive(discussionId))
+                put("body", JsonPrimitive(body))
+            },
+        )
+    }
+
+    private const val DISCUSSION_SETUP_QUERY = """
+        query DiscussionSetup(${'$'}owner: String!, ${'$'}repo: String!) {
+          repository(owner: ${'$'}owner, name: ${'$'}repo) {
+            id
+            discussionCategories(first: 25) { nodes { id name } }
+          }
+        }
+    """
+
+    /** Repository node id plus the categories a new discussion can be filed under. */
+    suspend fun discussionSetup(owner: String, repo: String): DiscussionSetup? {
+        val data = GitHubClient.graphQl(
+            DISCUSSION_SETUP_QUERY,
+            buildJsonObject {
+                put("owner", JsonPrimitive(owner))
+                put("repo", JsonPrimitive(repo))
+            },
+        )
+        val repository = data["repository"]?.takeIf { it !is JsonNull }?.jsonObject ?: return null
+        val repositoryId = repository["id"]?.asStringOrNull() ?: return null
+        val categories = repository["discussionCategories"]?.jsonObject
+            ?.get("nodes")?.jsonArray.orEmpty()
+            .mapNotNull { node ->
+                val obj = node.jsonObject
+                val id = obj["id"]?.asStringOrNull() ?: return@mapNotNull null
+                val name = obj["name"]?.asStringOrNull() ?: return@mapNotNull null
+                DiscussionCategoryRef(id, name)
+            }
+        return DiscussionSetup(repositoryId, categories)
+    }
+
+    /**
+     * `createDiscussion`; answers the new discussion's number so the UI can open it. Throwing on a
+     * disabled category or a missing title is GraphQL's own error, which [GitHubClient.graphQl]
+     * already turns into an [ApiException].
+     */
+    suspend fun createDiscussion(
+        repositoryId: String,
+        categoryId: String,
+        title: String,
+        body: String,
+    ): Int {
+        val data = GitHubClient.graphQl(
+            "mutation CreateDiscussion(${'$'}repository: ID!, ${'$'}category: ID!, " +
+                "${'$'}title: String!, ${'$'}body: String!) { " +
+                "createDiscussion(input: {repositoryId: ${'$'}repository, categoryId: ${'$'}category, " +
+                "title: ${'$'}title, body: ${'$'}body}) { discussion { number } } }",
+            buildJsonObject {
+                put("repository", JsonPrimitive(repositoryId))
+                put("category", JsonPrimitive(categoryId))
+                put("title", JsonPrimitive(title))
+                put("body", JsonPrimitive(body))
+            },
+        )
+        val number = data["createDiscussion"]?.jsonObject?.get("discussion")?.jsonObject
+            ?.get("number")?.asStringOrNull()?.toIntOrNull()
+        return number ?: throw ApiException(422, "GraphQL: empty response")
+    }
+
     /** GraphQL scalars arrive as strings, numbers or null; this keeps the parsing in one place. */
     private fun JsonElement.asStringOrNull(): String? =
         (this as? JsonPrimitive)?.takeIf { it.isString || it.contentOrNull != null }?.contentOrNull
@@ -1632,6 +1739,10 @@ object GitHubApi {
                 issues(first: 10, orderBy: {field: CREATED_AT, direction: DESC}, states: [OPEN, CLOSED]) {
                   nodes { number title createdAt author { login avatarUrl } }
                 }
+                watchers(first: 100) {
+                  totalCount
+                  nodes { login avatarUrl }
+                }
               }
             }
           }
@@ -1639,11 +1750,20 @@ object GitHubApi {
     """
 
     /**
-     * "Who starred / forked / opened something on my repos", newest 15 pushed repos, 10 rows each.
-     * Any failure is the caller's to swallow: this only augments the feed.
+     * "Who starred / forked / opened something on my repos" plus the current watcher list, newest
+     * 15 pushed repos, 10 interaction rows and up to 100 watchers each.
+     *
+     * Watchers are a snapshot, not an event stream: GitHub has no "started watching" event and no
+     * timestamp, so the caller diffs the list against the one it saved last time. Any failure is
+     * the caller's to swallow: this only augments the feed.
      */
-    suspend fun repoInteractions(): List<Event> =
-        parseInteractions(GitHubClient.graphQl(INTERACTIONS_QUERY), GitHubClient.json)
+    suspend fun repoOverview(): RepoOverview {
+        val root = GitHubClient.graphQl(INTERACTIONS_QUERY)
+        return RepoOverview(
+            interactions = parseInteractions(root, GitHubClient.json),
+            watchers = parseRepoWatchers(root, GitHubClient.json),
+        )
+    }
 
     // ---------------------------------------------------------- notifications
 
@@ -1659,6 +1779,7 @@ object GitHubApi {
         all: Boolean = true,
         since: String? = null,
         cacheOnly: Boolean = false,
+        token: String? = null,
     ): ApiResponse<List<Notification>> = GitHubClient.get(
         "/notifications",
         ListSerializer(Notification.serializer()),
@@ -1667,6 +1788,7 @@ object GitHubApi {
             if (all) put("all", "true")
             if (!since.isNullOrBlank()) put("since", since)
         },
+        token = token,
         cacheOnly = cacheOnly,
     )
 
@@ -1674,16 +1796,25 @@ object GitHubApi {
     suspend fun markAllNotificationsRead() =
         GitHubClient.sendNoContent("PUT", "/notifications", JsonObject(emptyMap()))
 
-    suspend fun markThreadRead(id: String) =
-        GitHubClient.sendNoContent("PATCH", "/notifications/threads/$id", JsonObject(emptyMap()))
+    suspend fun markThreadRead(id: String, token: String? = null) =
+        GitHubClient.sendNoContent(
+            "PATCH",
+            "/notifications/threads/$id",
+            JsonObject(emptyMap()),
+            token = token,
+        )
 
     /** `DELETE /notifications/threads/{id}`: back to unread. */
     suspend fun markThreadUnread(id: String) =
         GitHubClient.sendNoContent("DELETE", "/notifications/threads/$id")
 
     /** Mute the thread (`DELETE .../subscription`). */
-    suspend fun unsubscribeThread(id: String) =
-        GitHubClient.sendNoContent("DELETE", "/notifications/threads/$id/subscription")
+    suspend fun unsubscribeThread(id: String, token: String? = null) =
+        GitHubClient.sendNoContent(
+            "DELETE",
+            "/notifications/threads/$id/subscription",
+            token = token,
+        )
 
     /** Per-thread subscription state; `ignored` is GitHub's "muted". */
     suspend fun threadSubscription(id: String): ThreadSubscription =
@@ -1701,8 +1832,8 @@ object GitHubApi {
         )
 
     /** `latest_comment_url` is absolute; a mock build must still hit the mock host (see [GitHubClient.getUrl]). */
-    suspend fun commentAt(url: String): Comment =
-        GitHubClient.getUrl(url, Comment.serializer()).value
+    suspend fun commentAt(url: String, token: String? = null): Comment =
+        GitHubClient.getUrl(url, Comment.serializer(), token).value
 
     /**
      * `PATCH /user`. Every editable field is sent, so clearing one really clears it.

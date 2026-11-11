@@ -21,9 +21,11 @@ import kotlinx.coroutines.launch
  * Unified activity feed, three sources merged into one list (no tabs):
  *  1. the user's received events (activity on *watched* repos / followed users),
  *  2. their own public activity (pushes, PRs, issues, releases…),
- *  3. [GitHubApi.repoInteractions] — "who starred / forked / opened a PR on *my* repos", which
+ *  3. [GitHubApi.repoOverview] — "who starred / forked / opened a PR on *my* repos", which
  *     source 1 cannot deliver on its own: GitHub only sends received events for repos you *watch*,
  *     and owning a repo does not make you watch it.
+ *  4. [WatchLog] — new watchers of those repos. GitHub has no subscription event, so these rows
+ *     come from diffing the current watcher list against the previous snapshot.
  * De-duplicated by id (and by content between sources 1/2 and 3), newest first.
  */
 class FeedViewModel : PagedViewModel<Event>() {
@@ -59,9 +61,10 @@ class FeedViewModel : PagedViewModel<Event>() {
         // other — the "several seconds of nothing on screen" users saw when opening the feed.
         val receivedCall = async { runCatching { GitHubApi.receivedEvents(user, page) }.getOrNull() }
         val mineCall = async { runCatching { GitHubApi.userEvents(user, page) }.getOrNull() }
-        // "Actions on my repos" (star / fork / PR / issue): a snapshot of the newest N, so only on page 1.
-        val interactionsCall = if (page == 1) async {
-            runCatching { GitHubApi.repoInteractions() }.getOrNull()
+        // "Actions on my repos" (star / fork / PR / issue) plus the watcher snapshot: both are
+        // snapshots of the newest N, so only on page 1.
+        val overviewCall = if (page == 1) async {
+            runCatching { GitHubApi.repoOverview() }.getOrNull()
         } else {
             null
         }
@@ -69,19 +72,27 @@ class FeedViewModel : PagedViewModel<Event>() {
         val received = receivedCall.await()
         val mine = mineCall.await()
         val events = received?.value.orEmpty() + mine?.value.orEmpty()
-        // A failed GraphQL round-trip must not drop the star/fork rows already painted from disk.
-        val fetchedInteractions = interactionsCall?.await()
+        // A failed GraphQL round-trip must not drop the rows already painted from disk.
+        val overview = overviewCall?.await()
+        val fetchedInteractions = overview?.interactions
         val interactions = if (page == 1) {
             fetchedInteractions ?: InteractionsCache.load(user)
         } else {
             emptyList()
         }
         if (fetchedInteractions != null) InteractionsCache.save(user, fetchedInteractions)
+        // Diffing happens even when the interaction parse failed, but only with a real snapshot:
+        // seeding the watcher log from a failed/empty answer would make every later watcher "new".
+        val watches = if (page == 1) {
+            if (overview != null) WatchLog.refresh(user, overview.watchers) else WatchLog.known(user)
+        } else {
+            emptyList()
+        }
 
-        val merged = mergeFeedEvents(events, interactions).filter { seenIds.add(it.id) }
+        val merged = mergeFeedEvents(events, interactions + watches).filter { seenIds.add(it.id) }
 
         if (page == 1) {
-            _interactionsLoaded.value = interactions.isNotEmpty()
+            _interactionsLoaded.value = interactions.isNotEmpty() || watches.isNotEmpty()
         }
 
         val hasMore = received?.hasMoreEvents() == true || mine?.hasMoreEvents() == true
@@ -98,9 +109,15 @@ class FeedViewModel : PagedViewModel<Event>() {
         val received = runCatching { GitHubApi.receivedEvents(user, page, cacheOnly = true) }.getOrNull()
         val mine = runCatching { GitHubApi.userEvents(user, page, cacheOnly = true) }.getOrNull()
         val interactions = if (page == 1) InteractionsCache.load(user) else emptyList()
-        val merged = mergeFeedEvents(received?.value.orEmpty() + mine?.value.orEmpty(), interactions)
+        val watches = if (page == 1) WatchLog.known(user) else emptyList()
+        val merged = mergeFeedEvents(
+            received?.value.orEmpty() + mine?.value.orEmpty(),
+            interactions + watches,
+        )
         if (merged.isEmpty()) return null
-        if (page == 1 && interactions.isNotEmpty()) _interactionsLoaded.value = true
+        if (page == 1 && (interactions.isNotEmpty() || watches.isNotEmpty())) {
+            _interactionsLoaded.value = true
+        }
         return PageResult(merged, received?.hasMoreEvents() == true || mine?.hasMoreEvents() == true)
     }
 

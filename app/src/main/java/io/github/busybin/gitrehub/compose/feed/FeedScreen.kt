@@ -93,7 +93,7 @@ fun FeedScreen(
     val readKeys by ReadState.readKeys.collectAsStateWithLifecycle()
     val readBefore by ReadState.readBefore.collectAsStateWithLifecycle()
     val readPushes by ReadState.readPushes.collectAsStateWithLifecycle()
-    var showAll by rememberSaveable { mutableStateOf(false) }
+    var showAll by rememberSaveable(filter) { mutableStateOf(false) }
 
     LaunchedEffect(Unit) { vm.refresh() }
 
@@ -159,13 +159,12 @@ fun FeedScreen(
 
                 LazyColumn(
                     state = listState,
-                    contentPadding = PaddingValues(tokens.listPadding),
-                    verticalArrangement = Arrangement.spacedBy(tokens.itemSpacing),
+                    contentPadding = PaddingValues(start = 0.dp, end = 0.dp, top = tokens.space2, bottom = 88.dp),
                 ) {
                     if (hiddenCount > 0 || showAll) {
                         item {
                             Row(
-                                modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 2.dp),
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 MetaText(
@@ -245,8 +244,8 @@ fun FeedScreen(
             ) {
                 SmallFloatingActionButton(
                     onClick = { scope.launch { listState.animateScrollToItem(0) } },
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                    contentColor = MaterialTheme.colorScheme.onSurface,
                 ) {
                     Icon(
                         Icons.Outlined.ExpandLess,
@@ -259,6 +258,8 @@ fun FeedScreen(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(18.dp),
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                contentColor = MaterialTheme.colorScheme.onSurface,
             ) {
                 Icon(Icons.Outlined.DoneAll, contentDescription = stringResource(R.string.m3_mark_all_read))
             }

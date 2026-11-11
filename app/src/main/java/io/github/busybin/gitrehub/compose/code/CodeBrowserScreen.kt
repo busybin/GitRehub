@@ -13,6 +13,7 @@ import androidx.compose.material3.VerticalDivider
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -64,6 +65,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.busybin.gitrehub.R
 import io.github.busybin.gitrehub.compose.common.AsyncContent
 import io.github.busybin.gitrehub.compose.common.Avatar
+import io.github.busybin.gitrehub.compose.common.Hairline
+import io.github.busybin.gitrehub.compose.common.Identifier
 import io.github.busybin.gitrehub.compose.common.LocalTokens
 import io.github.busybin.gitrehub.compose.common.EmptyView
 import io.github.busybin.gitrehub.compose.common.isWideLayout
@@ -182,10 +185,16 @@ private fun CodeBrowserContent(
                         TextButton(onClick = onOpenBranches) {
                             Icon(Icons.Outlined.CallSplit, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(Modifier.width(6.dp))
-                            Text(
-                                listing.ref ?: stringResource(R.string.m3_default_branch),
-                                maxLines = 1,
-                            )
+                            // Only show a name when the ref is known: falling back to the words
+                            // "Default branch" put a label right next to the repo crumb and read as
+                            // "Default branch DelugeLauncher".
+                            if (listing.ref != null) {
+                                Text(
+                                    text = listing.ref.orEmpty(),
+                                    maxLines = 1,
+                                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                                )
+                            }
                         }
                         if (listing.ref != null) {
                             IconButton(onClick = { onOpenCommits(listing.ref.orEmpty()) }) {
@@ -292,8 +301,7 @@ private fun CodeBrowserContent(
                     return@AsyncContent
                 }
                 LazyColumn(
-                    contentPadding = PaddingValues(horizontal = tokens.listPadding, vertical = 4.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                    contentPadding = PaddingValues(horizontal = tokens.pagePadding, vertical = tokens.space1),
                 ) {
                     items(listing.entries, key = { it.path ?: it.name ?: it.sha ?: "entry" }) { entry ->
                         EntryRow(entry) {
@@ -311,7 +319,9 @@ private fun Crumb(text: String, onClick: () -> Unit) {
     Text(
         text = text,
         style = MaterialTheme.typography.labelLarge,
-        color = if (text == "/") MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.primary,
+        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+        color = if (text == "/") MaterialTheme.colorScheme.outline
+        else MaterialTheme.colorScheme.onSurfaceVariant,
         maxLines = 1,
         modifier = Modifier
             .clickable(enabled = text != "/") { onClick() }
@@ -435,46 +445,44 @@ private fun FileFinder(
 @Composable
 private fun EntryRow(entry: CodeEntry, onClick: () -> Unit) {
     val tokens = LocalTokens.current
-    Card(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-        shape = RoundedCornerShape(if (tokens.compact) 8.dp else 12.dp),
-    ) {
+    Column(Modifier.fillMaxWidth()) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(tokens.cardPadding),
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = tokens.rowTight)
+                .clickable(onClick = onClick)
+                .padding(vertical = tokens.space1),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(
                 imageVector = iconFor(entry),
                 contentDescription = null,
-                modifier = Modifier.size(20.dp),
-                tint = if (entry.isDir) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(tokens.iconSize),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
-                Text(
-                    text = entry.name.orEmpty(),
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = if (entry.isDir) FontWeight.Medium else FontWeight.Normal,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    if (!entry.isDir) MetaText(humanSize(entry.size))
-                    if (entry.isSymlink) Pill(stringResource(R.string.m3_symlink))
-                    if (!entry.sha.isNullOrBlank() && !entry.isDir) MetaText(entry.sha.take(7))
+            Spacer(Modifier.width(tokens.space3))
+            Identifier(
+                text = entry.name.orEmpty(),
+                maxLines = 1,
+                emphasized = entry.isDir,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.weight(1f),
+            )
+            Spacer(Modifier.width(tokens.space3))
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(tokens.space3),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (entry.isSymlink) Pill(stringResource(R.string.m3_symlink))
+                if (!entry.isDir) {
+                    MetaText(humanSize(entry.size))
+                    if (!entry.sha.isNullOrBlank()) {
+                        MetaText(entry.sha.take(7), mono = true)
+                    }
                 }
             }
-            Icon(
-                Icons.Outlined.ChevronRight,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.outline,
-                modifier = Modifier.size(18.dp),
-            )
         }
+        Hairline()
     }
 }
 

@@ -38,8 +38,7 @@ data class Discussion(
 }
 
 @Serializable
-data class DiscussionComment(
-    val id: Long = 0,
+data class DiscussionComment(    val id: Long = 0,
     val body: String? = null,
     @SerialName("html_url") val htmlUrl: String? = null,
     @SerialName("created_at") @Serializable(with = InstantSerializer::class) val createdAt: Instant? = null,
@@ -47,3 +46,9 @@ data class DiscussionComment(
     @SerialName("author_association") val authorAssociation: String? = null,
     val user: User? = null,
 )
+
+/** One category a new discussion can be filed under (GraphQL `discussionCategories`). */
+data class DiscussionCategoryRef(val id: String, val name: String)
+
+/** Repository node id plus its categories, fetched in one GraphQL call before creating a discussion. */
+data class DiscussionSetup(val repositoryId: String, val categories: List<DiscussionCategoryRef>)

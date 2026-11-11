@@ -78,6 +78,7 @@ fun RepoPackAction(owner: String, repo: String) {
     val runningHere = sync.running?.fullName == fullName
     val queuedPosition = sync.queued.indexOfFirst { it.fullName == fullName }
     val busyHere = runningHere || queuedPosition >= 0
+    val queuedText = stringResource(R.string.m3_pack_queue_added)
     IconButton(onClick = { showDialog = true }) {
         Icon(
             imageVector = if (pack != null) Icons.Filled.CloudDone else Icons.Outlined.CloudDownload,
@@ -104,7 +105,7 @@ fun RepoPackAction(owner: String, repo: String) {
                 when (RepoPackSyncer.enqueue(context, owner, repo, options)) {
                     RepoPackSyncer.Enqueue.QUEUED -> Toast.makeText(
                         context,
-                        context.getString(R.string.m3_pack_queue_added),
+                        queuedText,
                         Toast.LENGTH_SHORT,
                     ).show()
                     RepoPackSyncer.Enqueue.ALREADY_RUNNING -> Unit

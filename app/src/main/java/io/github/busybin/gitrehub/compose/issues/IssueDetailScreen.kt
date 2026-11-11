@@ -80,10 +80,10 @@ import io.github.busybin.gitrehub.compose.common.AsyncContent
 import io.github.busybin.gitrehub.compose.common.Avatar
 import io.github.busybin.gitrehub.compose.common.CompactButton
 import io.github.busybin.gitrehub.compose.common.ConfirmDialog
+import io.github.busybin.gitrehub.compose.common.EditSheet
 import io.github.busybin.gitrehub.compose.common.LoadState
 import io.github.busybin.gitrehub.compose.common.LinkCopyDialog
 import io.github.busybin.gitrehub.compose.common.MarkdownText
-import io.github.busybin.gitrehub.compose.common.SavedReplies
 import io.github.busybin.gitrehub.compose.common.ThreadKey
 import io.github.busybin.gitrehub.compose.common.ThreadSeen
 import io.github.busybin.gitrehub.compose.common.MetaText
@@ -213,7 +213,7 @@ fun IssueDetailScreen(
                 if (data.localOnly) {
                     item {
                         androidx.compose.material3.Surface(
-                            color = MaterialTheme.colorScheme.secondaryContainer,
+                            color = MaterialTheme.colorScheme.surfaceContainerHigh,
                             shape = RoundedCornerShape(12.dp),
                             modifier = Modifier.fillMaxWidth(),
                         ) {
@@ -229,7 +229,6 @@ fun IssueDetailScreen(
                     Text(
                         text = issue.title.orEmpty(),
                         style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
                     )
                 }
                 item { StateRow(issue, data.pullRequest, number) }
@@ -894,195 +893,6 @@ private fun reactionCount(reactions: Reactions?, kind: ReactionKind): Int = when
     ReactionKind.ROCKET -> reactions?.rocket
     ReactionKind.EYES -> reactions?.eyes
 } ?: 0
-
-/** Shared input sheet for writing/editing a comment or editing an issue; `showTitle` adds a title field. */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun EditSheet(
-    heading: String,
-    showTitle: Boolean,
-    initialTitle: String,
-    initialBody: String,
-    submitLabel: String,
-    onDismiss: () -> Unit,
-    onSubmit: (String, String) -> Unit,
-    repo: String? = null,
-    imageBaseUrl: String? = null,
-) {
-    var title by remember(initialTitle) { mutableStateOf(initialTitle) }
-    var body by remember(initialBody) { mutableStateOf(initialBody) }
-    var preview by rememberSaveable { mutableStateOf(false) }
-    var showSnippets by rememberSaveable { mutableStateOf(false) }
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .imePadding()
-                .padding(horizontal = 18.dp)
-                .padding(bottom = 24.dp),
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = heading,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.weight(1f),
-                )
-                TextButton(onClick = { preview = !preview }) {
-                    Text(
-                        stringResource(
-                            if (preview) R.string.m3_write_edit_mode else R.string.m3_write_preview
-                        )
-                    )
-                }
-            }
-            Spacer(Modifier.height(10.dp))
-            if (showTitle) {
-                OutlinedTextField(
-                    value = title,
-                    onValueChange = { title = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    placeholder = { Text(stringResource(R.string.m3_write_title_hint)) },
-                    singleLine = true,
-                )
-                Spacer(Modifier.height(10.dp))
-            }
-            if (preview) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = 120.dp)
-                        .verticalScroll(rememberScrollState()),
-                ) {
-                    if (body.isBlank()) {
-                        Text(
-                            text = stringResource(R.string.m3_write_preview_empty),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    } else {
-                        MarkdownText(markdown = body, baseUrl = imageBaseUrl, repo = repo)
-                    }
-                }
-            } else {
-                OutlinedTextField(
-                    value = body,
-                    onValueChange = { body = it },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = 120.dp),
-                    placeholder = { Text(stringResource(R.string.m3_write_comment_hint)) },
-                    minLines = 5,
-                )
-            }
-            Spacer(Modifier.height(12.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                TextButton(onClick = { showSnippets = true }) {
-                    Text(stringResource(R.string.m3_write_snippets))
-                }
-                Spacer(Modifier.weight(1f))
-                TextButton(onClick = onDismiss) { Text(stringResource(R.string.m3_cancel)) }
-                Spacer(Modifier.width(8.dp))
-                Button(
-                    onClick = { onSubmit(title, body) },
-                    enabled = body.isNotBlank() && (!showTitle || title.isNotBlank()),
-                ) {
-                    Text(submitLabel)
-                }
-            }
-        }
-    }
-
-    if (showSnippets) {
-        SnippetSheet(
-            current = body,
-            onDismiss = { showSnippets = false },
-            onPick = { snippet ->
-                body = if (body.isBlank()) snippet else body.trimEnd() + "\n\n" + snippet
-                showSnippets = false
-            },
-        )
-    }
-}
-
-/** Saved replies: reuse a canned answer or save the text typed so far. */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun SnippetSheet(
-    current: String,
-    onDismiss: () -> Unit,
-    onPick: (String) -> Unit,
-) {
-    val replies by SavedReplies.items.collectAsStateWithLifecycle()
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(max = 520.dp)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 18.dp)
-                .padding(bottom = 24.dp),
-        ) {
-            Text(
-                text = stringResource(R.string.m3_write_snippets),
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.SemiBold,
-            )
-            Spacer(Modifier.height(6.dp))
-            Text(
-                text = stringResource(R.string.m3_write_snippets_hint),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Spacer(Modifier.height(10.dp))
-            Button(
-                onClick = {
-                    SavedReplies.add(current)
-                    onDismiss()
-                },
-                enabled = current.isNotBlank(),
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text(stringResource(R.string.m3_write_snippet_save))
-            }
-            Spacer(Modifier.height(10.dp))
-            if (replies.isEmpty()) {
-                MetaText(stringResource(R.string.m3_write_snippets_empty))
-            }
-            replies.forEach { reply ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { onPick(reply.body) }
-                        .padding(vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = reply.title,
-                        style = MaterialTheme.typography.bodyMedium,
-                        maxLines = 1,
-                        modifier = Modifier.weight(1f),
-                    )
-                    IconButton(onClick = { SavedReplies.remove(reply) }, modifier = Modifier.size(28.dp)) {
-                        Icon(
-                            Icons.Outlined.Delete,
-                            contentDescription = stringResource(R.string.m3_write_delete),
-                            modifier = Modifier.size(16.dp),
-                        )
-                    }
-                }
-                HorizontalDivider()
-            }
-        }
-    }
-}
 
 /** Manage drawer: labels, assignees, milestone and locked conversation; the ViewModel diffs the selection. */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)

@@ -1,6 +1,10 @@
 package io.github.busybin.gitrehub.compose.repos
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,7 +20,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.ForkRight
@@ -25,6 +29,8 @@ import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -44,8 +50,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -53,10 +60,11 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.busybin.gitrehub.R
 import io.github.busybin.gitrehub.compose.common.AsyncContent
 import io.github.busybin.gitrehub.compose.common.EmptyView
+import io.github.busybin.gitrehub.compose.common.Hairline
+import io.github.busybin.gitrehub.compose.common.Identifier
 import io.github.busybin.gitrehub.compose.common.KeepTopOnRefresh
 import io.github.busybin.gitrehub.compose.common.LocalTokens
 import io.github.busybin.gitrehub.compose.common.MetaText
-import io.github.busybin.gitrehub.compose.common.Pill
 import io.github.busybin.gitrehub.compose.common.SavedPrefs
 import io.github.busybin.gitrehub.compose.common.compactNumber
 import io.github.busybin.gitrehub.compose.common.isWideLayout
@@ -178,6 +186,7 @@ private fun ReposList(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .horizontalScroll(rememberScrollState())
                 .padding(horizontal = 12.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
@@ -206,7 +215,7 @@ private fun ReposList(
                 }
                 LazyColumn(
                     state = listState,
-                    contentPadding = PaddingValues(tokens.listPadding),
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(tokens.itemSpacing),
                 ) {
                     items(repos, key = { it.id }) { repo ->
@@ -216,6 +225,8 @@ private fun ReposList(
                             highlighted = repo.fullName.isNotBlank() && repo.fullName == selected,
                             favorite = repo.fullName in favorites,
                             onToggleFavorite = { SavedPrefs.toggleFavorite(repo.fullName) },
+                            // Only meaningful in the starred list: elsewhere the row has nothing to un-star.
+                            onUnstar = if (filter == RepoFilter.STARRED) ({ vm.unstar(repo) }) else null,
                         )
                     }
                     if (loadingMore) {
@@ -239,46 +250,59 @@ fun RepoCard(
     highlighted: Boolean = false,
     favorite: Boolean = false,
     onToggleFavorite: (() -> Unit)? = null,
+    onUnstar: (() -> Unit)? = null,
 ) {
     val tokens = LocalTokens.current
+    var menu by remember { mutableStateOf(false) }
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(enabled = repo.fullName.isNotBlank()) { onOpenRepo(repo.nameWithOwner) },
+            .combinedClickable(
+                enabled = repo.fullName.isNotBlank(),
+                onClick = { onOpenRepo(repo.nameWithOwner) },
+                onLongClick = {
+                    if (onUnstar != null || onToggleFavorite != null) menu = true
+                },
+            ),
         colors = CardDefaults.cardColors(
-            containerColor = if (highlighted) MaterialTheme.colorScheme.secondaryContainer
+            containerColor = if (highlighted) MaterialTheme.colorScheme.surfaceContainerHigh
             else MaterialTheme.colorScheme.surfaceContainerLow
         ),
         shape = tokens.cardShape,
     ) {
-        Column(Modifier.padding(tokens.cardPadding)) {
+        Column(
+            Modifier.padding(
+                start = tokens.space4,
+                end = tokens.space4,
+                top = tokens.space3,
+                bottom = tokens.space3,
+            ),
+        ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = if (repo.isPrivate) Icons.Outlined.Lock else Icons.Outlined.ForkRight,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Spacer(Modifier.width(6.dp))
-                Text(
+                if (repo.isPrivate || repo.fork) {
+                    Icon(
+                        imageVector = if (repo.isPrivate) Icons.Outlined.Lock else Icons.Outlined.ForkRight,
+                        contentDescription = null,
+                        modifier = Modifier.size(tokens.iconSmall),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.width(6.dp))
+                }
+                Identifier(
                     text = repo.fullName.ifBlank { repo.name },
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+                    emphasized = true,
+                    style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.weight(1f),
                 )
-                if (repo.fork) {
-                    Pill("fork")
-                }
                 if (onToggleFavorite != null) {
-                    IconButton(onClick = onToggleFavorite, modifier = Modifier.size(30.dp)) {
+                    IconButton(onClick = onToggleFavorite, modifier = Modifier.size(32.dp)) {
                         Icon(
                             imageVector = if (favorite) Icons.Filled.Star else Icons.Outlined.StarBorder,
                             contentDescription = stringResource(
                                 if (favorite) R.string.m3_repo_unfavorite else R.string.m3_repo_favorite
                             ),
-                            modifier = Modifier.size(18.dp),
+                            modifier = Modifier.size(tokens.iconSize),
                             tint = if (favorite) MaterialTheme.colorScheme.primary
                             else MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -286,34 +310,73 @@ fun RepoCard(
                 }
             }
             if (!repo.description.isNullOrBlank()) {
-                Spacer(Modifier.height(6.dp))
+                Spacer(Modifier.height(2.dp))
                 Text(
                     text = repo.description,
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(tokens.space2))
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(tokens.space3),
             ) {
                 if (!repo.language.isNullOrBlank()) {
-                    Pill(repo.language, leadingDot = MaterialTheme.colorScheme.primary)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            Modifier
+                                .size(6.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.outline)
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        MetaText(repo.language)
+                    }
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         imageVector = Icons.Outlined.StarBorder,
                         contentDescription = null,
-                        modifier = Modifier.size(14.dp),
+                        modifier = Modifier.size(tokens.iconSmall),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    Spacer(Modifier.width(3.dp))
+                    Spacer(Modifier.width(4.dp))
                     MetaText(compactNumber(repo.stargazersCount))
                 }
-                MetaText(stringResource(R.string.m3_repos_updated_ago, relativeTime(repo.pushedAt ?: repo.updatedAt)))
+                MetaText(
+                    stringResource(R.string.m3_repos_updated_ago, relativeTime(repo.pushedAt ?: repo.updatedAt)),
+                )
+            }
+            if (menu) {
+                DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                    if (onUnstar != null) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.m3_unstar)) },
+                            onClick = {
+                                menu = false
+                                onUnstar()
+                            },
+                        )
+                    }
+                    if (onToggleFavorite != null) {
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    stringResource(
+                                        if (favorite) R.string.m3_repo_unfavorite else R.string.m3_repo_favorite
+                                    )
+                                )
+                            },
+                            onClick = {
+                                menu = false
+                                onToggleFavorite()
+                            },
+                        )
+                    }
+                }
             }
         }
     }

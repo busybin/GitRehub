@@ -2,9 +2,10 @@ package io.github.busybin.gitrehub.compose.repos
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import io.github.busybin.gitrehub.App
 import io.github.busybin.gitrehub.R
 import io.github.busybin.gitrehub.compose.common.LoadState
-import io.github.busybin.gitrehub.App
+import io.github.busybin.gitrehub.compose.common.RecentRepos
 import io.github.busybin.gitrehub.compose.common.RepoSeen
 import io.github.busybin.gitrehub.core.offline.RepoPackOptions
 import io.github.busybin.gitrehub.core.offline.RepoPackPrefs
@@ -63,6 +64,9 @@ class RepoDetailViewModel : ViewModel() {
     private val _starBusy = MutableStateFlow(false)
     val starBusy: StateFlow<Boolean> = _starBusy.asStateFlow()
 
+    private val _refreshing = MutableStateFlow(false)
+    val refreshing: StateFlow<Boolean> = _refreshing.asStateFlow()
+
     private var owner: String = ""
     private var name: String = ""
 
@@ -71,6 +75,17 @@ class RepoDetailViewModel : ViewModel() {
     val message: StateFlow<UiText?> = _message.asStateFlow()
 
     fun consumeMessage() { _message.value = null }
+
+    /** Pull-to-refresh: refetch in place so the page stays visible instead of flashing the spinner. */
+    fun refresh() {
+        if (_refreshing.value || owner.isBlank() || name.isBlank()) return
+        _refreshing.value = true
+        viewModelScope.launch {
+            val result = runCatching { fetch() }
+            result.onSuccess { _state.value = LoadState.Ready(it) }
+            _refreshing.value = false
+        }
+    }
 
     fun load(owner: String, name: String, force: Boolean = false) {
         if (!force && this.owner == owner && this.name == name && _state.value is LoadState.Ready) return
@@ -87,6 +102,8 @@ class RepoDetailViewModel : ViewModel() {
 
     private suspend fun fetch(): RepoDetail {
         val context = App.getInstance()
+        // Browsing starts here, not in the list: this is the one place a repository is really opened.
+        RecentRepos.record("$owner/$name")
         val account = runCatching { Session.currentAccount()?.login }.getOrNull()
         val pack = account?.let { RepoPacks.get(it, owner, name) }
         if (pack != null && !OfflineStatus.isOnline) {

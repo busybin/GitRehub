@@ -20,7 +20,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CallMerge
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
@@ -53,6 +52,7 @@ import io.github.busybin.gitrehub.R
 import io.github.busybin.gitrehub.compose.common.AsyncContent
 import io.github.busybin.gitrehub.compose.common.EmptyView
 import io.github.busybin.gitrehub.compose.common.LoadState
+import io.github.busybin.gitrehub.compose.common.LocalTokens
 import io.github.busybin.gitrehub.compose.common.MetaText
 import io.github.busybin.gitrehub.compose.common.ReadState
 import io.github.busybin.gitrehub.compose.common.ThreadKey
@@ -181,9 +181,9 @@ private fun MyWorkRow(issue: Issue, unread: Boolean, onOpen: () -> Unit) {
             .fillMaxWidth()
             .clickable(enabled = !owner.isNullOrBlank() && !name.isNullOrBlank(), onClick = onOpen),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-        shape = RoundedCornerShape(14.dp),
+        shape = CardDefaults.shape,
     ) {
-        Column(Modifier.padding(12.dp)) {
+        Column(Modifier.padding(LocalTokens.current.space3)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (unread) {
                     Box(
@@ -215,7 +215,7 @@ private fun MyWorkRow(issue: Issue, unread: Boolean, onOpen: () -> Unit) {
                     modifier = Modifier.size(16.dp),
                 )
                 if (!fullName.isNullOrBlank()) {
-                    MetaText(fullName)
+                    MetaText(fullName, mono = true)
                 }
                 MetaText("#${issue.number}")
                 Spacer(Modifier.weight(1f))

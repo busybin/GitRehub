@@ -38,6 +38,7 @@ object Routes {
     const val COMPARE = "compare/{owner}/{repo}?base={base}&head={head}"
     const val DISCUSSIONS = "discussions/{owner}/{repo}"
     const val DISCUSSION = "discussion/{owner}/{repo}/{number}"
+    const val NEW_DISCUSSION = "new-discussion/{owner}/{repo}"
     const val LABELS = "labels/{owner}/{repo}"
     const val MILESTONES = "milestones/{owner}/{repo}"
     const val ACTIONS = "actions/{owner}/{repo}"
@@ -78,6 +79,8 @@ object Routes {
 
     fun discussion(owner: String, repo: String, number: Int) =
         "discussion/$owner/$repo/$number"
+
+    fun newDiscussion(owner: String, repo: String) = "new-discussion/$owner/$repo"
 
     fun actions(owner: String, repo: String) = "actions/$owner/$repo"
 

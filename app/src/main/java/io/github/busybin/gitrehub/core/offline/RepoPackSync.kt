@@ -88,14 +88,26 @@ object RepoPackRules {
     data class Selection(val files: List<GitTreeEntry>, val skipped: Int)
 
     /**
+     * Files whose blob did not move since the published pack: same path, same SHA. The incremental
+     * sync copies these out of the old pack instead of downloading them again.
+     */
+    fun unchanged(files: List<RepoPackFile>, oldSha: Map<String, String>): List<RepoPackFile> =
+        files.filter { file ->
+            file.sha.isNotBlank() && oldSha[file.path].equals(file.sha, ignoreCase = true)
+        }
+
+    /**
      * Trims [candidates] to [maxBytes] **before** anything is downloaded, so the archive path and
      * the blob fallback both stop at the same set of files.
+     *
+     * A file that does not fit is skipped, not used as a cut-off: GitHub sorts the tree by path, so
+     * one large file near the top would otherwise leave the pack nearly empty.
      */
     fun select(candidates: List<GitTreeEntry>, maxBytes: Long): Selection {
         var used = 0L
         val chosen = ArrayList<GitTreeEntry>(candidates.size)
         for (entry in candidates) {
-            if (used + entry.size > maxBytes) break
+            if (used + entry.size > maxBytes) continue
             chosen += entry
             used += entry.size
         }
@@ -225,6 +237,15 @@ object RepoPackSyncer {
      * per host, so six workers would only queue; five is also well below GitHub's secondary limit.
      */
     private const val BLOB_CONCURRENCY = 5
+
+    /**
+     * Incremental refresh: copying a file from the old pack is much cheaper than one blob request,
+     * so above this many moved files the zipball is the better deal (one request for everything).
+     */
+    private const val INCREMENTAL_MAX_FILES = 150
+
+    /** Same idea in bytes: past this the archive is likely to cost less than hundreds of blobs. */
+    private const val INCREMENTAL_MAX_BYTES = 64L * 1024 * 1024
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val queue = RepoPackTaskQueue()
@@ -499,27 +520,42 @@ object RepoPackSyncer {
                 }
                 report(task, Phase.CODE, 0, planned.size, 0)
 
-                // One archive request beats hundreds of blob calls. When it is not usable
-                // (blocked codeload, oversized archive, broken zip) fall back to the old path.
-                val fromArchive = if (planned.size >= MIN_FILES_FOR_ARCHIVE) try {
-                    extractArchive(context, meta, task, owner, repo, head, planned)
-                } catch (cancelled: CancellationException) {
-                    throw cancelled
-                } catch (_: Exception) {
-                    null
-                } else {
-                    null
+                // A published pack of the same branch/options can keep every file whose blob did
+                // not move. A one-line commit then costs one tree request plus one blob instead of
+                // a fresh archive of the whole repository.
+                val previous = RepoPacks.get(account, owner, repo)
+                val incremental = previous?.let { old ->
+                    tryIncremental(context, meta, task, account, owner, repo, old, planned, skipped)
                 }
-                if (fromArchive != null) {
-                    files = fromArchive.files
-                    bytes = fromArchive.bytes
-                    skipped += fromArchive.skipped
+                if (incremental != null) {
+                    files = incremental.files
+                    bytes = incremental.bytes
+                    skipped = incremental.skipped
                 } else {
-                    // The archive may have written half of the staging tree before failing.
+                    // The incremental attempt may have copied part of the tree before giving up.
                     RepoPacks.prepare(context, meta)
-                    val fetched = fetchBlobs(context, meta, task, account, owner, repo, planned)
-                    files = fetched.first
-                    bytes = fetched.second
+                    // One archive request beats hundreds of blob calls. When it is not usable
+                    // (blocked codeload, oversized archive, broken zip) fall back to the old path.
+                    val fromArchive = if (planned.size >= MIN_FILES_FOR_ARCHIVE) try {
+                        extractArchive(context, meta, task, owner, repo, head, planned)
+                    } catch (cancelled: CancellationException) {
+                        throw cancelled
+                    } catch (_: Exception) {
+                        null
+                    } else {
+                        null
+                    }
+                    if (fromArchive != null) {
+                        files = fromArchive.files
+                        bytes = fromArchive.bytes
+                        skipped += fromArchive.skipped
+                    } else {
+                        // The archive may have written half of the staging tree before failing.
+                        RepoPacks.prepare(context, meta)
+                        val fetched = fetchBlobs(context, meta, task, account, owner, repo, planned)
+                        files = fetched.first
+                        bytes = fetched.second
+                    }
                 }
             }
 
@@ -549,6 +585,65 @@ object RepoPackSyncer {
         } finally {
             if (!published) RepoPacks.abort(context, meta)
         }
+    }
+
+    /** Result of a successful incremental refresh. */
+    private data class Incremental(
+        val files: List<RepoPackFile>,
+        val bytes: Long,
+        val skipped: Int,
+    )
+
+    /**
+     * Refreshes [previous] in place: files whose blob SHA did not move are copied out of the old
+     * pack, only the moved ones are downloaded. Returns null when the diff is not worth it (no
+     * published pack, another branch/option set, or too many changed files) and the caller falls
+     * back to the archive path.
+     *
+     * Blob SHAs are exact content hashes, so this needs no `compare` call: the branch tree already
+     * says which files are new. It also survives a force-push, where `compare` would be truncated.
+     */
+    private suspend fun tryIncremental(
+        context: Context,
+        meta: RepoPackMeta,
+        task: RepoPackTask,
+        account: String,
+        owner: String,
+        repo: String,
+        previous: RepoPackMeta,
+        planned: List<RepoPackFile>,
+        skipped: Int,
+    ): Incremental? {
+        if (previous.headSha.isBlank()) return null
+        if (previous.branch != meta.branch) return null
+        if (previous.includeSmall != meta.includeSmall) return null
+        if (previous.includeLarge != meta.includeLarge) return null
+        if (!RepoPacks.dir(context, previous).isDirectory) return null
+        val oldSha = RepoPacks.tree(context, previous).associate { it.path to it.sha }
+        if (oldSha.isEmpty()) return null
+
+        val reusable = RepoPackRules.unchanged(planned, oldSha)
+            .filter { RepoPacks.hasFile(context, previous, it.path) }
+        val reusablePaths = reusable.mapTo(HashSet()) { it.path }
+        val changed = planned.filterNot { it.path in reusablePaths }
+        if (changed.size > INCREMENTAL_MAX_FILES) return null
+        if (changed.sumOf { it.size } > INCREMENTAL_MAX_BYTES) return null
+
+        val done = AtomicInteger()
+        val bytes = AtomicLong()
+        report(task, Phase.CODE, 0, planned.size, 0)
+        reusable.forEach { file ->
+            currentCoroutineContext().ensureActive()
+            requireSameAccount(account)
+            // A half-deleted old pack must degrade to a full download, not fail the whole sync.
+            val data = RepoPacks.bytes(context, previous, file.path) ?: return null
+            RepoPacks.writeBytes(context, meta, file.path, data)
+            bytes.addAndGet(data.size.toLong())
+            report(task, Phase.CODE, done.incrementAndGet(), planned.size, bytes.get())
+        }
+        val (fetched, fetchedBytes) = fetchBlobs(context, meta, task, account, owner, repo, changed)
+        bytes.addAndGet(fetchedBytes)
+        return Incremental(reusable + fetched, bytes.get(), skipped)
     }
 
     /**

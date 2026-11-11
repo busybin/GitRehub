@@ -72,12 +72,14 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.shape.CircleShape
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.busybin.gitrehub.R
 import io.github.busybin.gitrehub.compose.common.AsyncContent
 import io.github.busybin.gitrehub.compose.common.Avatar
 import io.github.busybin.gitrehub.compose.common.EmptyView
+import io.github.busybin.gitrehub.compose.common.Identifier
 import io.github.busybin.gitrehub.compose.common.KeepTopOnRefresh
 import io.github.busybin.gitrehub.compose.common.LoadState
 import io.github.busybin.gitrehub.compose.common.LocalTokens
@@ -629,8 +631,7 @@ private fun NotificationCard(
     val unread = item.unread
     val tokens = LocalTokens.current
     val container = when {
-        selected -> MaterialTheme.colorScheme.secondaryContainer
-        unread -> MaterialTheme.colorScheme.primaryContainer
+        selected -> MaterialTheme.colorScheme.surfaceContainerHigh
         else -> MaterialTheme.colorScheme.surfaceContainerLow
     }
     Card(
@@ -647,22 +648,33 @@ private fun NotificationCard(
             Avatar(item.repository?.owner?.avatarUrl, size = tokens.avatarSize)
             Spacer(Modifier.width(if (tokens.compact) 8.dp else 12.dp))
             Column(Modifier.weight(1f)) {
-                Text(
-                    text = item.subject?.title ?: stringResource(R.string.m3_notification),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = if (unread) FontWeight.SemiBold else FontWeight.Normal,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (unread) {
+                        Box(
+                            Modifier
+                                .size(6.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.primary)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                    }
+                    Text(
+                        text = item.subject?.title ?: stringResource(R.string.m3_notification),
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = if (unread) FontWeight.Medium else FontWeight.Normal,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                item.repoFullName?.takeIf { it.isNotBlank() }?.let { repoName ->
+                    Spacer(Modifier.height(2.dp))
+                    Identifier(
+                        text = repoName,
+                        style = MaterialTheme.typography.bodySmall,
+                        maxLines = 1,
+                    )
+                }
                 Spacer(Modifier.height(4.dp))
-                Text(
-                    text = item.repoFullName.orEmpty(),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Spacer(Modifier.height(6.dp))
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp),

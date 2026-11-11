@@ -122,16 +122,16 @@ fun ProfileScreen(
         ) {
             Spacer(Modifier.height(6.dp))
             Avatar(user.avatarUrl, size = 96.dp)
-            Spacer(Modifier.height(14.dp))
+            Spacer(Modifier.height(12.dp))
             Text(
                 text = user.name ?: user.login.orEmpty(),
                 style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center,
             )
             Text(
                 text = user.login?.let { "@$it" } ?: "",
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.bodySmall,
+                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             if (canEdit) {
@@ -177,13 +177,13 @@ fun ProfileScreen(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                Button(
+                OutlinedButton(
                     onClick = onOpenAccounts,
-                    modifier = Modifier.weight(1f).height(52.dp),
+                    modifier = Modifier.weight(1f).height(44.dp),
                 ) { Text(stringResource(R.string.m3_switch_account)) }
                 OutlinedButton(
                     onClick = { confirmLogout = true },
-                    modifier = Modifier.weight(1f).height(52.dp),
+                    modifier = Modifier.weight(1f).height(44.dp),
                 ) { Text(stringResource(R.string.m3_logout)) }
             }
 

@@ -3,6 +3,7 @@ package io.github.busybin.gitrehub.compose.notifications
 import android.content.Context
 import androidx.annotation.StringRes
 import io.github.busybin.gitrehub.R
+import io.github.busybin.gitrehub.core.notify.NotificationPoster
 import io.github.busybin.gitrehub.helper.PrefGetter
 import io.github.busybin.gitrehub.helper.PrefHelper
 import io.github.busybin.gitrehub.provider.tasks.notification.NotificationForegroundService
@@ -74,11 +75,7 @@ object NotificationPrefs {
         if (!enabled) {
             // Turning everything off also stops the foreground service.
             NotificationForegroundService.stop(context)
-            runCatching {
-                val manager = context.getSystemService(Context.NOTIFICATION_SERVICE)
-                    as android.app.NotificationManager
-                manager.cancelAll()
-            }
+            runCatching { NotificationPoster.clearThreadRows(context) }
         }
     }
 

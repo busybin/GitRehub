@@ -34,11 +34,21 @@
     <string name="m3_load_more_failed">加载更多失败，点击重试</string>
     <string name="m3_offline_banner">离线模式：显示的是已缓存内容</string>
     <string name="m3_just_now">刚刚</string>
-    <string name="m3_minutes_ago">%1$d 分钟前</string>
-    <string name="m3_hours_ago">%1$d 小时前</string>
-    <string name="m3_days_ago">%1$d 天前</string>
-    <string name="m3_months_ago">%1$d 个月前</string>
-    <string name="m3_years_ago">%1$d 年前</string>
+    <plurals name="m3_minutes_ago">
+        <item quantity="other">%1$d 分钟前</item>
+    </plurals>
+    <plurals name="m3_hours_ago">
+        <item quantity="other">%1$d 小时前</item>
+    </plurals>
+    <plurals name="m3_days_ago">
+        <item quantity="other">%1$d 天前</item>
+    </plurals>
+    <plurals name="m3_months_ago">
+        <item quantity="other">%1$d 个月前</item>
+    </plurals>
+    <plurals name="m3_years_ago">
+        <item quantity="other">%1$d 年前</item>
+    </plurals>
 
     <!-- navigation / top bar / drawer -->
     <string name="m3_tab_feed">动态</string>
@@ -92,6 +102,7 @@
     <string name="m3_accounts_current_pill">当前</string>
     <string name="m3_accounts_remove_desc">移除 @%1$s</string>
     <string name="m3_accounts_switch_failed">切换失败：账号可能已被删除</string>
+    <string name="m3_accounts_switched">已切换到 @%1$s</string>
     <string name="m3_accounts_removed">已移除 @%1$s</string>
     <string name="m3_accounts_remove_failed">移除失败：当前账号不能移除</string>
 
@@ -159,6 +170,7 @@
     <string name="m3_verb_new">有新动态</string>
     <string name="m3_verb_star">star 了</string>
     <string name="m3_verb_fork">fork 了</string>
+    <string name="m3_verb_watch_started">关注了</string>
     <string name="m3_verb_created">创建了</string>
     <string name="m3_verb_deleted">删除了</string>
     <string name="m3_verb_pushed">推送到</string>
@@ -205,6 +217,7 @@
     <string name="m3_filter_keywords_placeholder">例如：某些用户, 某个仓库</string>
     <string name="m3_group_push">推送 / 下载</string>
     <string name="m3_group_star">Star / Fork</string>
+    <string name="m3_group_watch">关注者</string>
     <string name="m3_group_issue">Issue</string>
     <string name="m3_group_pr">Pull Request</string>
     <string name="m3_group_comment">评论 / 审查</string>
@@ -221,6 +234,7 @@
     <string name="m3_time_30d">近 30 天</string>
     <string name="m3_source_all">全部</string>
     <string name="m3_source_mine">我发起的</string>
+    <string name="m3_source_others">别人发起的</string>
     <string name="m3_source_interactions">别人对我的仓库</string>
     <string name="m3_read_all">全部</string>
     <string name="m3_read_unread">只看未读（隐藏已读）</string>
@@ -230,9 +244,10 @@
     <!-- repositories / trending -->
     <string name="m3_repos_mine">我的仓库</string>
     <string name="m3_repos_starred">已加星</string>
+    <string name="m3_repos_recent">最近</string>
     <string name="m3_no_repos">没有仓库</string>
     <string name="m3_updated_ago">最近提交：%1$s</string>
-    <string name="m3_repos_updated_ago">最近提交：%1$s</string>
+    <string name="m3_repos_updated_ago">推送于 %1$s</string>
     <string name="m3_trending_today">今天</string>
     <string name="m3_trending_week">本周</string>
     <string name="m3_trending_any_language">所有语言</string>
@@ -507,7 +522,7 @@ github 不给第三方客户端推送通道，所以这是真的轮询：最短 
     <!-- 2026-10-18：仓库详情大改 -->
     <string name="m3_rendered">渲染</string>
     <string name="m3_raw">原文</string>
-    <string name="m3_last_modified">上次修改 %1$s</string>
+    <string name="m3_last_modified">修改于 %1$s</string>
     <string name="m3_contributors">贡献者</string>
     <string name="m3_languages">语言</string>
     <string name="m3_stargazers">加星者</string>
@@ -574,6 +589,7 @@ github 不给第三方客户端推送通道，所以这是真的轮询：最短 
     <string name="m3_update_changelog">更新内容</string>
     <string name="m3_update_install_permission">请先允许 GitRehub 安装应用，再点一次</string>
     <string name="m3_update_install_ready">正在打开安装器…</string>
+    <string name="m3_update_downloaded">已下载 %1$s，点按安装</string>
     <string name="m3_version_short">版本 %1$s</string>
     <string name="m3_interface_density">界面密度</string>
     <string name="m3_interface_density_desc">统一缩放全应用的内边距与间距。</string>
@@ -623,6 +639,12 @@ github 不给第三方客户端推送通道，所以这是真的轮询：最短 
     <string name="m3_new_issue_need_title">标题不能为空</string>
     <string name="m3_new_issue_options_failed">加载标签与指派人失败</string>
     <string name="m3_new_issue_loading_options">正在加载标签、指派人与里程碑…</string>
+    <string name="m3_new_discussion">新讨论</string>
+    <string name="m3_new_discussion_category">分类</string>
+    <string name="m3_new_discussion_submit">创建讨论</string>
+    <string name="m3_new_discussion_need_title">需要填写标题</string>
+    <string name="m3_new_discussion_need_category">请先选择分类</string>
+    <string name="m3_new_discussion_categories_failed">无法加载讨论分类</string>
     <string name="m3_commit">提交</string>
     <string name="m3_commits">提交记录</string>
     <string name="m3_commit_no_diff">这条提交没有文件改动。</string>

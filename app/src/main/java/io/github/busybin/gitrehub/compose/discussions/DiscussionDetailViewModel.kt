@@ -49,6 +49,10 @@ class DiscussionDetailViewModel : ViewModel() {
     private val _commentsRefreshing = MutableStateFlow(false)
     val commentsRefreshing: StateFlow<Boolean> = _commentsRefreshing.asStateFlow()
 
+    /** True while a new comment is being sent, so the sheet cannot fire twice. */
+    private val _posting = MutableStateFlow(false)
+    val posting: StateFlow<Boolean> = _posting.asStateFlow()
+
     private var key: String = ""
     private var owner: String = ""
     private var repo: String = ""
@@ -145,6 +149,28 @@ class DiscussionDetailViewModel : ViewModel() {
             } }
             result
                 .onSuccess { _answer.value = info.copy(answerCommentId = if (accepted) comment.id else null) }
+                .onFailure { _message.value = it.toUiText() }
+        }
+    }
+
+    /**
+     * Adds a comment through GraphQL (`addDiscussionComment`): discussions have no REST write
+     * endpoint, so the node id is resolved first. On success the list is pulled again instead of
+     * faking a row — the server also knows who commented and when.
+     */
+    fun postComment(body: String) {
+        val text = body.trim()
+        if (text.isEmpty() || _posting.value) return
+        _posting.value = true
+        viewModelScope.launch {
+            val result = runCatching {
+                withContext(Dispatchers.IO) {
+                    GitHubApi.addDiscussionComment(owner, repo, number, text)
+                }
+            }
+            _posting.value = false
+            result
+                .onSuccess { refreshComments() }
                 .onFailure { _message.value = it.toUiText() }
         }
     }

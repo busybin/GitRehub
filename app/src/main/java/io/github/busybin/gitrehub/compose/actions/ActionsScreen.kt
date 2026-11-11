@@ -354,7 +354,6 @@ private fun RunCard(
                         Text(
                             text = run.name ?: run.path.orEmpty(),
                             style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
@@ -375,7 +374,7 @@ private fun RunCard(
                         run.event?.let { append(" · $it") }
                         append(" · ${relativeTime(run.createdAt)}")
                     }
-                    MetaText(meta)
+                    MetaText(meta, mono = true)
                 }
                 if (run.actor?.login != null) {
                     Avatar(run.actor.avatarUrl, size = if (tokens.compact) 22.dp else 26.dp)

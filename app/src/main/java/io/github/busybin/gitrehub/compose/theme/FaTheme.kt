@@ -30,12 +30,14 @@ val LocalCodePalette = compositionLocalOf { (ThemeId.default.spec ?: error("defa
 
 /** Same font file the legacy UI uses, so both share the app's look. */
 private val FaTypography = Typography(
-    headlineSmall = TextStyle(fontSize = 24.sp, fontWeight = FontWeight.SemiBold),
-    titleLarge = TextStyle(fontSize = 20.sp, fontWeight = FontWeight.SemiBold),
-    titleMedium = TextStyle(fontSize = 16.sp, fontWeight = FontWeight.SemiBold),
+    headlineSmall = TextStyle(fontSize = 24.sp, fontWeight = FontWeight.Medium),
+    titleLarge = TextStyle(fontSize = 20.sp, fontWeight = FontWeight.Medium),
+    titleMedium = TextStyle(fontSize = 15.sp, fontWeight = FontWeight.Medium),
     bodyLarge = TextStyle(fontSize = 15.sp, lineHeight = 22.sp),
     bodyMedium = TextStyle(fontSize = 14.sp, lineHeight = 20.sp),
+    bodySmall = TextStyle(fontSize = 13.sp, lineHeight = 18.sp),
     labelLarge = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Medium),
+    labelMedium = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Normal),
 )
 
 /** Multiply every defined line height; a 1.0 value returns the same object (no recomposition cost). */

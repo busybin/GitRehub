@@ -1,20 +1,21 @@
 package io.github.busybin.gitrehub.provider.tasks
 
 import android.app.DownloadManager
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.os.Build
 import android.os.Environment
-import androidx.core.app.NotificationCompat
 import io.github.busybin.gitrehub.R
+import io.github.busybin.gitrehub.core.notify.DownloadNotifications
+import java.net.URLConnection
 
 /**
- * Completion notification that carries the saved location, since [DownloadManager]'s own completion
- * notification only shows a title (its progress notification is set to `VISIBILITY_VISIBLE`).
+ * Completion notification for files handed to [DownloadManager]: its own progress entry is
+ * `VISIBILITY_VISIBLE`, so it disappears the moment the download finishes. This adds the missing
+ * "saved to Downloads/<name>" entry and gives it a tap target that opens the file itself.
+ *
+ * The manifest receiver must be exported, because the broadcast is sent by DownloadProvider
+ * (`android.media` uid), not by the system.
  */
 class DownloadCompleteReceiver : BroadcastReceiver() {
 
@@ -22,52 +23,52 @@ class DownloadCompleteReceiver : BroadcastReceiver() {
         if (intent.action != DownloadManager.ACTION_DOWNLOAD_COMPLETE) return
         val id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1L)
         if (id < 0L) return
+        val manager = context.getSystemService(Context.DOWNLOAD_SERVICE) as? DownloadManager ?: return
         runCatching {
-            val manager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
             manager.query(DownloadManager.Query().setFilterById(id))?.use { cursor ->
                 if (!cursor.moveToFirst()) return@use
                 val status = cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))
                 if (status != DownloadManager.STATUS_SUCCESSFUL) return@use
                 val title = cursor.getString(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_TITLE))
-                    ?: "download"
-                notifyDone(context, title)
+                    ?.takeIf { it.isNotBlank() } ?: "download"
+                val mime = cursor.getString(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_MEDIA_TYPE))
+                notifyDone(context, manager, id, title, mime)
             }
         }
     }
 
-    private fun notifyDone(context: Context, title: String) {
-        val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                CHANNEL,
-                context.getString(R.string.m3_download_done_title),
-                NotificationManager.IMPORTANCE_DEFAULT,
-            )
-            manager.createNotificationChannel(channel)
-        }
+    private fun notifyDone(context: Context, manager: DownloadManager, id: Long, title: String, mime: String?) {
         // Show the public Downloads path, not DownloadManager's file:// URI.
         val location = "${Environment.DIRECTORY_DOWNLOADS}/$title"
-        val open = PendingIntent.getActivity(
-            context,
-            0,
-            Intent(DownloadManager.ACTION_VIEW_DOWNLOADS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        DownloadNotifications.post(
+            context = context,
+            id = DownloadNotifications.id(id),
+            title = context.getString(R.string.m3_download_done_title),
+            text = context.getString(R.string.m3_download_done_message, location),
+            tap = tapIntent(context, manager, id, title, mime),
         )
-        val notification = NotificationCompat.Builder(context, CHANNEL)
-            .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle(context.getString(R.string.m3_download_done_title))
-            .setContentText(context.getString(R.string.m3_download_done_message, location))
-            .setStyle(
-                NotificationCompat.BigTextStyle()
-                    .bigText(context.getString(R.string.m3_download_done_message, location))
-            )
-            .setAutoCancel(true)
-            .setContentIntent(open)
-            .build()
-        manager.notify(title.hashCode(), notification)
     }
 
-    private companion object {
-        const val CHANNEL = "gitrehub_downloads"
+    /**
+     * Open the finished file when something can handle it, fall back to the Downloads screen, and as a
+     * last resort to the app itself, so the tap never silently does nothing.
+     */
+    private fun tapIntent(context: Context, manager: DownloadManager, id: Long, title: String, mime: String?): Intent {
+        val uri = runCatching { manager.getUriForDownloadedFile(id) }.getOrNull()
+        if (uri != null) {
+            val type = mime?.takeIf { it.isNotBlank() }
+                ?: URLConnection.guessContentTypeFromName(title)
+                ?: "*/*"
+            val view = Intent(Intent.ACTION_VIEW)
+                .setDataAndType(uri, type)
+                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+            if (view.resolveActivity(context.packageManager) != null) return view
+        }
+        val downloads = Intent(DownloadManager.ACTION_VIEW_DOWNLOADS)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        if (downloads.resolveActivity(context.packageManager) != null) return downloads
+        return context.packageManager.getLaunchIntentForPackage(context.packageName)
+            ?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            ?: downloads
     }
 }

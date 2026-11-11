@@ -65,14 +65,18 @@ object UpdateInstaller {
         }
     }
 
-    /** Open the system installer. Returns false when nothing was launched (no installer / URI not granted). */
-    fun install(context: Context, apk: File): Boolean = runCatching {
+    /** The installer intent for a downloaded APK; null when the URI cannot be handed out. Also used as the tap target of the completion notification. */
+    fun installIntent(context: Context, apk: File): Intent? = runCatching {
         val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", apk)
-        val intent = Intent(Intent.ACTION_VIEW).apply {
+        Intent(Intent.ACTION_VIEW).apply {
             setDataAndType(uri, "application/vnd.android.package-archive")
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
         }
-        context.startActivity(intent)
-        true
-    }.getOrDefault(false)
+    }.getOrNull()
+
+    /** Open the system installer. Returns false when nothing was launched (no installer / URI not granted). */
+    fun install(context: Context, apk: File): Boolean {
+        val intent = installIntent(context, apk) ?: return false
+        return runCatching { context.startActivity(intent) }.isSuccess
+    }
 }

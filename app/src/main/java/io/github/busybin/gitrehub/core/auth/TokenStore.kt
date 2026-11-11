@@ -69,6 +69,10 @@ object TokenStore {
 
     fun token(): String? = current()?.token
 
+    /** Token of one stored account, for the background pollers that act for every account. */
+    fun tokenFor(login: String): String? =
+        accounts().firstOrNull { it.login.equals(login, ignoreCase = true) }?.token
+
     fun scopes(): List<String> = current()?.scopes.orEmpty()
 
     /** Adds or replaces an account. [makeCurrent] also updates the legacy token mirror. */

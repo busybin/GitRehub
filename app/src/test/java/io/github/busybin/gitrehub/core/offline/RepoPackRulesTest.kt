@@ -97,6 +97,37 @@ class RepoPackRulesTest {
     }
 
     @Test
+    fun selectionSkipsAnOversizedFileInsteadOfTruncatingThePack() {
+        val candidates = listOf(
+            GitTreeEntry(path = "a-huge.json", type = "blob", size = 100, sha = "a"),
+            GitTreeEntry(path = "b.txt", type = "blob", size = 10, sha = "b"),
+            GitTreeEntry(path = "c.txt", type = "blob", size = 10, sha = "c"),
+        )
+        val selection = RepoPackRules.select(candidates, maxBytes = 20)
+        assertEquals(listOf("b.txt", "c.txt"), selection.files.map { it.path })
+        assertEquals(1, selection.skipped)
+    }
+
+    @Test
+    fun unchangedFilesNeedTheSamePathAndBlobSha() {
+        val planned = listOf(
+            RepoPackFile(path = "a.txt", size = 1, sha = "same"),
+            RepoPackFile(path = "b.txt", size = 1, sha = "moved"),
+            RepoPackFile(path = "c.txt", size = 1, sha = "same"),
+            RepoPackFile(path = "d.txt", size = 1, sha = ""),
+        )
+        val old = mapOf("a.txt" to "same", "b.txt" to "old", "c.txt" to "SAME", "d.txt" to "")
+        val reused = RepoPackRules.unchanged(planned, old)
+        assertEquals(listOf("a.txt", "c.txt"), reused.map { it.path })
+    }
+
+    @Test
+    fun unchangedFilesIgnoreNewPaths() {
+        val planned = listOf(RepoPackFile(path = "new.txt", size = 1, sha = "x"))
+        assertTrue(RepoPackRules.unchanged(planned, emptyMap()).isEmpty())
+    }
+
+    @Test
     fun selectionKeepsEverythingThatFits() {
         val candidates = listOf(GitTreeEntry(path = "a.txt", type = "blob", size = 10, sha = "a"))
         val selection = RepoPackRules.select(candidates, maxBytes = 10)

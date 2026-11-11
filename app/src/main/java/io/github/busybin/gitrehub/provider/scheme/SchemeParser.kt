@@ -44,6 +44,9 @@ object SchemeParser {
         uri: Uri,
         @Suppress("UNUSED_PARAMETER") showRepoBtn: Boolean = false,
         @Suppress("UNUSED_PARAMETER") newDocument: Boolean = false,
+        // Throw the current task away first: used when the account changed behind the UI, where
+        // the old ViewModels belong to the previous account and must not survive.
+        freshTask: Boolean = false,
     ) {
         val data = LinkParserHelper.parseReferenceSymbols(uri)
         val route = routeFor(data)
@@ -51,6 +54,9 @@ object SchemeParser {
             val intent = Intent(context, MainComposeActivity::class.java)
                 .putExtra(EXTRA_NAVIGATE, route)
             if (context is Application) intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            if (freshTask) {
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+            }
             context.startActivity(intent)
             return
         }

@@ -20,7 +20,8 @@ import java.security.MessageDigest
  *
  * Layout under `filesDir/offline/repos/<hash>/`:
  * `meta.json`, `repo.json`, `readme.html`, `tree.json`, `files/<path>`.
- * The directory name is a hash so nothing in the file system names a private repository.
+ * The directory name is a hash, which keeps paths short and stable; the JSON inside still names the
+ * account and repository (it has to, the pack is readable offline without the account store).
  */
 @Serializable
 data class RepoPackMeta(
@@ -169,6 +170,12 @@ object RepoPacks {
     fun bytes(context: Context, meta: RepoPackMeta, path: String): ByteArray? {
         val safe = safePath(path) ?: return null
         return runCatching { File(File(dir(context, meta), "files"), safe).readBytes() }.getOrNull()
+    }
+
+    /** Whether the published pack already has this file on disk (incremental sync reuses it). */
+    fun hasFile(context: Context, meta: RepoPackMeta, path: String): Boolean {
+        val safe = safePath(path) ?: return false
+        return File(File(dir(context, meta), "files"), safe).isFile
     }
 
     /**

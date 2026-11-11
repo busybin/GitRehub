@@ -56,6 +56,7 @@ import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.NavigationDrawerItem
@@ -132,13 +133,16 @@ import io.github.busybin.gitrehub.compose.common.UpdatePromptHost
 import io.github.busybin.gitrehub.compose.common.UpdateSupport
 import io.github.busybin.gitrehub.compose.common.restartModernUi
 import io.github.busybin.gitrehub.compose.common.PendingText
+import io.github.busybin.gitrehub.compose.common.Hairline
 import io.github.busybin.gitrehub.compose.common.shareText
+import androidx.compose.ui.text.font.FontWeight
 import kotlinx.coroutines.runBlocking
 import io.github.busybin.gitrehub.core.auth.Session
 import io.github.busybin.gitrehub.core.offline.RepoPackSyncer
 import io.github.busybin.gitrehub.compose.data.CacheWarmer
 import io.github.busybin.gitrehub.compose.discussions.DiscussionDetailScreen
 import io.github.busybin.gitrehub.compose.discussions.DiscussionsScreen
+import io.github.busybin.gitrehub.compose.discussions.NewDiscussionScreen
 import io.github.busybin.gitrehub.compose.feed.FeedFilterAction
 import io.github.busybin.gitrehub.compose.feed.FeedFilterSheet
 import io.github.busybin.gitrehub.compose.feed.FeedScreen
@@ -611,7 +615,9 @@ fun FaApp(routeRequest: MutableState<String?>? = null) {
                         if (current in tabRoutes && !wide) {
                             val notificationsBadge by TabBadges.notifications.collectAsStateWithLifecycle()
                             val myWorkBadge by TabBadges.myWork.collectAsStateWithLifecycle()
-                            NavigationBar {
+                            NavigationBar(
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                            ) {
                                 tabs.forEach { tab ->
                                     val tabLabel = stringResource(tab.labelRes)
                                     val badge = when (tab.route) {
@@ -622,6 +628,13 @@ fun FaApp(routeRequest: MutableState<String?>? = null) {
                                     NavigationBarItem(
                                         selected = current == tab.route,
                                         onClick = { nav.navigateSingleTop(tab.route) },
+                                        colors = NavigationBarItemDefaults.colors(
+                                            selectedIconColor = MaterialTheme.colorScheme.onSurface,
+                                            selectedTextColor = MaterialTheme.colorScheme.onSurface,
+                                            indicatorColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        ),
                                         icon = {
                                             BadgedBox(
                                                 badge = {
@@ -1475,15 +1488,49 @@ fun FaApp(routeRequest: MutableState<String?>? = null) {
                                 navArgument("repo") { type = NavType.StringType },
                             ),
                         ) { entry ->
-                            val owner = entry.arguments?.getString("owner").orEmpty()
-                            val repo = entry.arguments?.getString("repo").orEmpty()
+                            val discussionsOwner = entry.arguments?.getString("owner").orEmpty()
+                            val discussionsRepo = entry.arguments?.getString("repo").orEmpty()
+                            val discussionsRefresh by entry.savedStateHandle
+                                .getStateFlow("discussions_refresh", false)
+                                .collectAsStateWithLifecycle()
                             DiscussionsScreen(
-                                owner = owner,
-                                repo = repo,
+                                owner = discussionsOwner,
+                                repo = discussionsRepo,
                                 onOpenDiscussion = { number ->
-                                    nav.navigate(Routes.discussion(owner, repo, number))
+                                    nav.navigate(Routes.discussion(discussionsOwner, discussionsRepo, number))
                                 },
                                 onOpenUser = { nav.navigate(Routes.user(it)) },
+                                onNewDiscussion = {
+                                    nav.navigate(Routes.newDiscussion(discussionsOwner, discussionsRepo))
+                                },
+                                refreshSignal = discussionsRefresh,
+                                onRefreshConsumed = {
+                                    entry.savedStateHandle["discussions_refresh"] = false
+                                },
+                            )
+                        }
+                        composable(
+                            route = Routes.NEW_DISCUSSION,
+                            arguments = listOf(
+                                navArgument("owner") { type = NavType.StringType },
+                                navArgument("repo") { type = NavType.StringType },
+                            ),
+                        ) { entry ->
+                            val newDiscussionOwner = entry.arguments?.getString("owner").orEmpty()
+                            val newDiscussionRepo = entry.arguments?.getString("repo").orEmpty()
+                            NewDiscussionScreen(
+                                owner = newDiscussionOwner,
+                                repo = newDiscussionRepo,
+                                onCreated = { number ->
+                                    nav.previousBackStackEntry
+                                        ?.savedStateHandle
+                                        ?.set("discussions_refresh", true)
+                                    nav.navigate(
+                                        Routes.discussion(newDiscussionOwner, newDiscussionRepo, number),
+                                    ) {
+                                        popUpTo(Routes.NEW_DISCUSSION) { inclusive = true }
+                                    }
+                                },
                             )
                         }
                         composable(
@@ -1637,6 +1684,7 @@ private fun FaTopBar(
         Routes.COMMITS -> stringResource(R.string.m3_commits)
         Routes.DISCUSSIONS -> stringResource(R.string.m3_title_discussions)
         Routes.DISCUSSION -> "#${entry?.arguments?.getInt("number") ?: 0}"
+        Routes.NEW_DISCUSSION -> stringResource(R.string.m3_new_discussion)
         Routes.ACTIONS -> stringResource(R.string.m3_title_actions)
         Routes.LABELS -> stringResource(R.string.m3_labels)
         Routes.MILESTONES -> stringResource(R.string.m3_milestones)
@@ -1670,7 +1718,8 @@ private fun FaTopBar(
             }
         },
         colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+            containerColor = MaterialTheme.colorScheme.surface,
+            scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer,
         ),
     )
 }
@@ -1720,25 +1769,32 @@ private fun shareUrlFor(
 
 @Composable
 private fun DrawerHeader(account: StoredAccount?) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 22.dp),
-        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
-    ) {
-        Avatar(account?.avatarUrl, size = 52.dp)
-        Spacer(Modifier.width(14.dp))
-        Column(Modifier.weight(1f)) {
-            Text(
-                text = account?.name ?: account?.login ?: stringResource(R.string.m3_not_signed_in),
-                style = MaterialTheme.typography.titleMedium,
-            )
-            Text(
-                text = account?.login?.let { "@$it" } ?: "",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+    Column(Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 16.dp),
+            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+        ) {
+            Avatar(account?.avatarUrl, size = 44.dp)
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    text = account?.name ?: account?.login ?: stringResource(R.string.m3_not_signed_in),
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = account?.login?.let { "@$it" } ?: "",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
+        Hairline()
     }
 }
 

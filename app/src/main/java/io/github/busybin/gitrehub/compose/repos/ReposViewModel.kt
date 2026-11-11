@@ -1,8 +1,10 @@
 package io.github.busybin.gitrehub.compose.repos
 
 import androidx.annotation.StringRes
+import androidx.lifecycle.viewModelScope
 import io.github.busybin.gitrehub.R
 import io.github.busybin.gitrehub.compose.common.PageResult
+import io.github.busybin.gitrehub.compose.common.RecentRepos
 import io.github.busybin.gitrehub.compose.common.PagedViewModel
 import io.github.busybin.gitrehub.compose.common.SavedPrefs
 import io.github.busybin.gitrehub.core.auth.Session
@@ -13,6 +15,7 @@ import io.github.busybin.gitrehub.core.net.hasMore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
@@ -21,6 +24,7 @@ enum class RepoFilter(@StringRes val labelRes: Int) {
     MINE(R.string.m3_repos_mine),
     STARRED(R.string.m3_repos_starred),
     FAVORITE(R.string.m3_repos_favorites),
+    RECENT(R.string.m3_repos_recent),
 }
 
 class ReposViewModel : PagedViewModel<Repo>() {
@@ -40,6 +44,21 @@ class ReposViewModel : PagedViewModel<Repo>() {
         refresh()
     }
 
+    /**
+     * Un-star from the list itself (long press). No message on failure: the refresh that follows
+     * either drops the row or shows it still starred, which says the same thing without a toast.
+     */
+    fun unstar(repo: Repo) {
+        val full = repo.fullName.ifBlank { repo.nameWithOwner }
+        val owner = full.substringBefore('/')
+        val name = full.substringAfter('/', "")
+        if (owner.isBlank() || name.isBlank()) return
+        viewModelScope.launch {
+            runCatching { GitHubApi.setStarred(owner, name, false) }
+            refresh()
+        }
+    }
+
     override suspend fun fetch(page: Int): PageResult<Repo> = page(page, cacheOnly = false)
 
     override suspend fun fetchCached(page: Int): PageResult<Repo>? =
@@ -47,13 +66,14 @@ class ReposViewModel : PagedViewModel<Repo>() {
 
     private suspend fun page(page: Int, cacheOnly: Boolean): PageResult<Repo> {
         if (filter == RepoFilter.FAVORITE) return favoritePage(page)
+        if (filter == RepoFilter.RECENT) return recentPage(page)
         val response = when (filter) {
             RepoFilter.MINE -> GitHubApi.myRepos(page, cacheOnly)
             RepoFilter.STARRED -> {
                 val user = login ?: throw IllegalStateException("not signed in")
                 GitHubApi.starredRepos(user, page, cacheOnly)
             }
-            RepoFilter.FAVORITE -> error("handled above")
+            RepoFilter.FAVORITE, RepoFilter.RECENT -> error("handled above")
         }
         return response.toPage()
     }
@@ -69,6 +89,30 @@ private suspend fun favoritePage(page: Int): PageResult<Repo> {
     if (names.isEmpty()) return PageResult(emptyList(), false)
     val repos = withContext(Dispatchers.IO) {
         // A user can keep 60 favourites; fetch a few at a time instead of bursting the API.
+        val permits = Semaphore(6)
+        names.map { name ->
+            async {
+                permits.withPermit {
+                    val owner = name.substringBefore('/')
+                    val repo = name.substringAfter('/', "")
+                    if (owner.isBlank() || repo.isBlank()) null
+                    else runCatching { GitHubApi.repo(owner, repo) }.getOrNull()
+                }
+            }
+        }.awaitAll()
+    }
+    return PageResult(repos.filterNotNull(), false)
+}
+
+/**
+ * Recently opened repositories, newest first. The names are local, so each entry is fetched on demand
+ * and the ones that no longer exist (or are not visible to this token) simply drop out.
+ */
+private suspend fun recentPage(page: Int): PageResult<Repo> {
+    if (page > 1) return PageResult(emptyList(), false)
+    val names = RecentRepos.items.value.map { it.name }.take(30)
+    if (names.isEmpty()) return PageResult(emptyList(), false)
+    val repos = withContext(Dispatchers.IO) {
         val permits = Semaphore(6)
         names.map { name ->
             async {

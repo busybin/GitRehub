@@ -94,6 +94,16 @@ class FeedFilterTest {
     }
 
     @Test
+    fun othersHidesOnlyMyOwnRows() {
+        val others = FeedFilterState.Default.copy(source = FeedSource.OTHERS)
+        assertFalse(event(actor = me).matchesFilter(others, me, false))
+        assertTrue(event(actor = "someone").matchesFilter(others, me, false))
+        // Without a login there is no way to tell: keep the rows instead of emptying the feed.
+        assertTrue(event(actor = me).matchesFilter(others, null, false))
+        assertTrue(event(actor = "someone").matchesFilter(others, null, false))
+    }
+
+    @Test
     fun readFilterOnlyAffectsReadEvents() {
         val unreadOnly = FeedFilterState.Default.copy(readFilter = FeedReadFilter.UNREAD)
         assertTrue(event().matchesFilter(unreadOnly, me, isRead = false))

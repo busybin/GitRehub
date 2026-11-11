@@ -36,11 +36,26 @@
     <string name="m3_load_more_failed">Impossible de charger la suite, appuyez pour réessayer</string>
     <string name="m3_offline_banner">Mode hors ligne : affichage du contenu en cache</string>
     <string name="m3_just_now">À l\'instant</string>
-    <string name="m3_minutes_ago">Il y a %1$d minutes</string>
-    <string name="m3_hours_ago">Il y a %1$d heures</string>
-    <string name="m3_days_ago">Il y a %1$d jours</string>
-    <string name="m3_months_ago">Il y a %1$d mois</string>
-    <string name="m3_years_ago">Il y a %1$d ans</string>
+    <plurals name="m3_minutes_ago">
+        <item quantity="one">Il y a %1$d minute</item>
+        <item quantity="other">Il y a %1$d minutes</item>
+    </plurals>
+    <plurals name="m3_hours_ago">
+        <item quantity="one">Il y a %1$d heure</item>
+        <item quantity="other">Il y a %1$d heures</item>
+    </plurals>
+    <plurals name="m3_days_ago">
+        <item quantity="one">Il y a %1$d jour</item>
+        <item quantity="other">Il y a %1$d jours</item>
+    </plurals>
+    <plurals name="m3_months_ago">
+        <item quantity="one">Il y a %1$d mois</item>
+        <item quantity="other">Il y a %1$d mois</item>
+    </plurals>
+    <plurals name="m3_years_ago">
+        <item quantity="one">Il y a %1$d an</item>
+        <item quantity="other">Il y a %1$d ans</item>
+    </plurals>
 
     <!-- navigation / top bar / drawer -->
     <string name="m3_tab_feed">Activité</string>
@@ -94,6 +109,7 @@
     <string name="m3_accounts_current_pill">Actif</string>
     <string name="m3_accounts_remove_desc">Supprimer @%1$s</string>
     <string name="m3_accounts_switch_failed">Échec du changement : le compte a peut-être été supprimé</string>
+    <string name="m3_accounts_switched">Compte @%1$s activé</string>
     <string name="m3_accounts_removed">@%1$s supprimé</string>
     <string name="m3_accounts_remove_failed">Échec de la suppression : le compte actif ne peut pas être supprimé</string>
 
@@ -160,6 +176,7 @@
     <string name="m3_verb_new">nouvelle activité</string>
     <string name="m3_verb_star">a mis une étoile</string>
     <string name="m3_verb_fork">a créé un fork</string>
+    <string name="m3_verb_watch_started">a commencé à suivre</string>
     <string name="m3_verb_created">a créé</string>
     <string name="m3_verb_deleted">a supprimé</string>
     <string name="m3_verb_pushed">a poussé vers</string>
@@ -206,6 +223,7 @@
     <string name="m3_filter_keywords_placeholder">ex. un utilisateur, un dépôt</string>
     <string name="m3_group_push">Poussées / téléchargements</string>
     <string name="m3_group_star">Étoiles / forks</string>
+    <string name="m3_group_watch">Abonnés</string>
     <string name="m3_group_issue">Tickets</string>
     <string name="m3_group_pr">Requêtes de tirage</string>
     <string name="m3_group_comment">Commentaires / revues</string>
@@ -222,6 +240,7 @@
     <string name="m3_time_30d">30 derniers jours</string>
     <string name="m3_source_all">Tout</string>
     <string name="m3_source_mine">Initié par moi</string>
+    <string name="m3_source_others">Lancé par d’autres</string>
     <string name="m3_source_interactions">Autres sur mes dépôts</string>
     <string name="m3_read_all">Tout</string>
     <string name="m3_read_unread">Non lus uniquement (masquer les lus)</string>
@@ -231,9 +250,10 @@
     <!-- repositories / trending -->
     <string name="m3_repos_mine">Mes dépôts</string>
     <string name="m3_repos_starred">Avec une étoile</string>
+    <string name="m3_repos_recent">Récents</string>
     <string name="m3_no_repos">Aucun dépôt</string>
     <string name="m3_updated_ago">Dernière poussée %1$s</string>
-    <string name="m3_repos_updated_ago">Dernière poussée %1$s</string>
+    <string name="m3_repos_updated_ago">Poussé %1$s</string>
     <string name="m3_trending_today">Aujourd\'hui</string>
     <string name="m3_trending_week">Cette semaine</string>
     <string name="m3_trending_any_language">Toutes les langues</string>
@@ -509,7 +529,7 @@ GitHub n\'a pas de canal push pour les clients tiers, il s\'agit donc d\'une vé
     <!-- 2026-10-18: repository detail overhaul -->
     <string name="m3_rendered">Rendu</string>
     <string name="m3_raw">Brut</string>
-    <string name="m3_last_modified">Dernière modification %1$s</string>
+    <string name="m3_last_modified">Modifié %1$s</string>
     <string name="m3_contributors">Contributeurs</string>
     <string name="m3_languages">Langages</string>
     <string name="m3_stargazers">Étoiles</string>
@@ -576,6 +596,7 @@ GitHub n\'a pas de canal push pour les clients tiers, il s\'agit donc d\'une vé
     <string name="m3_update_changelog">Nouveautés</string>
     <string name="m3_update_install_permission">Autorisez GitRehub à installer des applications, puis appuyez à nouveau</string>
     <string name="m3_update_install_ready">Ouverture de l\'installateur…</string>
+    <string name="m3_update_downloaded">%1$s téléchargé. Touchez pour installer.</string>
     <string name="m3_version_short">Version %1$s</string>
     <string name="m3_interface_density">Densité de l\'interface</string>
     <string name="m3_interface_density_desc">Met à l\'échelle les marges et les espacements dans toute l\'application.</string>
@@ -625,6 +646,12 @@ GitHub n\'a pas de canal push pour les clients tiers, il s\'agit donc d\'une vé
     <string name="m3_new_issue_need_title">Un titre est requis</string>
     <string name="m3_new_issue_options_failed">Impossible de charger étiquettes et assignés</string>
     <string name="m3_new_issue_loading_options">Chargement des étiquettes, assignés et jalons…</string>
+    <string name="m3_new_discussion">Nouvelle discussion</string>
+    <string name="m3_new_discussion_category">Catégorie</string>
+    <string name="m3_new_discussion_submit">Créer la discussion</string>
+    <string name="m3_new_discussion_need_title">Un titre est requis</string>
+    <string name="m3_new_discussion_need_category">Choisissez d\'abord une catégorie</string>
+    <string name="m3_new_discussion_categories_failed">Impossible de charger les catégories</string>
     <string name="m3_commit">Commit</string>
     <string name="m3_commits">Commits</string>
     <string name="m3_commit_no_diff">Ce commit ne contient aucun changement de fichier.</string>

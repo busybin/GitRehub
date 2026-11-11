@@ -15,6 +15,7 @@ import io.github.busybin.gitrehub.core.model.EventType
 enum class FeedEventGroup(@StringRes val labelRes: Int) {
     PUSH(R.string.m3_group_push),
     STAR(R.string.m3_group_star),
+    WATCH(R.string.m3_group_watch),
     ISSUE(R.string.m3_group_issue),
     PULL_REQUEST(R.string.m3_group_pr),
     COMMENT(R.string.m3_group_comment),
@@ -30,6 +31,7 @@ enum class FeedEventGroup(@StringRes val labelRes: Int) {
 fun EventType.group(): FeedEventGroup = when (this) {
     EventType.PushEvent, EventType.DownloadEvent -> FeedEventGroup.PUSH
     EventType.WatchEvent, EventType.ForkEvent, EventType.ForkApplyEvent -> FeedEventGroup.STAR
+    EventType.WatchStarted -> FeedEventGroup.WATCH
     EventType.IssuesEvent -> FeedEventGroup.ISSUE
     EventType.PullRequestEvent -> FeedEventGroup.PULL_REQUEST
     EventType.IssueCommentEvent,
@@ -63,10 +65,14 @@ enum class FeedTimeRange(@StringRes val labelRes: Int, val windowMillis: Long?) 
     MONTH(R.string.m3_time_30d, 30L * 24 * 3600_000),
 }
 
-/** Which of the three merged streams an event came from (see FeedViewModel). */
+/**
+ * Which rows the source dimension keeps: everything, only mine ("started by me"), everything that
+ * was not started by me, or only other people's actions on my repos.
+ */
 enum class FeedSource(@StringRes val labelRes: Int) {
     ALL(R.string.m3_source_all),
     MINE(R.string.m3_source_mine),
+    OTHERS(R.string.m3_source_others),
     INTERACTIONS(R.string.m3_source_interactions),
 }
 
@@ -140,6 +146,9 @@ fun Event.matchesFilter(
     when (filter.source) {
         FeedSource.ALL -> Unit
         FeedSource.MINE -> if (me == null || actor?.login != me) return false
+        // "Not started by me": like ALL, but my own rows are hidden. Without a login there is no
+        // way to tell, so the rows stay rather than the feed turning empty.
+        FeedSource.OTHERS -> if (me != null && actor?.login == me) return false
         FeedSource.INTERACTIONS -> {
             val owner = repoOwner
             if (me == null || owner != me || actor?.login == me) return false

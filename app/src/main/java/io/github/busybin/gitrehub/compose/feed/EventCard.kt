@@ -12,16 +12,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -30,8 +26,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.busybin.gitrehub.R
 import io.github.busybin.gitrehub.compose.common.Avatar
+import io.github.busybin.gitrehub.compose.common.Hairline
+import io.github.busybin.gitrehub.compose.common.Identifier
 import io.github.busybin.gitrehub.compose.common.MetaText
-import io.github.busybin.gitrehub.compose.common.Pill
 import io.github.busybin.gitrehub.compose.common.UiTokens
 import io.github.busybin.gitrehub.compose.common.relativeTime
 import io.github.busybin.gitrehub.core.model.Event
@@ -82,8 +79,12 @@ internal fun Event.feedTarget(): FeedTarget? {
 }
 
 /**
- * One feed card, shared by the global feed and the repo activity page. Three distinct tap zones:
- * avatar/username -> [onOpenUser]; the repo line -> [onOpenRepo]; the rest -> [onOpen] (preferred target).
+ * One feed row, shared by the global feed and the repo activity page. Three distinct tap zones:
+ * avatar/username -> [onOpenUser]; the repo line -> [onOpenRepo]; the rest -> [onOpen].
+ *
+ * Flat row on the page surface with one hairline between rows: the avatar and the unread dot carry
+ * the left column, the event icon sits in a fixed right column so every verb lines up. Unread is a
+ * 6dp accent dot, not a badge, and read rows drop to the muted text colour instead of fading.
  */
 @Composable
 internal fun EventCard(
@@ -102,17 +103,26 @@ internal fun EventCard(
     val target = event.feedTarget()
     val iconRes = event.type.drawableRes
     val actor = event.actor?.login
+    // Three readable roles per row: bright sans for who did it, dim sans for what they did, and the
+    // repository in monospace accent (it is the one link in the row). A read row multiplies all of
+    // them down instead of fading the whole block, so the colours keep their relationship.
+    val level = if (isRead) 0.5f else 1f
+    val actorColor = MaterialTheme.colorScheme.onSurface.copy(alpha = level)
+    val verbColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = level)
+    val repoColor = MaterialTheme.colorScheme.primary.copy(alpha = if (isRead) 0.6f else 1f)
 
-    Card(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .alpha(if (isRead) 0.55f else 1f)
             .clickable(enabled = target != null) { onOpen(event) },
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-        shape = tokens.cardShape,
     ) {
         Row(
-            modifier = Modifier.padding(tokens.cardPadding),
+            modifier = Modifier.padding(
+                start = tokens.pagePadding,
+                end = tokens.pagePadding,
+                top = tokens.space3,
+                bottom = tokens.space3,
+            ),
             verticalAlignment = Alignment.Top,
         ) {
             Box(
@@ -122,13 +132,23 @@ internal fun EventCard(
             ) {
                 Avatar(event.actor?.avatarUrl, size = tokens.avatarSize)
             }
-            Spacer(Modifier.width(if (tokens.compact) 8.dp else 12.dp))
+            Spacer(Modifier.width(tokens.space3))
             Column(Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (!isRead) {
+                        Box(
+                            Modifier
+                                .size(6.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.primary)
+                        )
+                        Spacer(Modifier.width(tokens.space2))
+                    }
                     Text(
                         text = actor ?: "unknown",
-                        style = if (tokens.compact) MaterialTheme.typography.bodyLarge
-                        else MaterialTheme.typography.titleMedium,
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Medium,
+                        color = actorColor,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier
@@ -139,56 +159,49 @@ internal fun EventCard(
                     Text(
                         text = verb,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.primary,
+                        color = verbColor,
                         maxLines = 1,
                     )
-                    if (isRead) {
-                        Spacer(Modifier.width(6.dp))
-                        Pill(stringResource(R.string.m3_read_pill))
-                    }
                 }
                 if (!repo.isNullOrBlank()) {
                     Spacer(Modifier.height(2.dp))
-                    Text(
+                    Identifier(
                         text = repo,
                         style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.primary,
+                        emphasized = true,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
+                        color = repoColor,
                         modifier = Modifier.clickable { onOpenRepo(repo) },
                     )
                 }
-                // PR/issue title; usually null on the trimmed event payload, only synthesized entries have it.
                 if (!title.isNullOrBlank()) {
                     Spacer(Modifier.height(2.dp))
                     Text(
                         text = title,
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = level),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
-                Spacer(Modifier.height(if (tokens.compact) 2.dp else 6.dp))
-                MetaText(relativeTime(event.createdAt))
+                Spacer(Modifier.height(tokens.space1))
+                MetaText(
+                    relativeTime(event.createdAt),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = level),
+                )
             }
             if (iconRes != 0) {
-                Box(
+                Spacer(Modifier.width(tokens.space3))
+                Icon(
+                    painter = painterResource(iconRes),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = level),
                     modifier = Modifier
-                        .size(tokens.badgeSize)
-                        .clip(RoundedCornerShape(if (tokens.compact) 8.dp else 10.dp))
-                        .background(MaterialTheme.colorScheme.secondaryContainer),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        painter = painterResource(iconRes),
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                        modifier = Modifier.size(if (tokens.compact) 15.dp else 18.dp),
-                    )
-                }
+                        .padding(top = 2.dp)
+                        .size(tokens.iconSmall),
+                )
             }
         }
+        Hairline()
     }
 }

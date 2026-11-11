@@ -52,6 +52,15 @@
         <intent>
             <action android:name="android.support.customtabs.action.CustomTabsService" />
         </intent>
+        <!-- DownloadCompleteReceiver picks a tap target for the finished file, which needs visibility
+             into the viewers of arbitrary content types. -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:mimeType="*/*" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW_DOWNLOADS" />
+        </intent>
     </queries>
 
 
@@ -171,9 +180,12 @@
                 android:name="android.appwidget.provider"
                 android:resource="@xml/widget_unread_info" />
         </receiver>
+        <!-- Must stay exported: the broadcast comes from DownloadProvider, which runs under the
+             "android.media" uid, so a non-exported receiver never sees it (this is why the completion
+             notification used to be missing). The handler only reads back the id it is given. -->
         <receiver
             android:name=".provider.tasks.DownloadCompleteReceiver"
-            android:exported="false">
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.DOWNLOAD_COMPLETE" />
             </intent-filter>

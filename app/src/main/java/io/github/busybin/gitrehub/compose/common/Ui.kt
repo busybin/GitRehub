@@ -31,6 +31,8 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -44,8 +46,12 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -247,13 +253,9 @@ fun SkeletonList(
     modifier: Modifier = Modifier,
 ) {
     val tokens = LocalTokens.current
-    val transition = rememberInfiniteTransition(label = "skeleton")
-    val alpha by transition.animateFloat(
-        initialValue = 0.30f,
-        targetValue = 0.70f,
-        animationSpec = infiniteRepeatable(tween(900), RepeatMode.Reverse),
-        label = "skeleton-alpha",
-    )
+    // A static placeholder: a looping pulse on a screen that is not live reads as decoration and
+    // costs a frame every 16 ms while the wait is already the slowest part.
+    val alpha = 0.5f
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -330,16 +332,13 @@ fun Avatar(
         contentAlignment = Alignment.Center,
     ) {
         if (!url.isNullOrBlank()) {
-            SubcomposeAsyncImage(
+            // A plain AsyncImage, not SubcomposeAsyncImage: the latter adds a subcomposition per
+            // avatar, and the feed can hold dozens. The circle background is the placeholder.
+            AsyncImage(
                 model = model,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),
-                loading = {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
-                    }
-                },
             )
         } else {
             Text(
@@ -351,26 +350,33 @@ fun Avatar(
     }
 }
 
-/** Rounded chip-like label, used for languages, labels, states... */
+/**
+ * A label. Two readings:
+ *
+ * - quiet (default): no fill, no pill shape, just an optional 6dp dot and muted text, so language,
+ *   fork, "read" and similar meta stop competing with the row's content;
+ * - filled: pass [container]/[content] and it becomes a small 6dp-radius chip, used only where the
+ *   colour carries meaning (GitHub labels, diff counts, review states).
+ */
 @Composable
 fun Pill(
     text: String,
     modifier: Modifier = Modifier,
-    container: Color = MaterialTheme.colorScheme.secondaryContainer,
-    content: Color = MaterialTheme.colorScheme.onSecondaryContainer,
+    container: Color = Color.Unspecified,
+    content: Color = MaterialTheme.colorScheme.onSurfaceVariant,
     leadingDot: Color? = null,
 ) {
+    val filled = container != Color.Unspecified
     Row(
         modifier = modifier
-            .clip(RoundedCornerShape(50))
-            .background(container)
-            .padding(horizontal = 10.dp, vertical = 4.dp),
+            .then(if (filled) Modifier.clip(RoundedCornerShape(6.dp)).background(container) else Modifier)
+            .padding(horizontal = if (filled) 6.dp else 0.dp, vertical = if (filled) 2.dp else 0.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (leadingDot != null) {
             Box(
                 Modifier
-                    .size(8.dp)
+                    .size(6.dp)
                     .clip(CircleShape)
                     .background(leadingDot)
             )
@@ -386,15 +392,69 @@ fun Pill(
     }
 }
 
+/**
+ * Meta line: 12sp, muted, tabular figures. [mono] switches to the monospace family for identifiers
+ * (owner/repo, file paths, commit SHAs), which is this app's one signature detail.
+ */
 @Composable
-fun MetaText(text: String, modifier: Modifier = Modifier, maxLines: Int = 1) {
+fun MetaText(
+    text: String,
+    modifier: Modifier = Modifier,
+    maxLines: Int = 1,
+    mono: Boolean = false,
+    color: Color = MaterialTheme.colorScheme.onSurfaceVariant,
+) {
     Text(
         text = text,
-        style = MaterialTheme.typography.labelMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        style = MaterialTheme.typography.labelMedium.copy(fontFeatureSettings = "tnum"),
+        fontFamily = if (mono) FontFamily.Monospace else null,
+        color = color,
         maxLines = maxLines,
         overflow = TextOverflow.Ellipsis,
         modifier = modifier,
+    )
+}
+
+/** Repository, path or SHA: monospace, readable brightness, never accent-coloured. */
+@Composable
+fun Identifier(
+    text: String,
+    modifier: Modifier = Modifier,
+    maxLines: Int = 1,
+    emphasized: Boolean = false,
+    style: TextStyle = MaterialTheme.typography.bodyMedium,
+    color: Color = MaterialTheme.colorScheme.onSurface,
+) {
+    Text(
+        text = text,
+        style = style,
+        fontFamily = FontFamily.Monospace,
+        fontWeight = if (emphasized) FontWeight.Medium else FontWeight.Normal,
+        color = color,
+        maxLines = maxLines,
+        overflow = TextOverflow.Ellipsis,
+        modifier = modifier,
+    )
+}
+
+/** Section heading inside a scrolling page. Sentence case, muted, no tracking. */
+@Composable
+fun SectionHeader(text: String, modifier: Modifier = Modifier) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = modifier.padding(horizontal = 4.dp, vertical = 8.dp),
+    )
+}
+
+/** One hairline between list rows; the only separator the design needs. */
+@Composable
+fun Hairline(modifier: Modifier = Modifier) {
+    HorizontalDivider(
+        modifier = modifier,
+        thickness = 1.dp,
+        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
     )
 }
 
@@ -481,11 +541,11 @@ fun relativeTime(date: Date?): String {
     val days = diff / 86_400_000
     return when {
         minutes < 1 -> stringResource(R.string.m3_just_now)
-        minutes < 60 -> stringResource(R.string.m3_minutes_ago, minutes)
-        hours < 24 -> stringResource(R.string.m3_hours_ago, hours)
-        days < 30 -> stringResource(R.string.m3_days_ago, days)
-        days < 365 -> stringResource(R.string.m3_months_ago, days / 30)
-        else -> stringResource(R.string.m3_years_ago, days / 365)
+        minutes < 60 -> pluralStringResource(R.plurals.m3_minutes_ago, minutes.toInt(), minutes.toInt())
+        hours < 24 -> pluralStringResource(R.plurals.m3_hours_ago, hours.toInt(), hours.toInt())
+        days < 30 -> pluralStringResource(R.plurals.m3_days_ago, days.toInt(), days.toInt())
+        days < 365 -> pluralStringResource(R.plurals.m3_months_ago, (days / 30).toInt(), (days / 30).toInt())
+        else -> pluralStringResource(R.plurals.m3_years_ago, (days / 365).toInt(), (days / 365).toInt())
     }
 }
 
@@ -518,3 +578,23 @@ fun formatBytes(bytes: Long): String = when {
 @Composable
 fun languageDot(color: Long?): Color =
     if (color != null && color != 0L) Color(color) else MaterialTheme.colorScheme.outline
+
+/**
+ * GitHub label colour (`rrggbb`, sometimes `#rrggbb`) as a Compose colour.
+ *
+ * Labels are the only place where an arbitrary colour is meaningful: it is the label's identity, so
+ * it becomes a 6dp dot next to a quiet name instead of a filled chip.
+ */
+/**
+ * Semantic "open" colour. GitHub's dark green, one step toned down so it sits inside the palette
+ * instead of glowing; only issue/PR state uses it, nothing else.
+ */
+@Composable
+fun openGreen(): Color = Color(0xFF3FB950)
+
+fun labelColor(hex: String?): Color? {
+    val clean = hex?.trim()?.removePrefix("#") ?: return null
+    if (clean.length != 6) return null
+    return runCatching { Color(android.graphics.Color.parseColor("#$clean")) }.getOrNull()
+}
+

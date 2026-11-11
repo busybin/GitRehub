@@ -16,6 +16,7 @@ import io.github.busybin.gitrehub.core.model.EventType
 enum class EventVerb(@StringRes val labelRes: Int) {
     NEW(R.string.m3_verb_new),
     STAR(R.string.m3_verb_star),
+    WATCH_STARTED(R.string.m3_verb_watch_started),
     FORK(R.string.m3_verb_fork),
     CREATED(R.string.m3_verb_created),
     DELETED(R.string.m3_verb_deleted),
@@ -73,6 +74,7 @@ internal fun Event.titleLine(): String? = when (type) {
 internal val EventType.drawableRes: Int
     get() = when (this) {
         EventType.WatchEvent -> R.drawable.ic_star_filled
+        EventType.WatchStarted -> R.drawable.ic_eye
         EventType.CreateEvent, EventType.PublicEvent, EventType.RepositoryEvent -> R.drawable.ic_repo
         EventType.CommitCommentEvent,
         EventType.IssueCommentEvent,
@@ -97,6 +99,7 @@ internal val EventType.drawableRes: Int
 /** Default verb per event type. */
 internal fun EventType.verb(action: String? = null, merged: Boolean = false): EventVerb = when (this) {
     EventType.WatchEvent -> EventVerb.STAR
+    EventType.WatchStarted -> EventVerb.WATCH_STARTED
     EventType.ForkEvent, EventType.ForkApplyEvent -> EventVerb.FORK
     EventType.CreateEvent -> EventVerb.CREATED
     EventType.DeleteEvent -> EventVerb.DELETED

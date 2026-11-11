@@ -41,6 +41,14 @@ enum class EventType {
     ProjectColumnEvent,
     OrganizationEvent,
     ProjectEvent,
+
+    /**
+     * Not a GitHub event type: the app synthesises it when a repository watcher (notification
+     * subscriber) appears. GitHub has no event or timestamp for subscriptions, so the time is the
+     * moment the app first saw the watcher.
+     */
+    WatchStarted,
+
     Unknown,
     ;
 

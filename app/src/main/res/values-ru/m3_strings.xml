@@ -36,11 +36,36 @@
     <string name="m3_load_more_failed">Не удалось загрузить ещё, нажмите, чтобы повторить</string>
     <string name="m3_offline_banner">Автономный режим: показано содержимое из кеша</string>
     <string name="m3_just_now">Только что</string>
-    <string name="m3_minutes_ago">%1$d мин. назад</string>
-    <string name="m3_hours_ago">%1$d ч. назад</string>
-    <string name="m3_days_ago">%1$d дн. назад</string>
-    <string name="m3_months_ago">%1$d мес. назад</string>
-    <string name="m3_years_ago">%1$d г. назад</string>
+    <plurals name="m3_minutes_ago">
+        <item quantity="one">%1$d минуту назад</item>
+        <item quantity="few">%1$d минуты назад</item>
+        <item quantity="many">%1$d минут назад</item>
+        <item quantity="other">%1$d минуты назад</item>
+    </plurals>
+    <plurals name="m3_hours_ago">
+        <item quantity="one">%1$d час назад</item>
+        <item quantity="few">%1$d часа назад</item>
+        <item quantity="many">%1$d часов назад</item>
+        <item quantity="other">%1$d часа назад</item>
+    </plurals>
+    <plurals name="m3_days_ago">
+        <item quantity="one">%1$d день назад</item>
+        <item quantity="few">%1$d дня назад</item>
+        <item quantity="many">%1$d дней назад</item>
+        <item quantity="other">%1$d дня назад</item>
+    </plurals>
+    <plurals name="m3_months_ago">
+        <item quantity="one">%1$d месяц назад</item>
+        <item quantity="few">%1$d месяца назад</item>
+        <item quantity="many">%1$d месяцев назад</item>
+        <item quantity="other">%1$d месяца назад</item>
+    </plurals>
+    <plurals name="m3_years_ago">
+        <item quantity="one">%1$d год назад</item>
+        <item quantity="few">%1$d года назад</item>
+        <item quantity="many">%1$d лет назад</item>
+        <item quantity="other">%1$d года назад</item>
+    </plurals>
 
     <!-- navigation / top bar / drawer -->
     <string name="m3_tab_feed">Лента</string>
@@ -94,6 +119,7 @@
     <string name="m3_accounts_current_pill">Текущий</string>
     <string name="m3_accounts_remove_desc">Удалить @%1$s</string>
     <string name="m3_accounts_switch_failed">Не удалось переключиться: возможно, аккаунт был удалён</string>
+    <string name="m3_accounts_switched">Переключено на @%1$s</string>
     <string name="m3_accounts_removed">@%1$s удалён</string>
     <string name="m3_accounts_remove_failed">Не удалось удалить: текущий аккаунт удалить нельзя</string>
 
@@ -160,6 +186,7 @@
     <string name="m3_verb_new">новая активность</string>
     <string name="m3_verb_star">поставил звезду</string>
     <string name="m3_verb_fork">создал форк</string>
+    <string name="m3_verb_watch_started">подписался на</string>
     <string name="m3_verb_created">создал</string>
     <string name="m3_verb_deleted">удалил</string>
     <string name="m3_verb_pushed">отправил в</string>
@@ -206,6 +233,7 @@
     <string name="m3_filter_keywords_placeholder">например: какой-то пользователь, какой-то репозиторий</string>
     <string name="m3_group_push">Отправки / скачивания</string>
     <string name="m3_group_star">Звёзды / форки</string>
+    <string name="m3_group_watch">Подписчики</string>
     <string name="m3_group_issue">Задачи</string>
     <string name="m3_group_pr">Пул-реквесты</string>
     <string name="m3_group_comment">Комментарии / проверки</string>
@@ -222,6 +250,7 @@
     <string name="m3_time_30d">Последние 30 дней</string>
     <string name="m3_source_all">Все</string>
     <string name="m3_source_mine">Начатые мной</string>
+    <string name="m3_source_others">Запущено другими</string>
     <string name="m3_source_interactions">Другие в моих репозиториях</string>
     <string name="m3_read_all">Все</string>
     <string name="m3_read_unread">Только непрочитанные (скрыть прочитанные)</string>
@@ -231,9 +260,10 @@
     <!-- repositories / trending -->
     <string name="m3_repos_mine">Мои репозитории</string>
     <string name="m3_repos_starred">Со звездой</string>
+    <string name="m3_repos_recent">Недавние</string>
     <string name="m3_no_repos">Нет репозиториев</string>
     <string name="m3_updated_ago">Последняя отправка %1$s</string>
-    <string name="m3_repos_updated_ago">Последняя отправка %1$s</string>
+    <string name="m3_repos_updated_ago">Пуш %1$s</string>
     <string name="m3_trending_today">Сегодня</string>
     <string name="m3_trending_week">На этой неделе</string>
     <string name="m3_trending_any_language">Любой язык</string>
@@ -507,7 +537,7 @@
     <!-- 2026-10-18: repository detail overhaul -->
     <string name="m3_rendered">Обработанный вид</string>
     <string name="m3_raw">Исходный текст</string>
-    <string name="m3_last_modified">Последнее изменение %1$s</string>
+    <string name="m3_last_modified">Изменён %1$s</string>
     <string name="m3_contributors">Участники</string>
     <string name="m3_languages">Языки</string>
     <string name="m3_stargazers">Звёзды</string>
@@ -574,6 +604,7 @@
     <string name="m3_update_changelog">Что нового</string>
     <string name="m3_update_install_permission">Разрешите GitRehub устанавливать приложения и нажмите ещё раз</string>
     <string name="m3_update_install_ready">Открываем установщик…</string>
+    <string name="m3_update_downloaded">%1$s загружен. Нажмите, чтобы установить.</string>
     <string name="m3_version_short">Версия %1$s</string>
     <string name="m3_interface_density">Плотность интерфейса</string>
     <string name="m3_interface_density_desc">Масштабирует отступы и промежутки во всём приложении.</string>
@@ -623,6 +654,12 @@
     <string name="m3_new_issue_need_title">Нужен заголовок</string>
     <string name="m3_new_issue_options_failed">Не удалось загрузить метки и исполнителей</string>
     <string name="m3_new_issue_loading_options">Загрузка меток, исполнителей и вех…</string>
+    <string name="m3_new_discussion">Новое обсуждение</string>
+    <string name="m3_new_discussion_category">Категория</string>
+    <string name="m3_new_discussion_submit">Создать обсуждение</string>
+    <string name="m3_new_discussion_need_title">Требуется заголовок</string>
+    <string name="m3_new_discussion_need_category">Сначала выберите категорию</string>
+    <string name="m3_new_discussion_categories_failed">Не удалось загрузить категории</string>
     <string name="m3_commit">Коммит</string>
     <string name="m3_commits">Коммиты</string>
     <string name="m3_commit_no_diff">В этом коммите нет изменений файлов.</string>
